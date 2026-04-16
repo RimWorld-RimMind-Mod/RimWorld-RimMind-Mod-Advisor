@@ -131,6 +131,20 @@ A: 是的。Personality 提供人格档案，Memory 提供历史记忆，Advisor
 **Q: 会影响游戏帧率吗？**
 A: 不会。所有 AI 请求异步执行，并发数有上限控制。
 
+## 致谢
+
+本项目开发过程中参考了以下优秀的 RimWorld 模组：
+
+- [RimTalk](https://github.com/jlibrary/RimTalk.git) - 对话系统参考
+- [RimTalk-ExpandActions](https://github.com/sanguodxj-byte/RimTalk-ExpandActions.git) - 动作扩展参考
+- [NewRatkin](https://github.com/solaris0115/NewRatkin.git) - 种族模组架构参考
+- [VanillaExpandedFramework](https://github.com/Vanilla-Expanded/VanillaExpandedFramework.git) - 框架设计参考
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！如果你有任何建议或发现 Bug，请通过 GitHub Issues 反馈。
+
+
 ---
 
 # RimMind - Advisor (English)
@@ -216,3 +230,16 @@ A: Yes. Personality provides character profiles, Memory provides history, and Ad
 
 **Q: Will it affect game FPS?**
 A: No. All AI requests are async with concurrency limits.
+
+## Acknowledgments
+
+This project references the following excellent RimWorld mods:
+
+- [RimTalk](https://github.com/jlibrary/RimTalk.git) - Dialogue system reference
+- [RimTalk-ExpandActions](https://github.com/sanguodxj-byte/RimTalk-ExpandActions.git) - Action expansion reference
+- [NewRatkin](https://github.com/solaris0115/NewRatkin.git) - Race mod architecture reference
+- [VanillaExpandedFramework](https://github.com/Vanilla-Expanded/VanillaExpandedFramework.git) - Framework design reference
+
+## Contributing
+
+Issues and Pull Requests are welcome! If you have any suggestions or find bugs, please feedback via GitHub Issues.
