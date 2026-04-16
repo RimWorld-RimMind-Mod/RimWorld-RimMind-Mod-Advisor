@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <GameVersion Condition=" '$(GameVersion)' == '' ">1.6</GameVersion>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>RimMind.Advisor</RootNamespace>
+    <AssemblyName>RimMindAdvisor</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>../$(GameVersion)/Assemblies/</OutputPath>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);V$(GameVersion.Replace('.', '_'))</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(GameVersion).*-*" PrivateAssets="All" />
+    <PackageReference Include="Lib.Harmony.Ref" Version="2.*" PrivateAssets="All" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.*" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- RimMind-Core 编译期引用（游戏运行时由 RimWorld 加载，不打包进 DLL） -->
+  <ItemGroup>
+    <Reference Include="RimMindCore">
+      <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/RimMindCore.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RimMindActions">
+      <HintPath>../../RimMind-Actions/$(GameVersion)/Assemblies/RimMindActions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Deploy to game mods folder after build (set RIMWORLD_DIR env var) -->
+  <Target Name="DeployToModsFolder" AfterTargets="Build"
+          Condition=" '$(RIMWORLD_DIR)' != '' ">
+    <PropertyGroup>
+      <DeployPath>$(RIMWORLD_DIR)\Mods\RimMind-Advisor\</DeployPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(DeployPath)" />
+    <Exec Command='robocopy "$(ProjectDir)..\About"        "$(DeployPath)About"     /MIR' IgnoreExitCode="true"/>
+    <Exec Command='robocopy "$(ProjectDir)..\$(GameVersion)" "$(DeployPath)$(GameVersion)" /MIR' IgnoreExitCode="true"/>
+    <Message Text="--- RimMind-Advisor deployed to $(DeployPath) ---" Importance="high"/>
+  </Target>
+
+</Project>
