@@ -28,6 +28,24 @@ Core ── Actions ── Advisor
 
 ## 安装步骤
 
+### 从源码安装
+
+**Linux/macOS:**
+```bash
+git clone git@github.com:mcocdaa/RimWorld-RimMind-Mod-Advisor.git
+cd RimWorld-RimMind-Mod-Advisor
+./script/deploy-single.sh <your RimWorld path>
+```
+
+**Windows:**
+```powershell
+git clone git@github.com:mcocdaa/RimWorld-RimMind-Mod-Advisor.git
+cd RimWorld-RimMind-Mod-Advisor
+./script/deploy-single.ps1 <your RimWorld path>
+```
+
+### 从 Steam 安装
+
 1. 安装 [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) 前置模组
 2. 安装 RimMind-Core
 3. 安装 RimMind-Actions
@@ -136,6 +154,24 @@ RimMind is an AI-driven RimWorld mod suite that connects to Large Language Model
 | RimMind-Storyteller | AI storyteller, smart event selection | Core |
 
 ## Installation
+
+### Install from Source
+
+**Linux/macOS:**
+```bash
+git clone git@github.com:mcocdaa/RimWorld-RimMind-Mod-Advisor.git
+cd RimWorld-RimMind-Mod-Advisor
+./script/deploy-single.sh <your RimWorld path>
+```
+
+**Windows:**
+```powershell
+git clone git@github.com:mcocdaa/RimWorld-RimMind-Mod-Advisor.git
+cd RimWorld-RimMind-Mod-Advisor
+./script/deploy-single.ps1 <your RimWorld path>
+```
+
+### Install from Steam
 
 1. Install [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077)
 2. Install RimMind-Core
