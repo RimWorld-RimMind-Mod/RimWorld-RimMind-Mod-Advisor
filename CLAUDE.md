@@ -9,300 +9,384 @@ RimMind-Advisor 是 RimMind AI 模组套件的 AI 决策层。它在小人空闲
 **核心职责**：
 1. **空闲/心情检测**：扫描小人状态，在适当时机触发 AI 决策
 2. **候选任务构建**：生成当前可行的任务列表（工作 + 即时动作）
-3. **Prompt 构建**：使用 `StructuredPromptBuilder` 组装 System Prompt + User Prompt
+3. **Prompt 构建**：使用 `StructuredPromptBuilder` + `PromptBudget` 组装 System/User Prompt
 4. **响应解析**：解析 JSON 响应，转换为可执行的动作意图
-5. **审批系统**：高风险动作通过 `RequestOverlay` 请求玩家审批
-6. **动作执行**：调用 RimMindActionsAPI 执行决策
-7. **历史记录**：`AdvisorHistoryStore` 持久化决策历史
+5. **审批系统**：高风险/请求类动作通过 `RimMindAPI.RegisterPendingRequest` 请求玩家审批
+6. **动作执行**：调用 `RimMindActionsAPI.ExecuteBatch` 执行决策
+7. **历史记录**：`AdvisorHistoryStore` 持久化决策历史，并注入 Prompt 上下文
 
-**依赖关系**：
-- RimMind-Core：API 客户端、上下文构建、设置框架
-- RimMind-Actions：动作执行接口
+**依赖关系**（编译期引用，运行时由 RimWorld 加载）：
+- **RimMind-Core**：`RimMindAPI`（请求/上下文/审批）、`StructuredPromptBuilder`、`PromptBudget`、`ContextComposer`、`SettingsUIHelper`、`AIRequestQueue`
+- **RimMind-Actions**：`RimMindActionsAPI`（动作执行/查询）、`BatchActionIntent`、`RiskLevel`、`EatFoodAction`
 
 ## 源码结构
 
 ```
 Source/
-├── RimMindAdvisorMod.cs              Mod 入口，注册 Harmony 和设置 Tab
+├── RimMindAdvisorMod.cs              Mod 入口：Harmony 注册、设置 Tab、PawnContextProvider、ModCooldown
 ├── Settings/
-│   └── RimMindAdvisorSettings.cs     模组设置（开关、冷却、并发、审批等）
+│   └── RimMindAdvisorSettings.cs     ModSettings（14 项设置，见下方设置表）
 ├── Comps/
-│   ├── CompAIAdvisor.cs              挂载到 Pawn 的核心组件，处理 Tick 和 AI 请求
-│   └── CompProperties_AIAdvisor.cs   ThingComp 属性定义
+│   ├── CompAIAdvisor.cs              核心 ThingComp：Tick 触发、AI 请求、响应处理、Gizmo
+│   └── CompProperties_AIAdvisor.cs   ThingComp 属性，仅指定 compClass
 ├── Advisor/
-│   ├── AdvisorPromptBuilder.cs       构建 System/User Prompt（使用 StructuredPromptBuilder）
-│   ├── JobCandidateBuilder.cs        构建候选任务列表
-│   └── AdviceResponse.cs             AI 响应 JSON DTO
+│   ├── AdvisorPromptBuilder.cs       System/User Prompt 构建（StructuredPromptBuilder + PromptBudget）
+│   ├── JobCandidateBuilder.cs        候选任务列表（工作 + 即时动作），含上下文提示和过滤
+│   └── AdviceResponse.cs             AI 响应 JSON DTO（AdviceBatch / AdviceItem）
 ├── Data/
-│   ├── AdvisorRequestRecord.cs       单条决策记录
-│   └── AdvisorHistoryStore.cs        WorldComponent，决策历史持久化
+│   ├── AdvisorRequestRecord.cs       单条决策记录（IExposable）
+│   └── AdvisorHistoryStore.cs        WorldComponent，按 Pawn 存储历史，全局日志上限 200 条
 ├── Patches/
-│   └── AddCompToHumanlikePatch.cs    为所有人形种族注入 Comp
+│   └── AddCompToHumanlikePatch.cs    Harmony Postfix：为 Humanlike 种族注入 CompProperties_AIAdvisor
 ├── Concurrency/
-│   └── AdvisorConcurrencyTracker.cs  全局并发计数器（线程安全）
+│   └── AdvisorConcurrencyTracker.cs  全局原子计数器（Interlocked）
 └── Debug/
-    └── AdvisorDebugActions.cs        Dev 菜单调试动作
+    └── AdvisorDebugActions.cs        Dev 菜单 7 项调试动作
+
+Tests/
+├── RimMindAdvisor.Tests.csproj       xUnit 测试项目，net10.0，仅引用纯逻辑文件
+├── AdviceResponseParseTests.cs       AdviceBatch JSON 解析（7 个用例）
+└── ConcurrencyTrackerTests.cs        并发计数器线程安全（5 个用例）
 ```
 
 ## 关键类与 API
 
 ### CompAIAdvisor（核心组件）
 
-挂载到每个殖民者的 ThingComp，负责：
+挂载到每个殖民者的 `ThingComp`，所有逻辑在主线程执行。
 
 ```csharp
-// 资格检查
-bool IsEligible()  // 自由殖民者、未死亡、未征召、有心情
-bool IsIdle()      // 当前任务为等待/闲逛类
-bool IsMoodBelowThreshold()  // 心情低于阈值
+// 字段
+bool IsEnabled = false;              // 该小人是否启用 Advisor（序列化持久化）
 
-// 触发 AI 请求
-void RequestAIAdvice()      // 正常流程
-void ForceRequestAdvice()   // 绕过冷却强制请求（Dev 用）
+// 属性
+bool HasPendingRequest               // 有待响应请求
+int  AdvisorCooldownTicksLeft        // Advisor 层剩余冷却 ticks
 
-// 状态查询
-bool HasPendingRequest              // 有待响应请求
-int  AdvisorCooldownTicksLeft       // Advisor 层剩余冷却
-bool IsEnabled                      // 该小人是否启用 Advisor
+// 私有方法
+bool IsEligible()                    // IsFreeNonSlaveColonist && !Dead && !Drafted && mood != null
+bool IsIdle()                        // curJob 为 null 或 Wait/Wait_Wander/GotoWander/Wait_MaintainPosture，排除 playerForced
+bool IsMoodBelowThreshold()          // mood.CurLevelPercentage < moodThreshold
+
+// 公开方法
+void RequestAIAdvice()               // 正常流程（内部调用）
+void ForceRequestAdvice()            // 绕过双层冷却 + 强制 IsEnabled=true（Dev 用）
 ```
 
-**触发条件**（需同时满足）：
-1. 总开关 `enableAdvisor` 开启
-2. API 已配置 `RimMindAPI.IsConfigured()`
-3. 无待响应请求
-4. 本小人顾问开关开启
-5. 小人符合资格（`IsEligible`）
-6. 小人空闲（`IsIdle`）或心情低于阈值（`enableMoodTrigger`）
-7. Advisor 层冷却结束
-8. 并发数未达上限
+**触发条件**（CompTick 中按顺序检查，任一不满足即跳过）：
+1. `enableAdvisor` 总开关开启
+2. `RimMindAPI.IsConfigured()` API 已配置
+3. `_hasPendingRequest == false`
+4. `IsEnabled` 本小人顾问开关开启
+5. `IsEligible()` 小人符合资格
+6. 空闲触发（`enableIdleTrigger && IsIdle()`）或心情触发（`enableMoodTrigger && IsMoodBelowThreshold()`）
+7. Advisor 层冷却结束（`_lastRequestTick + requestCooldownTicks <= TicksGame`）
+8. 并发数未达上限（`AdvisorConcurrencyTracker.ActiveCount < maxConcurrentRequests`）
 
-**审批流程**：
-- AI 响应中 `request_type = "request"` 的建议 → 通过 `RimMindAPI.RegisterPendingRequest` 请求玩家审批
-- AI 响应中 `request_type = "high_risk"` 且 `enableRiskApproval` 开启 → 同上
-- 风险等级 >= `autoBlockRiskLevel` 的动作 → 自动拦截（`systemBlocked = true`）
-
-### JobCandidateBuilder
-
-构建候选任务列表，分两个区段：
-
+**AIRequest 构建参数**：
 ```csharp
-// 工作任务（action=assign_work）
-[工作任务]（action 固定填 assign_work，param 填括号内的 WorkType defName）
-1. 采矿（Mining）[低] — 3 个目标，最近 12 格（铁矿石）
-2. 建造（Construction）[低] — 1 个目标，最近 8 格
-...
-
-// 即时动作（action=intentId）
-[即时动作]（action 直接填括号内的 intentId）
-11. 强制休息（force_rest）[低] — 体力 45%
-12. 社交放松（social_relax）[低] — 心情 35%，建议放松
-...
+new AIRequest {
+    SystemPrompt  = AdvisorPromptBuilder.BuildSystemPrompt(pawn),
+    UserPrompt    = AdvisorPromptBuilder.BuildUserPrompt(pawn),
+    MaxTokens     = 400,
+    Temperature   = 0.7f,
+    RequestId     = "Advisor_{Pawn.ThingID}",
+    ModId         = "Advisor",
+    ExpireAtTicks = TicksGame + requestExpireTicks,
+    UseJsonMode   = true,
+}
 ```
 
-**即时动作白名单**（`AdvisorInstantActions`）：
-- `force_rest` / `social_relax` / `social_dining`
-- `eat_food` / `tend_pawn` / `rescue_pawn`
-- `inspire_work` / `inspire_fight` / `inspire_trade`
-- `move_to`
+**Gizmo**（`CompGetGizmosExtra`）：
+- 切换按钮：显示启用/禁用状态 + 冷却/等待子标签，图标 `UI/AdvisorIcon`
+- Dev 模式额外按钮：Force Request Advice
 
-**风险等级**：Low/Medium/High/Critical，AI 被提示优先选择低风险动作。
+### 响应处理流程（OnAdviceReceived）
+
+```
+AIResponse → JSON 解析 → AdviceBatch
+    │
+    ├── 解析失败/空 → Log.Warning，return
+    │
+    └── 遍历 batch.advices：
+        ├── action 不在 supported 集合 → 跳过
+        ├── !RimMindActionsAPI.IsAllowed(action) → 跳过
+        ├── 解析 actor/target Pawn（按 Name.ToStringShort 匹配）
+        │
+        ├── 判断是否需要审批：
+        │   ├── systemBlocked = enableRiskApproval && riskLevel >= autoBlockRiskLevel
+        │   ├── needsApproval = systemBlocked || request_type=="request" || request_type=="high_risk"
+        │   │
+        │   ├── needsApproval && enableRequestSystem → RegisterPendingRequest
+        │   │   ├── systemBlocked → 选项：批准/拒绝（无忽略）
+        │   │   └── 非系统拦截   → 选项：批准/拒绝/忽略
+        │   │   ├── 批准 → ExecuteBatch 单条 → 绿色气泡(0.4,1,0.6) → 记录 "approved"
+        │   │   ├── 拒绝 → 记录 systemBlocked?"system_blocked":"rejected"
+        │   │   └── 忽略 → 记录 "ignored"
+        │   │
+        │   └── !needsApproval || !enableRequestSystem → 加入直接执行列表
+        │
+        └── 直接执行列表 → RimMindActionsAPI.ExecuteBatch(intents)
+            → 青色气泡(0.6,0.9,1.0) 显示 reason
+            → 更新 _lastRequestTick
+```
 
 ### AdvisorPromptBuilder
 
 ```csharp
-// System Prompt：使用 StructuredPromptBuilder 链式构建
+// System Prompt：StructuredPromptBuilder 链式构建
 string BuildSystemPrompt(Pawn pawn)
-// 包含：Role/Goal/Process/Constraint/Example/Output/Fallback + 自定义 Prompt
+// 实际调用链：
+//   FromKeyPrefix("RimMind.Advisor.Prompt.System")
+//     .Role(翻译键)              — 角色设定
+//     .Constraint(翻译键)        — 字段规则
+//     .ConstraintFromKey(翻译键) — 输出规则
+//     .ConstraintFromKey(翻译键) — 风险控制
+//     .WithCustom(advisorCustomPrompt) — 玩家自定义追加
 
-// User Prompt：完整上下文 + 候选列表
+// User Prompt：PromptSection 列表 + PromptBudget 裁剪
 string BuildUserPrompt(Pawn pawn)
-// 包含：RimMindAPI.BuildFullPawnPrompt(pawn) + JobCandidateBuilder.Build(pawn)
+// sections 按优先级排列：
+//   1. "candidates" (PriorityCurrentInput) — 候选任务列表
+//   2. RimMindAPI.BuildFullPawnSections(pawn) — Pawn 完整上下文（Core 提供）
+//   3. "advisor_history" (PriorityMemory) — 最近 5 条决策历史（ContextComposer.CompressHistory 压缩）
+// PromptBudget(5000, 600) 按优先级裁剪后拼合
 ```
+
+### JobCandidateBuilder
+
+构建候选任务列表，分两个区段，所有文本使用翻译键：
+
+```csharp
+// 工作区段（action 固定 assign_work，param 为 WorkType defName）
+// 格式：{序号}. {labelShort}({defName})[低] — {目标数}个目标，最近{距离}格({标签})
+// 最多 MaxWorkCandidates=10 条，仅包含已激活工作且有可用目标的
+
+// 即时动作区段（action 为 intentId）
+// 格式：{序号}. {displayName}({intentId}){风险标签} | {动作描述} — {上下文提示}
+// 仅包含白名单内 + IsAllowed + BuildInstantHint 返回非 null 的动作
+```
+
+**即时动作白名单**（`AdvisorInstantActions`）：
+| intentId | BuildInstantHint 逻辑 | 过滤条件 |
+|----------|----------------------|----------|
+| `force_rest` | 体力百分比 | 始终显示（体力<90%提示低，否则提示充足） |
+| `social_relax` | 心情百分比 | 始终显示（心情<60%提示低，否则提示正常） |
+| `social_dining` | 同伴短名 | 地图无其他自由殖民者→返回 null 过滤 |
+| `eat_food` | 可用美食列表 | 无 JoyFood→返回 null 过滤 |
+| `tend_pawn` | 受伤殖民者短名 | 无受伤殖民者→返回 null 过滤 |
+| `rescue_pawn` | 倒地殖民者短名 | 无倒地殖民者→返回 null 过滤 |
+| `inspire_work` | 翻译文本 | 已有灵感→返回 null 过滤 |
+| `inspire_fight` | 翻译文本 | 已有灵感→返回 null 过滤 |
+| `inspire_trade` | 翻译文本 | 已有灵感→返回 null 过滤 |
+| `move_to` | 翻译文本 | 始终显示 |
+
+**风险等级**：`RiskLevel` 枚举（Low=0/Medium=1/High=2/Critical=3），由 `RimMindActionsAPI.GetRiskLevel` 返回。
 
 ### AdviceResponse（JSON DTO）
 
 ```csharp
-class AdviceBatch {
-    [JsonProperty("advices")] List<AdviceItem> advices;
+public class AdviceBatch {
+    [JsonProperty("advices")] public List<AdviceItem> advices = new();  // 默认空列表
 }
 
-class AdviceItem {
-    [JsonProperty("action")]    string  action;        // 动作 ID
-    [JsonProperty("pawn")]      string? pawn;          // 目标小人短名（多 Pawn 模式）
-    [JsonProperty("target")]    string? target;        // 交互目标短名
-    [JsonProperty("param")]     string? param;         // 参数
-    [JsonProperty("reason")]    string? reason;        // 中文理由
-    [JsonProperty("request_type")] string request_type = "normal"; // normal/request/high_risk
+public class AdviceItem {
+    [JsonProperty("action")]        public string  action = "";         // 必填，动作 ID
+    [JsonProperty("pawn")]          public string? pawn;                // 多 Pawn 模式：目标小人短名
+    [JsonProperty("target")]        public string? target;              // 社交类动作的交互对象短名
+    [JsonProperty("param")]         public string? param;               // 参数（如 WorkType defName）
+    [JsonProperty("reason")]        public string? reason;              // 理由（中文）
+    [JsonProperty("request_type")]  public string  request_type = "normal"; // normal/request/high_risk
 }
 ```
 
 ### AdvisorHistoryStore / AdvisorRequestRecord
 
 ```csharp
-class AdvisorHistoryStore : WorldComponent {
-    static AdvisorHistoryStore? Instance;
-    List<AdvisorRequestRecord> GetRecords(Pawn pawn);
-    void AddRecord(Pawn pawn, AdvisorRequestRecord record);
-    IReadOnlyList<AdvisorRequestRecord> GlobalLog;  // 全局日志，上限 200 条
+public class AdvisorHistoryStore : WorldComponent {
+    static AdvisorHistoryStore? Instance;                              // 单例，构造时赋值
+    List<AdvisorRequestRecord> GetRecords(Pawn pawn);                 // 按 thingIDNumber 索引
+    void AddRecord(Pawn pawn, AdvisorRequestRecord record);           // 同时追加到全局日志
+    IReadOnlyList<AdvisorRequestRecord> GlobalLog { get; }           // 全局日志，上限 200 条
+    // 序列化：Scribe_Collections.Look(ref _records, LookMode.Value, LookMode.Deep)
 }
 
-class AdvisorRequestRecord : IExposable {
-    string action;
-    string reason;
-    string result;  // approved/rejected/system_blocked/ignored
-    int tick;
+public class AdvisorRequestRecord : IExposable {
+    public string action;     // 动作 ID
+    public string reason;     // AI 给出的理由
+    public string result;     // approved / rejected / system_blocked / ignored
+    public int    tick;       // 游戏时刻
 }
+```
+
+### RimMindAdvisorMod（入口）
+
+```csharp
+// 构造函数中完成：
+1. Settings = GetSettings<RimMindAdvisorSettings>()
+2. new Harmony("mcocdaa.RimMindAdvisor").PatchAll()
+3. RimMindAPI.RegisterSettingsTab("advisor", ...)     — 注册设置 Tab 到 Core
+4. RimMindAPI.RegisterModCooldown("Advisor", ...)      — 注册 Mod 冷却到 Core
+5. RimMindAPI.RegisterPawnContextProvider("advisor_history", ..., PriorityAuxiliary) — 注册历史上下文提供者
 ```
 
 ### 设置项
 
-| 设置 | 默认值 | 说明 |
-|------|--------|------|
-| enableAdvisor | true | 总开关 |
-| requestCooldownTicks | 36000 | Advisor 层冷却（≈10 游戏小时） |
-| maxConcurrentRequests | 3 | 最大并发请求数 |
-| showThoughtBubble | true | 显示 AI 决策气泡 |
-| enableIdleTrigger | true | 空闲时触发 |
-| enableMoodTrigger | true | 心情低落时触发 |
-| pawnScanIntervalTicks | 3600 | 扫描间隔（≈60 秒） |
-| moodThreshold | 0.4 | 心情触发阈值 |
-| advisorCustomPrompt | "" | 自定义追加 Prompt |
-| requestExpireTicks | 30000 | 请求过期 ticks |
-| enableRequestSystem | true | 启用审批系统 |
-| enableRiskApproval | true | 启用风险审批 |
-| autoBlockRiskLevel | High | 自动拦截风险等级 |
-| injectMapAdvisorLog | false | 注入地图 Advisor 日志 |
+| 设置 | 类型 | 默认值 | 范围/步进 | 说明 |
+|------|------|--------|-----------|------|
+| enableAdvisor | bool | true | — | 总开关 |
+| requestCooldownTicks | int | 30000 | 3600~72000, 步进600 | Advisor 层冷却（≈12 游戏小时） |
+| maxConcurrentRequests | int | 3 | 1~5 | 最大并发请求数 |
+| showThoughtBubble | bool | true | — | 显示 AI 决策气泡 |
+| enableIdleTrigger | bool | true | — | 空闲时触发 |
+| enableMoodTrigger | bool | true | — | 心情低落时触发 |
+| pawnScanIntervalTicks | int | 3600 | 600~6000, 步进100 | CompTick 检查间隔（≈60 秒） |
+| moodThreshold | float | 0.3 | 0.25~0.6 | 心情触发阈值 |
+| advisorCustomPrompt | string | "" | — | 自定义追加 System Prompt |
+| requestExpireTicks | int | 30000 | 3600~120000, 步进1500 | 请求过期 ticks |
+| enableRequestSystem | bool | true | — | 启用审批系统 |
+| enableRiskApproval | bool | true | — | 启用风险审批 |
+| autoBlockRiskLevel | RiskLevel | High | Low~Critical | 自动拦截风险等级 |
+| injectMapAdvisorLog | bool | false | — | 注入地图 Advisor 日志 |
 
 ## 数据流
 
 ```
 游戏主线程 (CompTick)
     │
-    ├── 间隔检查（pawnScanIntervalTicks）
+    ├── Pawn.IsHashIntervalTick(pawnScanIntervalTicks)
     │       ▼
-    ├── 条件检查（资格、空闲/心情、冷却、并发）
+    ├── 8 项条件检查（见触发条件）
     │       ▼
     ├── RequestAIAdvice()
+    │   ├── _hasPendingRequest = true
+    │   ├── AdvisorConcurrencyTracker.Increment()
+    │   ├── 构建 AIRequest（MaxTokens=400, Temp=0.7, UseJsonMode=true）
+    │   └── RimMindAPI.RequestAsync(request, OnAdviceReceived)
     │       ▼
-    ├── 构建 AIRequest
-    │   ├── SystemPrompt = BuildSystemPrompt()
-    │   └── UserPrompt   = BuildUserPrompt()
-    │       ▼
-    ├── RimMindAPI.RequestAsync(request, OnAdviceReceived)
-    │       ▼
-    │   [Core 层异步处理...]
+    │   [Core 层异步：排队 → 冷却检查 → HTTP → JSON 返回]
     │       ▼
     ├── OnAdviceReceived(AIResponse)
+    │   ├── _hasPendingRequest = false
+    │   ├── AdvisorConcurrencyTracker.Decrement()
+    │   ├── JsonConvert.DeserializeObject<AdviceBatch>(response.Content)
+    │   ├── 遍历 advices：过滤 → 审批判断 → 执行/注册请求
+    │   └── 直接执行 → ExecuteBatch → 气泡 → _lastRequestTick 更新
     │       ▼
-    ├── 解析 JSON → AdviceBatch
-    │       ▼
-    ├── 遍历 advices：
-    │   ├── request_type=request → RegisterPendingRequest（玩家审批）
-    │   ├── request_type=high_risk + enableRiskApproval → RegisterPendingRequest
-    │   ├── 风险 >= autoBlockRiskLevel → systemBlocked
-    │   └── 其他 → 直接执行
-    │       ▼
-    ├── RimMindActionsAPI.ExecuteBatch(intents)
-    │       ▼
-    └── 显示决策气泡 + 记录历史
+    └── 审批回调 → 单条 ExecuteBatch → 气泡 → AddRecord
 ```
 
 ## 冷却机制
 
 双层冷却设计：
 
-1. **Advisor 层冷却**（`requestCooldownTicks`）：
-   - 每个 Pawn 独立
-   - 防止同一小人过于频繁请求
-   - 由 `CompAIAdvisor._lastRequestTick` 控制
+1. **Advisor 层冷却**（`requestCooldownTicks`，默认 30000）：
+   - 每个 Pawn 独立，由 `CompAIAdvisor._lastRequestTick` 控制
+   - 仅在直接执行成功后更新 `_lastRequestTick`
+   - 审批类动作不更新冷却（回调中未设置 `_lastRequestTick`）
 
-2. **Core 层冷却**（`globalCooldownTicks`）：
-   - 按 ModId 独立
-   - 防止同一目的过于频繁请求
-   - 由 `AIRequestQueue` 控制
+2. **Core 层冷却**（由 `AIRequestQueue` 按 ModId="Advisor" 控制）：
+   - 全局共享，通过 `RimMindAPI.RegisterModCooldown("Advisor", ...)` 注册
+   - 冷却时长由 `RimMindCoreMod.Settings.globalCooldownTicks` 控制
 
-**强制请求**（`ForceRequestAdvice`）会同时清除两层冷却。
+**强制请求**（`ForceRequestAdvice`）：
+- 设置 `IsEnabled = true`
+- 重置 `_lastRequestTick = -9999`（清除 Advisor 层冷却）
+- 调用 `AIRequestQueue.Instance.ClearCooldown("Advisor")`（清除 Core 层冷却）
 
 ## 并发控制
 
 ```csharp
 // 全局原子计数器
-AdvisorConcurrencyTracker.ActiveCount  // 当前等待响应的请求数
-AdvisorConcurrencyTracker.Increment()  // 发起请求时
-AdvisorConcurrencyTracker.Decrement()  // 收到响应时
+AdvisorConcurrencyTracker.ActiveCount  // int，当前等待响应的请求数
+AdvisorConcurrencyTracker.Increment()  // Interlocked.Increment
+AdvisorConcurrencyTracker.Decrement()  // Interlocked.Decrement
 ```
+
+- 请求发起时 Increment，响应收到时 Decrement（无论成功/失败）
+- 上限由 `maxConcurrentRequests` 控制（默认 3）
 
 ## 线程安全
 
-- `CompAIAdvisor` 所有逻辑在主线程执行
+- `CompAIAdvisor` 所有逻辑在主线程执行（CompTick / OnAdviceReceived 回调）
 - `AdvisorConcurrencyTracker` 使用 `Interlocked` 保证原子性
-- HTTP 请求和 JSON 解析在 Core 层的后台线程完成
+- HTTP 请求和 JSON 解析在 Core 层的后台线程完成，结果通过回调回主线程
 
 ## 代码约定
 
 ### 命名空间
 
-- `RimMind.Advisor` — 顶层（Mod 入口、DTO）
-- `RimMind.Advisor.Settings` — 设置
-- `RimMind.Advisor.Comps` — ThingComp
-- `RimMind.Advisor.Advisor` — 核心逻辑（Prompt、Candidate）
-- `RimMind.Advisor.Data` — 数据持久化
-- `RimMind.Advisor.Patches` — Harmony 补丁
-- `RimMind.Advisor.Concurrency` — 并发控制
-- `RimMind.Advisor.Debug` — 调试动作
+| 命名空间 | 职责 |
+|----------|------|
+| `RimMind.Advisor` | Mod 入口（RimMindAdvisorMod）、DTO（AdviceBatch/AdviceItem） |
+| `RimMind.Advisor.Settings` | 设置（RimMindAdvisorSettings） |
+| `RimMind.Advisor.Comps` | ThingComp（CompAIAdvisor、CompProperties_AIAdvisor） |
+| `RimMind.Advisor.Advisor` | 核心逻辑（AdvisorPromptBuilder、JobCandidateBuilder） |
+| `RimMind.Advisor.Data` | 数据持久化（AdvisorHistoryStore、AdvisorRequestRecord） |
+| `RimMind.Advisor.Patches` | Harmony 补丁（AddAdvisorCompPatch） |
+| `RimMind.Advisor.Concurrency` | 并发控制（AdvisorConcurrencyTracker） |
+| `RimMind.Advisor.Debug` | 调试动作（AdvisorDebugActions） |
 
 ### 序列化
 
-```csharp
-public override void PostExposeData()
-{
-    base.PostExposeData();
-    Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
-}
-```
+- ThingComp 使用 `PostExposeData` + `Scribe_Values.Look`
+- WorldComponent 使用 `ExposeData` + `Scribe_Collections.Look`
+- 默认值必须与字段初始化值一致
 
 ### Harmony
 
 - Harmony ID：`mcocdaa.RimMindAdvisor`
-- 使用 Postfix 动态注入 CompProperties
-- 原因：XML Patch 在继承解析前运行，无法正确过滤 race/intelligence
+- 补丁类：`AddAdvisorCompPatch`，Postfix on `ThingDef.ResolveReferences`
+- 过滤条件：`race.intelligence == Intelligence.Humanlike`
+- 去重：检查 `comps.Any(c => c is CompProperties_AIAdvisor)`
+- 原因：XML Patch 在继承解析前运行，race/intelligence 字段尚未继承
 
 ### 构建
 
-- 目标框架：`net48`
-- C# 语言版本：9.0
-- RimWorld 版本：1.6
-- 输出路径：`../1.6/Assemblies/`
+| 项目 | 目标框架 | 语言版本 | 输出路径 |
+|------|----------|----------|----------|
+| Source | net48 | C# 9.0 | `../1.6/Assemblies/` |
+| Tests | net10.0 | C# 9.0 | — |
+
+- NuGet：`Krafs.Rimworld.Ref(1.6.*)`, `Lib.Harmony.Ref(2.*)`, `Newtonsoft.Json(13.0.*)`
+- 编译期引用：`RimMindCore.dll`, `RimMindActions.dll`（Private=false，运行时加载）
+- 部署：设置 `RIMWORLD_DIR` 环境变量后构建自动 robocopy
 
 ### 测试
 
-- 单元测试项目：`Tests/`，使用 xUnit，目标 `net10.0`
-- 已有测试：`AdviceResponseParseTests`、`ConcurrencyTrackerTests`
+- 测试项目仅引用纯逻辑文件（无 RimWorld 依赖）：
+  - `Source/Advisor/AdviceResponse.cs` — DTO
+  - `Source/Concurrency/AdvisorConcurrencyTracker.cs` — 计数器
+- 已有测试类：`AdviceBatchParseTests`（7 用例）、`ConcurrencyTrackerTests`（5 用例）
 
 ## 扩展指南
 
 ### 添加新的即时动作
 
-1. 在 RimMind-Actions 中实现新动作
+1. 在 RimMind-Actions 中实现新动作（注册 intentId + 风险等级）
 2. 在 `JobCandidateBuilder.AdvisorInstantActions` 中添加 intentId
-3. 在 `BuildInstantHint` 中添加上下文提示逻辑
-4. 调整风险等级（如有必要）
+3. 在 `BuildInstantHint` 中添加 switch case，返回上下文提示或 null（null=过滤掉）
+4. 调整风险等级（如有必要，在 Actions 侧修改）
 
 ### 修改 Prompt
 
-- 修改 `AdvisorPromptBuilder.BuildSystemPrompt` 调整角色设定
-- 通过设置页的 `advisorCustomPrompt` 让玩家自定义追加内容
+- System Prompt：修改 `AdvisorPromptBuilder.BuildSystemPrompt` 中的链式调用
+- User Prompt：修改 `BuildUserPrompt` 中的 PromptSection 列表
+- 玩家自定义：通过 `advisorCustomPrompt` 设置项追加到 System Prompt 末尾
+- 翻译键前缀：`RimMind.Advisor.Prompt.*`
 
 ### 调试
 
-Dev 菜单（开发模式）提供以下动作：
-- Show Advisor State (selected) — 查看选中 Pawn 的顾问状态
-- Force Request Advice (selected) — 强制请求建议
-- Show Job Candidates (selected) — 查看候选任务列表
-- Show Full Prompt (selected) — 查看完整 Prompt
-- List All Advisor States — 列出所有殖民者状态
-- Clear ALL Cooldowns — 清除所有冷却
-- Reset Concurrency Count — 重置并发计数
+Dev 菜单（RimMind Advisor 分类）提供 7 项动作：
+| 动作 | 功能 |
+|------|------|
+| Show Advisor State (selected) | 选中 Pawn 的完整状态（开关/冷却/并发/API） |
+| Force Request Advice (selected) | 强制请求建议（清除双层冷却） |
+| Show Job Candidates (selected) | 查看候选任务列表文本 |
+| Show Full Prompt (selected) | 查看 System + User Prompt 全文 |
+| List All Advisor States | 列出地图所有殖民者状态 |
+| Clear ALL Cooldowns | 清除 Core 层所有冷却 |
+| Reset Concurrency Count | 强制归零并发计数器 |
 
 ## AI 响应格式标准
 
@@ -319,7 +403,7 @@ Dev 菜单（开发模式）提供以下动作：
     },
     {
       "action": "assign_work",
-      "pawn": null,
+      "pawn": "Alice",
       "target": null,
       "param": "Mining",
       "reason": "擅长采矿且附近有铁矿石",
@@ -331,9 +415,32 @@ Dev 菜单（开发模式）提供以下动作：
 
 **action 值域**：
 - `assign_work` — 工作任务，param 为 WorkType defName
-- 即时动作 intentId — 见 `AdvisorInstantActions` 白名单
+- 即时动作 intentId — 见 `AdvisorInstantActions` 白名单（10 个）
 
 **request_type 值域**：
 - `normal` — 直接执行
-- `request` — 请求玩家审批
+- `request` — 请求玩家审批（选项：批准/拒绝/忽略）
 - `high_risk` — 高风险动作，需审批（受 `enableRiskApproval` 控制）
+
+**多 Pawn 模式**：`pawn` 字段填目标小人 `Name.ToStringShort`，为 null 时使用当前 Pawn。`target` 字段填交互对象短名（如 tend_pawn 的伤员）。
+
+## RimMind-Core API 使用汇总
+
+| API | 调用位置 | 用途 |
+|-----|----------|------|
+| `RimMindAPI.IsConfigured()` | CompAIAdvisor.CompTick | 检查 API 是否已配置 |
+| `RimMindAPI.RequestAsync(request, callback)` | CompAIAdvisor.RequestAIAdvice | 发送 AI 请求 |
+| `RimMindAPI.RegisterPendingRequest(entry)` | CompAIAdvisor.OnAdviceReceived | 注册审批请求 |
+| `RimMindAPI.RegisterSettingsTab(id, title, draw)` | RimMindAdvisorMod 构造 | 注册设置 Tab |
+| `RimMindAPI.RegisterModCooldown(modId, ticksFunc)` | RimMindAdvisorMod 构造 | 注册 Mod 冷却 |
+| `RimMindAPI.RegisterPawnContextProvider(id, func, priority)` | RimMindAdvisorMod 构造 | 注册 Pawn 上下文提供者 |
+| `RimMindAPI.BuildFullPawnSections(pawn)` | AdvisorPromptBuilder.BuildUserPrompt | 获取 Pawn 完整上下文 PromptSection |
+| `RimMindActionsAPI.GetSupportedIntents()` | CompAIAdvisor.OnAdviceReceived | 获取所有已注册 intentId |
+| `RimMindActionsAPI.IsAllowed(intentId)` | CompAIAdvisor/JobCandidateBuilder | 检查动作是否被允许 |
+| `RimMindActionsAPI.GetRiskLevel(intentId)` | CompAIAdvisor.OnAdviceReceived | 获取动作风险等级 |
+| `RimMindActionsAPI.ExecuteBatch(intents)` | CompAIAdvisor.OnAdviceReceived | 批量执行动作意图 |
+| `RimMindActionsAPI.GetWorkTargets(pawn, defName, max)` | JobCandidateBuilder | 获取工作任务目标列表 |
+| `RimMindActionsAPI.GetActionDescriptions()` | JobCandidateBuilder | 获取所有动作描述（intentId/displayName/riskLevel） |
+| `ContextComposer.CompressHistory(text, threshold, compressedMsg)` | AdvisorPromptBuilder | 历史文本压缩 |
+| `AIRequestQueue.Instance.ClearCooldown(modId)` | CompAIAdvisor.ForceRequestAdvice | 清除 Core 层冷却 |
+| `AIRequestQueue.Instance.GetCooldownTicksLeft(modId)` | AdvisorDebugActions | 查询 Core 层剩余冷却 |
