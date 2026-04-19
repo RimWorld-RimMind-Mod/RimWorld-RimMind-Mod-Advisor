@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using RimMind.Actions;
 using RimMind.Actions.Actions;
+using RimMind.Core;
 using RimWorld;
 using Verse;
 using Verse.AI;
@@ -112,6 +113,7 @@ namespace RimMind.Advisor.Advisor
             {
                 if (!AdvisorInstantActions.Contains(intentId)) continue;
                 if (!RimMindActionsAPI.IsAllowed(intentId)) continue;
+                if (RimMindAPI.ShouldSkipAction(intentId)) continue;
 
                 string? hint = BuildInstantHint(pawn, intentId);
                 if (hint == null) continue;

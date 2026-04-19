@@ -138,6 +138,7 @@ namespace RimMind.Advisor.Comps
                 ModId        = "Advisor",
                 ExpireAtTicks = Find.TickManager.TicksGame + Settings.requestExpireTicks,
                 UseJsonMode  = true,
+                Priority     = AIRequestPriority.Normal,
             };
 
             RimMindAPI.RequestAsync(request, OnAdviceReceived);
@@ -201,26 +202,30 @@ namespace RimMind.Advisor.Comps
                     && riskLevel.HasValue
                     && riskLevel.Value >= Settings.autoBlockRiskLevel;
 
+                string rt = advice.request_type?.ToLowerInvariant() ?? "normal";
                 bool needsApproval = systemBlocked
-                    || advice.request_type == "request"
-                    || advice.request_type == "high_risk";
+                    || rt == "request"
+                    || rt == "high_risk";
+
+                if (DebugLogging)
+                    Log.Message($"[RimMind-Advisor][Advice] {Pawn.Name.ToStringShort}: action={advice.action}, request_type(raw)={advice.request_type}, rt={rt}, needsApproval={needsApproval}, systemBlocked={systemBlocked}");
 
                 Pawn actor = Pawn;
                 if (!advice.pawn.NullOrEmpty())
                 {
                     actor = Pawn.Map?.mapPawns.FreeColonists
-                        .FirstOrDefault(p => p.Name.ToStringShort == advice.pawn)
+                        .FirstOrDefault(p => p.Name?.ToStringShort == advice.pawn)
                         ?? Pawn;
                 }
 
                 Pawn? targetPawn = null;
                 if (!advice.target.NullOrEmpty())
                     targetPawn = Pawn.Map?.mapPawns.AllPawns
-                        .FirstOrDefault(p => p.Name.ToStringShort == advice.target);
+                        .FirstOrDefault(p => p.Name?.ToStringShort == advice.target);
 
                 if (needsApproval && Settings.enableRequestSystem)
                 {
-                    string title = advice.request_type == "request"
+                    string title = rt == "request"
                         ? "RimMind.Advisor.Request.ColonistRequest".Translate(actor.Name.ToStringShort)
                         : "RimMind.Advisor.Request.RiskAction".Translate(advice.action);
 
@@ -239,6 +244,7 @@ namespace RimMind.Advisor.Comps
                         title = title,
                         description = capturedAdvice.reason,
                         systemBlocked = systemBlocked,
+                        expireTicks = Settings.requestExpireTicks,
                         options = systemBlocked
                             ? new[] { approveLabel, rejectLabel }
                             : new[] { approveLabel, rejectLabel, ignoreLabel },

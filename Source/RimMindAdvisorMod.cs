@@ -80,6 +80,9 @@ namespace RimMind.Advisor
                 string scanTicks = $"{Settings.pawnScanIntervalTicks}";
                 string scanSecs = $"{Settings.pawnScanIntervalTicks / 60f:F1}";
                 listing.Label("  " + "RimMind.Advisor.Settings.PawnScanInterval".Translate(scanTicks, scanSecs));
+                GUI.color = Color.gray;
+                listing.Label("    " + "RimMind.Advisor.Settings.PawnScanInterval.Desc".Translate());
+                GUI.color = Color.white;
                 Settings.pawnScanIntervalTicks = (int)listing.Slider(Settings.pawnScanIntervalTicks, 600f, 6000f);
                 Settings.pawnScanIntervalTicks = (Settings.pawnScanIntervalTicks / 100) * 100;
             }
@@ -89,6 +92,9 @@ namespace RimMind.Advisor
             {
                 string moodPct = $"{Settings.moodThreshold * 100:F0}";
                 listing.Label("  " + "RimMind.Advisor.Settings.MoodThreshold".Translate(moodPct));
+                GUI.color = Color.gray;
+                listing.Label("    " + "RimMind.Advisor.Settings.MoodThreshold.Desc".Translate());
+                GUI.color = Color.white;
                 Settings.moodThreshold = listing.Slider(Settings.moodThreshold, 0.25f, 0.6f);
             }
 
@@ -133,6 +139,9 @@ namespace RimMind.Advisor
                 string[] riskLabels = new[] { "Low", "Medium", "High", "Critical" };
                 string currentLabel = Settings.autoBlockRiskLevel.ToString();
                 listing.Label("RimMind.Advisor.Settings.AutoBlockRiskLevel".Translate(currentLabel));
+                GUI.color = Color.gray;
+                listing.Label("  " + "RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc".Translate());
+                GUI.color = Color.white;
                 int riskVal = (int)listing.Slider((float)Settings.autoBlockRiskLevel, 0f, 3f);
                 Settings.autoBlockRiskLevel = (RiskLevel)riskVal;
             }
@@ -146,10 +155,10 @@ namespace RimMind.Advisor
                 Settings.showThoughtBubble = true;
                 Settings.enableIdleTrigger = true;
                 Settings.enableMoodTrigger = true;
-                Settings.requestCooldownTicks = 36000;
+                Settings.requestCooldownTicks = 30000;
                 Settings.maxConcurrentRequests = 3;
                 Settings.pawnScanIntervalTicks = 3600;
-                Settings.moodThreshold = 0.4f;
+                Settings.moodThreshold = 0.3f;
                 Settings.advisorCustomPrompt = "";
                 Settings.requestExpireTicks = 30000;
                 Settings.enableRequestSystem = true;
