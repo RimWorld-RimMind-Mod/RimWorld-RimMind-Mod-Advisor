@@ -17,12 +17,12 @@
         <li>
             <packageId>mcocdaa.RimMindCore</packageId>
             <displayName>RimMind - Core</displayName>
-            <downloadUrl>https://github.com/mcocdaa/RimWorld-RimMind-Mod-Core</downloadUrl>
+            <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core</downloadUrl>
         </li>
         <li>
             <packageId>mcocdaa.RimMindActions</packageId>
             <displayName>RimMind - Actions</displayName>
-            <downloadUrl>https://github.com/mcocdaa/RimWorld-RimMind-Mod-Actions</downloadUrl>
+            <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions</downloadUrl>
         </li>
     </modDependencies>
     <loadAfter>
