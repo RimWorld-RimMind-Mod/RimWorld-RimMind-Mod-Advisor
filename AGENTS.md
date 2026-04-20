@@ -16,7 +16,7 @@ RimMind-Advisor 是 RimMind AI 模组套件的 AI 决策层。它在小人空闲
 7. **历史记录**：`AdvisorHistoryStore` 持久化决策历史，并注入 Prompt 上下文
 
 **依赖关系**（编译期引用，运行时由 RimWorld 加载）：
-- **RimMind-Core**：`RimMindAPI`（请求/上下文/审批）、`StructuredPromptBuilder`、`PromptBudget`、`ContextComposer`、`SettingsUIHelper`、`AIRequestQueue`
+- **RimMind-Core**：`RimMindAPI`（请求/上下文/审批）、`StructuredPromptBuilder`、`PromptBudget`、`ContextComposer`、`SettingsUIHelper`、`AIRequestQueue`、`AIRequestPriority`
 - **RimMind-Actions**：`RimMindActionsAPI`（动作执行/查询）、`BatchActionIntent`、`RiskLevel`、`EatFoodAction`
 
 ## 源码结构
@@ -64,7 +64,7 @@ bool HasPendingRequest               // 有待响应请求
 int  AdvisorCooldownTicksLeft        // Advisor 层剩余冷却 ticks
 
 // 私有方法
-bool IsEligible()                    // IsFreeNonSlaveColonist && !Dead && !Drafted && mood != null
+bool IsEligible()                    // IsFreeNonSlaveColonist && !Dead && !(drafter?.Drafted ?? false) && mood != null
 bool IsIdle()                        // curJob 为 null 或 Wait/Wait_Wander/GotoWander/Wait_MaintainPosture，排除 playerForced
 bool IsMoodBelowThreshold()          // mood.CurLevelPercentage < moodThreshold
 
@@ -94,6 +94,7 @@ new AIRequest {
     ModId         = "Advisor",
     ExpireAtTicks = TicksGame + requestExpireTicks,
     UseJsonMode   = true,
+    Priority      = AIRequestPriority.Normal,
 }
 ```
 
@@ -139,18 +140,20 @@ string BuildSystemPrompt(Pawn pawn)
 // 实际调用链：
 //   FromKeyPrefix("RimMind.Advisor.Prompt.System")
 //     .Role(翻译键)              — 角色设定
+//     .Goal(翻译键)              — 目标设定
 //     .Constraint(翻译键)        — 字段规则
 //     .ConstraintFromKey(翻译键) — 输出规则
 //     .ConstraintFromKey(翻译键) — 风险控制
-//     .WithCustom(advisorCustomPrompt) — 玩家自定义追加
+//     .ConstraintFromKey(翻译键) — 多样化提示（仅 enableRequestSystem 时追加）
+//     .WithCustom(Settings.advisorCustomPrompt) — 玩家自定义追加
 
 // User Prompt：PromptSection 列表 + PromptBudget 裁剪
 string BuildUserPrompt(Pawn pawn)
 // sections 按优先级排列：
 //   1. "candidates" (PriorityCurrentInput) — 候选任务列表
-//   2. RimMindAPI.BuildFullPawnSections(pawn) — Pawn 完整上下文（Core 提供）
-//   3. "advisor_history" (PriorityMemory) — 最近 5 条决策历史（ContextComposer.CompressHistory 压缩）
+//   2. RimMindAPI.BuildFullPawnSections(pawn) — Pawn 完整上下文（Core 提供，含 advisor_history）
 // PromptBudget(5000, 600) 按优先级裁剪后拼合
+// 注：advisor_history 通过 RegisterPawnContextProvider 注册，由 Core 的 BuildFullPawnSections 自动包含
 ```
 
 ### JobCandidateBuilder
@@ -159,12 +162,13 @@ string BuildUserPrompt(Pawn pawn)
 
 ```csharp
 // 工作区段（action 固定 assign_work，param 为 WorkType defName）
-// 格式：{序号}. {labelShort}({defName})[低] — {目标数}个目标，最近{距离}格({标签})
+// 格式：{序号}. {labelShort}({defName})[低] — {hint}
+// hint 格式：单目标 "{N}个目标，最近{D}格"；多目标 "{N}个目标，最近{D}格({标签})"
 // 最多 MaxWorkCandidates=10 条，仅包含已激活工作且有可用目标的
 
 // 即时动作区段（action 为 intentId）
 // 格式：{序号}. {displayName}({intentId}){风险标签} | {动作描述} — {上下文提示}
-// 仅包含白名单内 + IsAllowed + BuildInstantHint 返回非 null 的动作
+// 仅包含白名单内 + IsAllowed + !ShouldSkipAction + BuildInstantHint 返回非 null 的动作
 ```
 
 **即时动作白名单**（`AdvisorInstantActions`）：
@@ -187,7 +191,7 @@ string BuildUserPrompt(Pawn pawn)
 
 ```csharp
 public class AdviceBatch {
-    [JsonProperty("advices")] public List<AdviceItem> advices = new();  // 默认空列表
+    [JsonProperty("advices")] public List<AdviceItem> advices = new List<AdviceItem>();  // 默认空列表
 }
 
 public class AdviceItem {
@@ -208,14 +212,16 @@ public class AdvisorHistoryStore : WorldComponent {
     List<AdvisorRequestRecord> GetRecords(Pawn pawn);                 // 按 thingIDNumber 索引
     void AddRecord(Pawn pawn, AdvisorRequestRecord record);           // 同时追加到全局日志
     IReadOnlyList<AdvisorRequestRecord> GlobalLog { get; }           // 全局日志，上限 200 条
-    // 序列化：Scribe_Collections.Look(ref _records, LookMode.Value, LookMode.Deep)
+    // 序列化：Scribe_Collections.Look(ref _records, "advisorRecords", LookMode.Value, LookMode.Deep)
+    //         Scribe_Collections.Look(ref _globalLog, "globalLog", LookMode.Deep)
+    //         反序列化后 null-coalescing 兜底
 }
 
 public class AdvisorRequestRecord : IExposable {
-    public string action;     // 动作 ID
-    public string reason;     // AI 给出的理由
-    public string result;     // approved / rejected / system_blocked / ignored
-    public int    tick;       // 游戏时刻
+    public string action = string.Empty;   // 动作 ID
+    public string reason = string.Empty;   // AI 给出的理由
+    public string result = string.Empty;   // approved / rejected / system_blocked / ignored
+    public int    tick;                    // 游戏时刻
 }
 ```
 
@@ -228,6 +234,8 @@ public class AdvisorRequestRecord : IExposable {
 3. RimMindAPI.RegisterSettingsTab("advisor", ...)     — 注册设置 Tab 到 Core
 4. RimMindAPI.RegisterModCooldown("Advisor", ...)      — 注册 Mod 冷却到 Core
 5. RimMindAPI.RegisterPawnContextProvider("advisor_history", ..., PriorityAuxiliary) — 注册历史上下文提供者
+   // lambda 内：取最近 5 条记录，格式化为 "- action: reason → resultLabel"
+   // resultLabel 根据 result 值翻译为 已批准/玩家拒绝/系统拦截/已忽略
 ```
 
 ### 设置项
@@ -291,7 +299,7 @@ public class AdvisorRequestRecord : IExposable {
 **强制请求**（`ForceRequestAdvice`）：
 - 设置 `IsEnabled = true`
 - 重置 `_lastRequestTick = -9999`（清除 Advisor 层冷却）
-- 调用 `AIRequestQueue.Instance.ClearCooldown("Advisor")`（清除 Core 层冷却）
+- 调用 `RimMind.Core.Internal.AIRequestQueue.Instance?.ClearCooldown("Advisor")`（清除 Core 层冷却）
 
 ## 并发控制
 
@@ -434,12 +442,12 @@ Dev 菜单（RimMind Advisor 分类）提供 7 项动作：
 | `RimMindAPI.RegisterModCooldown(modId, ticksFunc)` | RimMindAdvisorMod 构造 | 注册 Mod 冷却 |
 | `RimMindAPI.RegisterPawnContextProvider(id, func, priority)` | RimMindAdvisorMod 构造 | 注册 Pawn 上下文提供者 |
 | `RimMindAPI.BuildFullPawnSections(pawn)` | AdvisorPromptBuilder.BuildUserPrompt | 获取 Pawn 完整上下文 PromptSection |
+| `RimMindAPI.ShouldSkipAction(intentId)` | JobCandidateBuilder.BuildInstantCandidates | 检查动作是否应被跳过（Bridge 门控） |
 | `RimMindActionsAPI.GetSupportedIntents()` | CompAIAdvisor.OnAdviceReceived | 获取所有已注册 intentId |
 | `RimMindActionsAPI.IsAllowed(intentId)` | CompAIAdvisor/JobCandidateBuilder | 检查动作是否被允许 |
 | `RimMindActionsAPI.GetRiskLevel(intentId)` | CompAIAdvisor.OnAdviceReceived | 获取动作风险等级 |
 | `RimMindActionsAPI.ExecuteBatch(intents)` | CompAIAdvisor.OnAdviceReceived | 批量执行动作意图 |
 | `RimMindActionsAPI.GetWorkTargets(pawn, defName, max)` | JobCandidateBuilder | 获取工作任务目标列表 |
 | `RimMindActionsAPI.GetActionDescriptions()` | JobCandidateBuilder | 获取所有动作描述（intentId/displayName/riskLevel） |
-| `ContextComposer.CompressHistory(text, threshold, compressedMsg)` | AdvisorPromptBuilder | 历史文本压缩 |
 | `AIRequestQueue.Instance.ClearCooldown(modId)` | CompAIAdvisor.ForceRequestAdvice | 清除 Core 层冷却 |
 | `AIRequestQueue.Instance.GetCooldownTicksLeft(modId)` | AdvisorDebugActions | 查询 Core 层剩余冷却 |
