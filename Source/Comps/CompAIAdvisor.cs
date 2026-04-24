@@ -217,8 +217,16 @@ namespace RimMind.Advisor.Comps
         {
             if (_hasPendingRequest)
             {
-                Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
-                return;
+                if (Find.TickManager.TicksGame - _pendingRequestTick > 60000)
+                {
+                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} pending request timed out, resetting.");
+                    CompleteRequestCycle();
+                }
+                else
+                {
+                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
+                    return;
+                }
             }
 
             IsEnabled = true;
@@ -379,6 +387,7 @@ namespace RimMind.Advisor.Comps
                     var capturedTc = tc;
                     var capturedTarget = targetPawn;
                     var capturedReason = reason;
+                    var capturedParam = param;
                     string approveLabel = "RimMind.Advisor.Request.Approve".Translate();
                     string rejectLabel = "RimMind.Advisor.Request.Reject".Translate();
 
@@ -402,7 +411,7 @@ namespace RimMind.Advisor.Comps
                                         IntentId = capturedTc.Name,
                                         Actor = Pawn,
                                         Target = capturedTarget,
-                                        Param = capturedTc.Arguments,
+                                        Param = capturedParam,
                                         Reason = capturedReason,
                                     }
                                 };
@@ -491,6 +500,7 @@ namespace RimMind.Advisor.Comps
         private void RequestToolFeedback(string toolCallsJson, List<ActionResult> results)
         {
             _toolCallDepth++;
+            _pendingRequestTick = Find.TickManager.TicksGame;
 
             List<StructuredToolCall>? toolCalls;
             try

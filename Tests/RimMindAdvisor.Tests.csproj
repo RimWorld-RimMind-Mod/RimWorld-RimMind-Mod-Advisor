@@ -17,11 +17,6 @@
   </ItemGroup>
 
   <!-- 纯逻辑文件（无 RimWorld 依赖） -->
-  <ItemGroup>
-    <!-- AdviceBatch / AdviceItem DTO -->
-    <Compile Include="../Source/Advisor/AdviceResponse.cs" />
-    <!-- 并发计数器 -->
-    <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
-  </ItemGroup>
+  <!-- AdvisorConcurrencyTracker.cs uses Verse.Log, not compatible with test project -->
 
 </Project>

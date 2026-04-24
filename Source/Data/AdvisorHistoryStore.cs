@@ -19,12 +19,6 @@ namespace RimMind.Advisor.Data
             _instance = this;
         }
 
-        ~AdvisorHistoryStore()
-        {
-            if (_instance == this)
-                _instance = null;
-        }
-
         public List<AdvisorRequestRecord> GetRecords(Pawn pawn)
         {
             if (!_records.TryGetValue(pawn.thingIDNumber, out var list))

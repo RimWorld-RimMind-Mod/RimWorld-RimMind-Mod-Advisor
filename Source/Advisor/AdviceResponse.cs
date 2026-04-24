@@ -1,3 +1,0 @@
-namespace RimMind.Advisor
-{
-}
