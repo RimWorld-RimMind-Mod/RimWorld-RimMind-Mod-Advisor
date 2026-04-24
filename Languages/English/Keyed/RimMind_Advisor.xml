@@ -8,6 +8,7 @@
     <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>
     <RimMind.Advisor.Settings.ShowThoughtBubble>Show AI Decision Bubble</RimMind.Advisor.Settings.ShowThoughtBubble>
     <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>Display the AI's reasoning for choosing an action above the colonist.</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+    <RimMind.Advisor.Settings.CustomPrompt>Custom System Prompt (injected before context)</RimMind.Advisor.Settings.CustomPrompt>
     <RimMind.Advisor.Settings.TriggerSources>Trigger Sources</RimMind.Advisor.Settings.TriggerSources>
     <RimMind.Advisor.Settings.EnableIdleTrigger>Trigger on Colonist Idle</RimMind.Advisor.Settings.EnableIdleTrigger>
     <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>When a colonist has no work, AI will proactively choose their next action.</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
@@ -21,11 +22,12 @@
     <RimMind.Advisor.Settings.RequestCooldown.Desc>Minimum interval between AI requests for the same colonist.</RimMind.Advisor.Settings.RequestCooldown.Desc>
     <RimMind.Advisor.Settings.MaxConcurrent>Max Concurrent Requests: {0}</RimMind.Advisor.Settings.MaxConcurrent>
     <RimMind.Advisor.Settings.MaxConcurrent.Desc>Maximum number of simultaneous AI requests. Higher values improve responsiveness but increase API costs.</RimMind.Advisor.Settings.MaxConcurrent.Desc>
-    <RimMind.Advisor.Settings.CustomPrompt>Custom Advisor Prompt (appended to system prompt end, leave empty to skip):</RimMind.Advisor.Settings.CustomPrompt>
     <RimMind.Advisor.Settings.Section.Display>Display</RimMind.Advisor.Settings.Section.Display>
     <RimMind.Advisor.Settings.Section.Request>Request Settings</RimMind.Advisor.Settings.Section.Request>
-    <RimMind.Advisor.Settings.RequestExpire>Request expiry: {0} game days</RimMind.Advisor.Settings.RequestExpire>
-    <RimMind.Advisor.Settings.RequestExpire.Desc>AI requests that don't receive a response within this time are automatically cancelled.</RimMind.Advisor.Settings.RequestExpire.Desc>
+    <RimMind.Advisor.Settings.RequestExpire>Approval request expiry: {0} game days</RimMind.Advisor.Settings.RequestExpire>
+    <RimMind.Advisor.Settings.RequestExpire.Desc>Approval floating window expiry time. Requests not responded to within this time are automatically dismissed.</RimMind.Advisor.Settings.RequestExpire.Desc>
+    <RimMind.Advisor.Settings.NoTriggerWarning>Warning: No trigger source enabled. AI Advisor will not activate automatically.</RimMind.Advisor.Settings.NoTriggerWarning>
+    <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>Warning: Approval system is off. Risk blocking will not take effect; all actions execute directly.</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
     <RimMind.Advisor.Settings.Section.Approval>Approval &amp; Blocking</RimMind.Advisor.Settings.Section.Approval>
     <RimMind.Advisor.Settings.EnableRequestSystem>Enable request system (colonist requests require player approval)</RimMind.Advisor.Settings.EnableRequestSystem>
     <RimMind.Advisor.Settings.EnableRequestSystem.Desc>When enabled, colonists can proactively submit action requests that require player approval before execution.</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
@@ -45,25 +47,7 @@
     <RimMind.Advisor.UI.Gizmo.ForceRequest>Request AI Advice Now</RimMind.Advisor.UI.Gizmo.ForceRequest>
     <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>Bypass cooldown and request immediately (dev mode only)</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
 
-    <!-- Mote -->
-    <RimMind.Advisor.UI.MoteMore> (+{0} more)</RimMind.Advisor.UI.MoteMore>
-
-    <!-- AdvisorPromptBuilder.cs - Five-section -->
-
     <!-- Prompt -->
-    <RimMind.Advisor.Prompt.System.Role>[Role] You are deeply role-playing the RimWorld colonist [{0}], fully immersed in this character. You are not a bystanding advisor, but {0} themselves thinking about what to do next.</RimMind.Advisor.Prompt.System.Role>
-    <RimMind.Advisor.Prompt.System.Goal>[Goal] Based on your ({0}) current state, personality, skills, and base situation, choose the next action that best fits the character from the candidate task list.</RimMind.Advisor.Prompt.System.Goal>
-    <RimMind.Advisor.Prompt.System.Process>[Process]\n1. Review current state (mood, health, skills, equipment)\n2. Check base needs and priorities\n3. Evaluate candidate actions against your personality\n4. Select the most fitting action(s)</RimMind.Advisor.Prompt.System.Process>
-    <RimMind.Advisor.Prompt.System.Constraint>You are in the RimWorld game world. Stay in character. Do not break the fourth wall. Do not mention game mechanics, 'player', or 'game'.</RimMind.Advisor.Prompt.System.Constraint>
-    <RimMind.Advisor.Prompt.System.Example>[Example]\nInput: Candidate list includes Mining, Cooking, force_rest\nOutput: {{"advices":[{{"action":"force_rest","pawn":null,"target":null,"param":null,"reason":"Too tired, rest first","request_type":"normal"}},{{"action":"assign_work","pawn":null,"target":null,"param":"Mining","reason":"Mine after resting","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Example>
-    <RimMind.Advisor.Prompt.System.Output>[Output] Only return the following JSON format, do not output anything else:\n{{"advices":[{{"action":"...","pawn":null,"target":null,"param":null,"reason":"brief reason","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Output>
-    <RimMind.Advisor.Prompt.System.Fallback>[Fallback] If unable to decide, return {{"advices":[{{"action":"assign_work","pawn":null,"target":null,"param":"Cleaning","reason":"Clean up first","request_type":"normal"}}]}}.</RimMind.Advisor.Prompt.System.Fallback>
-    <RimMind.Advisor.Prompt.FieldRules>Field Rules (important):\n- action: Required.\n    - [Work Tasks] section: action must be "assign_work", param fills the WorkType defName in parentheses (can add @x,z for coordinates)\n    - [Instant Actions] section: action fills the intentId in parentheses directly\n- pawn: Currently only for {0}, fill null\n- target: For actions requiring a target like tend_pawn / rescue_pawn / social_dining, fill the target colonist's short name; otherwise fill null\n- param: For assign_work fill WorkType defName (e.g. Mining or Mining@45,32); for move_to fill "x,z"; otherwise fill null\n- reason: Brief reason, will be displayed in {0}'s thought bubble, should reflect the character's inner monologue\n- request_type: Optional, default "normal".\n    - "normal": Normal action, executed automatically\n    - "request": Colonist initiative request, requires player approval. Use when {0} has a strong need but cannot accomplish it alone (e.g. wants to build a room, change work assignment, arrange social activity)\n    - "high_risk": High-risk action, requires player approval</RimMind.Advisor.Prompt.FieldRules>
-    <RimMind.Advisor.Prompt.OutputRules>Output Quantity Rules:\n- Work Tasks: Can queue multiple (advices array with multiple assign_work elements, executed in order)\n- Instant Actions (force_rest / social_relax / inspire etc.): Usually only 1 needed, do not stack; not every request needs instant actions\n- Mixed Advice (work + instant): Write instant actions first, then work tasks</RimMind.Advisor.Prompt.OutputRules>
-    <RimMind.Advisor.Prompt.RiskControl>Risk Control:\n- Actions marked [High] or [Danger] in the candidate list carry higher risk; prefer low or medium risk actions unless necessary\n- Avoid triggering high-risk actions (such as inspire series, drop_weapon) under normal circumstances</RimMind.Advisor.Prompt.RiskControl>
-    <RimMind.Advisor.Prompt.DiversityHint>Request Diversity:\n- Try to ensure diverse requests; avoid repeatedly submitting the same type of request\n- If a similar request was recently approved or rejected, choose a different type of action</RimMind.Advisor.Prompt.DiversityHint>
-    <RimMind.Advisor.Prompt.CustomRules>[Player Custom Rules]</RimMind.Advisor.Prompt.CustomRules>
-    <RimMind.Advisor.Prompt.CandidateHeader>[Executable Action Candidates]</RimMind.Advisor.Prompt.CandidateHeader>
 
     <!-- JobCandidateBuilder.cs -->
 
@@ -102,13 +86,9 @@
     <RimMind.Advisor.Prompt.ResultRejected>Player Rejected</RimMind.Advisor.Prompt.ResultRejected>
     <RimMind.Advisor.Prompt.ResultBlocked>System Blocked</RimMind.Advisor.Prompt.ResultBlocked>
     <RimMind.Advisor.Prompt.ResultIgnored>Ignored</RimMind.Advisor.Prompt.ResultIgnored>
-    <RimMind.Advisor.Prompt.HistoryHeader>[Recent Request History]</RimMind.Advisor.Prompt.HistoryHeader>
-    <RimMind.Advisor.Prompt.HistoryCompressed>({0} earlier records omitted)</RimMind.Advisor.Prompt.HistoryCompressed>
 
     <!-- Request System -->
-    <RimMind.Advisor.Request.ColonistRequest>[{0}] Request</RimMind.Advisor.Request.ColonistRequest>
     <RimMind.Advisor.Request.RiskAction>High-risk action: {0}</RimMind.Advisor.Request.RiskAction>
     <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>
     <RimMind.Advisor.Request.Reject>Reject</RimMind.Advisor.Request.Reject>
-    <RimMind.Advisor.Request.Ignore>Ignore</RimMind.Advisor.Request.Ignore>
 </LanguageData>

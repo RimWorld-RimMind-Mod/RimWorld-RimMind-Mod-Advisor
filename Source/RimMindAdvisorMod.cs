@@ -97,14 +97,18 @@ namespace RimMind.Advisor
                 GUI.color = Color.white;
                 Settings.moodThreshold = listing.Slider(Settings.moodThreshold, 0.25f, 0.6f);
             }
-
-            SettingsUIHelper.DrawCustomPromptSection(listing,
-                "RimMind.Advisor.Settings.CustomPrompt".Translate(),
-                ref Settings.advisorCustomPrompt);
+            if (!Settings.enableIdleTrigger && !Settings.enableMoodTrigger)
+            {
+                GUI.color = Color.yellow;
+                listing.Label("RimMind.Advisor.Settings.NoTriggerWarning".Translate());
+                GUI.color = Color.white;
+            }
 
             SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Display".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.ShowThoughtBubble".Translate(), ref Settings.showThoughtBubble,
                 "RimMind.Advisor.Settings.ShowThoughtBubble.Desc".Translate());
+            listing.Label("RimMind.Advisor.Settings.CustomPrompt".Translate());
+            Settings.advisorCustomPrompt = listing.TextEntry(Settings.advisorCustomPrompt, 5);
 
             SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Request".Translate());
             string cooldownHours = $"{Settings.requestCooldownTicks / 2500f:F1}";
@@ -134,6 +138,12 @@ namespace RimMind.Advisor
                 "RimMind.Advisor.Settings.EnableRequestSystem.Desc".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableRiskApproval".Translate(), ref Settings.enableRiskApproval,
                 "RimMind.Advisor.Settings.EnableRiskApproval.Desc".Translate());
+            if (!Settings.enableRequestSystem && Settings.enableRiskApproval)
+            {
+                GUI.color = Color.yellow;
+                listing.Label("RimMind.Advisor.Settings.RiskWithoutApprovalWarning".Translate());
+                GUI.color = Color.white;
+            }
             if (Settings.enableRiskApproval)
             {
                 string[] riskLabels = new[] { "Low", "Medium", "High", "Critical" };
@@ -159,11 +169,11 @@ namespace RimMind.Advisor
                 Settings.maxConcurrentRequests = 3;
                 Settings.pawnScanIntervalTicks = 3600;
                 Settings.moodThreshold = 0.3f;
-                Settings.advisorCustomPrompt = "";
                 Settings.requestExpireTicks = 30000;
                 Settings.enableRequestSystem = true;
                 Settings.enableRiskApproval = true;
                 Settings.autoBlockRiskLevel = RiskLevel.High;
+                Settings.advisorCustomPrompt = string.Empty;
             });
 
             Settings.Write();
@@ -177,12 +187,17 @@ namespace RimMind.Advisor
             if (Settings.enableIdleTrigger)
                 h += 24f + 32f;
             h += 24f;
+            if (!Settings.enableIdleTrigger && !Settings.enableMoodTrigger)
+                h += 24f;
             if (Settings.enableMoodTrigger)
                 h += 24f + 32f;
             h += 24f + 80f;
             h += 24f + 24f;
+            h += 24f + 24f;
             h += 24f + 24f + 32f + 24f + 32f + 24f + 32f;
             h += 24f + 24f + 24f;
+            if (!Settings.enableRequestSystem && Settings.enableRiskApproval)
+                h += 24f;
             if (Settings.enableRiskApproval)
                 h += 24f + 32f;
             return h + 40f;

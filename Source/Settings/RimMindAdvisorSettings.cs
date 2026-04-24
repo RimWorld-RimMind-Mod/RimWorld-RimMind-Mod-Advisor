@@ -29,13 +29,7 @@ namespace RimMind.Advisor.Settings
         /// <summary>心情低于此值触发（0.25~0.6）。</summary>
         public float moodThreshold = 0.3f;
 
-        /// <summary>
-        /// 玩家自定义附加 Prompt，追加在系统 Prompt 末尾。
-        /// 可用于补充角色设定、风格偏好、行为限制等。留空则不追加。
-        /// </summary>
-        public string advisorCustomPrompt = "";
-
-        /// <summary>请求过期时间（ticks）。3600~120000，步进 1500，默认 30000 ≈ 0.5 游戏天。</summary>
+        /// <summary>审批请求过期时间（ticks）。审批悬浮窗超过此时间未响应则自动关闭。3600~120000，步进 1500，默认 30000。</summary>
         public int requestExpireTicks = 30000;
 
         /// <summary>启用审批系统。关闭后所有需审批的动作直接执行。</summary>
@@ -47,6 +41,8 @@ namespace RimMind.Advisor.Settings
         /// <summary>自动拦截的风险等级阈值（Low~Critical）。达到此级别的动作需玩家批准。</summary>
         public RiskLevel autoBlockRiskLevel = RiskLevel.High;
 
+        public string advisorCustomPrompt = string.Empty;
+
         public override void ExposeData()
         {
             Scribe_Values.Look(ref enableAdvisor,          "enableAdvisor",          true);
@@ -57,11 +53,11 @@ namespace RimMind.Advisor.Settings
             Scribe_Values.Look(ref enableMoodTrigger,      "enableMoodTrigger",      true);
             Scribe_Values.Look(ref pawnScanIntervalTicks,  "pawnScanIntervalTicks",  3600);
             Scribe_Values.Look(ref moodThreshold,          "moodThreshold",          0.3f);
-            Scribe_Values.Look(ref advisorCustomPrompt,    "advisorCustomPrompt",    "");
             Scribe_Values.Look(ref requestExpireTicks,     "requestExpireTicks",     30000);
             Scribe_Values.Look(ref enableRequestSystem,    "enableRequestSystem",    true);
             Scribe_Values.Look(ref enableRiskApproval,     "enableRiskApproval",     true);
             Scribe_Values.Look(ref autoBlockRiskLevel,     "autoBlockRiskLevel",     RiskLevel.High);
+            Scribe_Values.Look(ref advisorCustomPrompt,    "advisorCustomPrompt",    string.Empty);
         }
     }
 }

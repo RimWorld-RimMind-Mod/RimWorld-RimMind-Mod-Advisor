@@ -1,9 +1,11 @@
+using System.Linq;
 using System.Text;
 using LudeonTK;
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
 using RimMind.Core;
+using RimMind.Core.Context;
 using RimMind.Core.Internal;
 using Verse;
 
@@ -111,9 +113,20 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            string sys  = AdvisorPromptBuilder.BuildSystemPrompt(pawn);
-            string user = AdvisorPromptBuilder.BuildUserPrompt(pawn);
-            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{sys}\n\n=== User Prompt ===\n{user}");
+            var npcId = $"NPC-{pawn.ThingID}";
+            var request = new ContextRequest
+            {
+                NpcId = npcId,
+                Scenario = ScenarioIds.Decision,
+                Budget = 0.5f,
+                MaxTokens = 400,
+                Temperature = 0.7f,
+            };
+            var engine = new ContextEngine(HistoryManager.Instance);
+            var snapshot = engine.BuildSnapshot(request);
+            var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
+            var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
+            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
         }
 
         [DebugAction("RimMind Advisor", "List All Advisor States",

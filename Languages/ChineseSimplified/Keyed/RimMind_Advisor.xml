@@ -8,6 +8,7 @@
     <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>
     <RimMind.Advisor.Settings.ShowThoughtBubble>显示 AI 决策气泡</RimMind.Advisor.Settings.ShowThoughtBubble>
     <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>在殖民者头顶显示 AI 选择该行动的理由。</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+    <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（注入到上下文之前）</RimMind.Advisor.Settings.CustomPrompt>
     <RimMind.Advisor.Settings.TriggerSources>触发来源</RimMind.Advisor.Settings.TriggerSources>
     <RimMind.Advisor.Settings.EnableIdleTrigger>小人空闲时触发</RimMind.Advisor.Settings.EnableIdleTrigger>
     <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>当殖民者没有工作时，AI 主动为其选择下一步行动。</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
@@ -21,11 +22,12 @@
     <RimMind.Advisor.Settings.RequestCooldown.Desc>同一殖民者两次 AI 请求之间的最短间隔。</RimMind.Advisor.Settings.RequestCooldown.Desc>
     <RimMind.Advisor.Settings.MaxConcurrent>最大并发请求数：{0}</RimMind.Advisor.Settings.MaxConcurrent>
     <RimMind.Advisor.Settings.MaxConcurrent.Desc>同时向 AI 发送请求的上限。增大可提高响应速度，但会增加 API 费用。</RimMind.Advisor.Settings.MaxConcurrent.Desc>
-    <RimMind.Advisor.Settings.CustomPrompt>自定义顾问 Prompt（追加在系统 Prompt 末尾，留空则不追加）：</RimMind.Advisor.Settings.CustomPrompt>
     <RimMind.Advisor.Settings.Section.Display>显示</RimMind.Advisor.Settings.Section.Display>
     <RimMind.Advisor.Settings.Section.Request>请求设置</RimMind.Advisor.Settings.Section.Request>
-    <RimMind.Advisor.Settings.RequestExpire>请求过期：{0} 游戏天</RimMind.Advisor.Settings.RequestExpire>
-    <RimMind.Advisor.Settings.RequestExpire.Desc>AI 请求超过此时间未获得响应则自动取消。</RimMind.Advisor.Settings.RequestExpire.Desc>
+    <RimMind.Advisor.Settings.RequestExpire>审批请求过期：{0} 游戏天</RimMind.Advisor.Settings.RequestExpire>
+    <RimMind.Advisor.Settings.RequestExpire.Desc>审批悬浮窗的过期时间。超过此时间未响应的审批请求将自动关闭。</RimMind.Advisor.Settings.RequestExpire.Desc>
+    <RimMind.Advisor.Settings.NoTriggerWarning>警告：无触发源已启用，AI 顾问不会自动激活。</RimMind.Advisor.Settings.NoTriggerWarning>
+    <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>警告：审批系统已关闭，风险拦截将不生效，所有动作直接执行。</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
     <RimMind.Advisor.Settings.Section.Approval>审批与拦截</RimMind.Advisor.Settings.Section.Approval>
     <RimMind.Advisor.Settings.EnableRequestSystem>启用请求系统（殖民者主动请求需玩家批准）</RimMind.Advisor.Settings.EnableRequestSystem>
     <RimMind.Advisor.Settings.EnableRequestSystem.Desc>开启后，殖民者可以主动向玩家提出行动请求，需批准后才执行。</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
@@ -45,25 +47,7 @@
     <RimMind.Advisor.UI.Gizmo.ForceRequest>立即请求 AI 建议</RimMind.Advisor.UI.Gizmo.ForceRequest>
     <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>绕过冷却立即请求（仅开发模式）</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
 
-    <!-- Mote -->
-    <RimMind.Advisor.UI.MoteMore>（+{0}条）</RimMind.Advisor.UI.MoteMore>
-
-    <!-- AdvisorPromptBuilder.cs - Five-section -->
-
     <!-- Prompt -->
-    <RimMind.Advisor.Prompt.System.Role>[角色] 你正在深度扮演 RimWorld 殖民者【{0}】，完全沉浸在这个角色中。你不是旁观的顾问，而是 {0} 本人在思考下一步该做什么。</RimMind.Advisor.Prompt.System.Role>
-    <RimMind.Advisor.Prompt.System.Goal>[目标] 根据你（{0}）的当前状态、性格、技能与基地情况，从候选任务列表中选择最符合角色的下一步行动。</RimMind.Advisor.Prompt.System.Goal>
-    <RimMind.Advisor.Prompt.System.Process>[流程]\n1. 审视当前状态（心情、健康、技能、装备）\n2. 检查基地需求与优先级\n3. 对照性格评估候选动作\n4. 选择最符合角色的行动</RimMind.Advisor.Prompt.System.Process>
-    <RimMind.Advisor.Prompt.System.Constraint>你处于 RimWorld 游戏世界中。保持角色身份，不要打破第四面墙。不要提及游戏机制、"玩家"或"游戏"。</RimMind.Advisor.Prompt.System.Constraint>
-    <RimMind.Advisor.Prompt.System.Example>[示例]\n输入：候选列表中有 Mining、Cooking、force_rest\n输出：{{"advices":[{{"action":"force_rest","pawn":null,"target":null,"param":null,"reason":"太累了，先休息","request_type":"normal"}},{{"action":"assign_work","pawn":null,"target":null,"param":"Mining","reason":"休息后去采矿","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Example>
-    <RimMind.Advisor.Prompt.System.Output>[输出] 只返回以下 JSON 格式，不要输出其他内容：\n{{"advices":[{{"action":"...","pawn":null,"target":null,"param":null,"reason":"简短中文理由","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Output>
-    <RimMind.Advisor.Prompt.System.Fallback>[兜底] 如果无法决策，返回 {{"advices":[{{"action":"assign_work","pawn":null,"target":null,"param":"Cleaning","reason":"先打扫一下","request_type":"normal"}}]}}。</RimMind.Advisor.Prompt.System.Fallback>
-    <RimMind.Advisor.Prompt.FieldRules>字段规则（重要）：\n- action：必填。\n    - [工作任务] 区段：action 固定填 "assign_work"，param 填括号内的 WorkType defName（可加 @x,z 指定坐标）\n    - [即时动作] 区段：action 直接填括号内的 intentId\n- pawn：当前仅针对 {0}，填 null\n- target：tend_pawn / rescue_pawn / social_dining 等需要目标的动作，填目标小人短名；其余填 null\n- param：assign_work 填 WorkType defName（如 Mining 或 Mining@45,32）；move_to 填 "x,z"；其余填 null\n- reason：简短中文理由，将显示在 {0} 头顶气泡中，应体现角色的内心独白\n- request_type：可选，默认 "normal"。\n    - "normal"：普通动作，自动执行\n    - "request"：殖民者主动请求，需要玩家批准。当 {0} 有强烈需求但无法自己完成时使用（如想建造某建筑、想改变工作分配、想安排社交活动）\n    - "high_risk"：高风险动作，需要玩家批准</RimMind.Advisor.Prompt.FieldRules>
-    <RimMind.Advisor.Prompt.OutputRules>输出数量规则：\n- 工作任务：可以排队多条（advices 数组有多个 assign_work 元素，按顺序执行）\n- 即时动作（force_rest / social_relax / inspire 等）：通常只需 1 条，不重复叠加；不一定每次都需要即时动作\n- 混合建议（工作 + 即时）：先写即时动作，再排工作任务</RimMind.Advisor.Prompt.OutputRules>
-    <RimMind.Advisor.Prompt.RiskControl>风险控制：\n- 候选列表中标有 [高] 或 [危险] 的动作风险较高，非必要情况下应优先选择低风险或中等风险动作\n- 尽量不要在普通情况下触发高风险动作（如 inspire 系列、drop_weapon 等）</RimMind.Advisor.Prompt.RiskControl>
-    <RimMind.Advisor.Prompt.DiversityHint>多样化请求：\n- 尽量保证多样化的请求，避免重复提交相同类型的请求\n- 如果近期已有类似请求被批准或拒绝，请换一种不同类型的行动</RimMind.Advisor.Prompt.DiversityHint>
-    <RimMind.Advisor.Prompt.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.CustomRules>
-    <RimMind.Advisor.Prompt.CandidateHeader>[可执行动作候选]</RimMind.Advisor.Prompt.CandidateHeader>
 
     <!-- JobCandidateBuilder.cs -->
 
@@ -102,13 +86,9 @@
     <RimMind.Advisor.Prompt.ResultRejected>玩家拒绝</RimMind.Advisor.Prompt.ResultRejected>
     <RimMind.Advisor.Prompt.ResultBlocked>系统拦截</RimMind.Advisor.Prompt.ResultBlocked>
     <RimMind.Advisor.Prompt.ResultIgnored>已忽略</RimMind.Advisor.Prompt.ResultIgnored>
-    <RimMind.Advisor.Prompt.HistoryHeader>[近期请求记录]</RimMind.Advisor.Prompt.HistoryHeader>
-    <RimMind.Advisor.Prompt.HistoryCompressed>（{0}条更早的记录已省略）</RimMind.Advisor.Prompt.HistoryCompressed>
 
     <!-- Request System -->
-    <RimMind.Advisor.Request.ColonistRequest>[{0}] 请求</RimMind.Advisor.Request.ColonistRequest>
     <RimMind.Advisor.Request.RiskAction>高危操作: {0}</RimMind.Advisor.Request.RiskAction>
     <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>
     <RimMind.Advisor.Request.Reject>拒绝</RimMind.Advisor.Request.Reject>
-    <RimMind.Advisor.Request.Ignore>忽略</RimMind.Advisor.Request.Ignore>
 </LanguageData>
