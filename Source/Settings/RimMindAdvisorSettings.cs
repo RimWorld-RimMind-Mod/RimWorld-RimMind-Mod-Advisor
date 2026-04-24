@@ -45,19 +45,19 @@ namespace RimMind.Advisor.Settings
 
         public override void ExposeData()
         {
-            Scribe_Values.Look(ref enableAdvisor,          "enableAdvisor",          true);
-            Scribe_Values.Look(ref requestCooldownTicks,   "requestCooldownTicks",   30000);
-            Scribe_Values.Look(ref maxConcurrentRequests,  "maxConcurrentRequests",  3);
-            Scribe_Values.Look(ref showThoughtBubble,      "showThoughtBubble",      true);
-            Scribe_Values.Look(ref enableIdleTrigger,      "enableIdleTrigger",      true);
-            Scribe_Values.Look(ref enableMoodTrigger,      "enableMoodTrigger",      true);
-            Scribe_Values.Look(ref pawnScanIntervalTicks,  "pawnScanIntervalTicks",  3600);
-            Scribe_Values.Look(ref moodThreshold,          "moodThreshold",          0.3f);
-            Scribe_Values.Look(ref requestExpireTicks,     "requestExpireTicks",     30000);
-            Scribe_Values.Look(ref enableRequestSystem,    "enableRequestSystem",    true);
-            Scribe_Values.Look(ref enableRiskApproval,     "enableRiskApproval",     true);
-            Scribe_Values.Look(ref autoBlockRiskLevel,     "autoBlockRiskLevel",     RiskLevel.High);
-            Scribe_Values.Look(ref advisorCustomPrompt,    "advisorCustomPrompt",    string.Empty);
+            Scribe_Values.Look(ref enableAdvisor, "enableAdvisor", true);
+            Scribe_Values.Look(ref requestCooldownTicks, "requestCooldownTicks", 30000);
+            Scribe_Values.Look(ref maxConcurrentRequests, "maxConcurrentRequests", 3);
+            Scribe_Values.Look(ref showThoughtBubble, "showThoughtBubble", true);
+            Scribe_Values.Look(ref enableIdleTrigger, "enableIdleTrigger", true);
+            Scribe_Values.Look(ref enableMoodTrigger, "enableMoodTrigger", true);
+            Scribe_Values.Look(ref pawnScanIntervalTicks, "pawnScanIntervalTicks", 3600);
+            Scribe_Values.Look(ref moodThreshold, "moodThreshold", 0.3f);
+            Scribe_Values.Look(ref requestExpireTicks, "requestExpireTicks", 30000);
+            Scribe_Values.Look(ref enableRequestSystem, "enableRequestSystem", true);
+            Scribe_Values.Look(ref enableRiskApproval, "enableRiskApproval", true);
+            Scribe_Values.Look(ref autoBlockRiskLevel, "autoBlockRiskLevel", RiskLevel.High);
+            Scribe_Values.Look(ref advisorCustomPrompt, "advisorCustomPrompt", string.Empty);
         }
     }
 }

@@ -20,19 +20,19 @@ namespace RimMind.Advisor.Comps
     {
         public bool IsEnabled = false;
 
-        private bool    _hasPendingRequest;
-        private int     _lastRequestTick = -9999;
-        private int     _pendingRequestTick;
+        private bool _hasPendingRequest;
+        private int _lastRequestTick = -9999;
+        private int _pendingRequestTick;
 
         private const int MaxToolCallDepth = 3;
 
-        private List<ChatMessage>?       _lastMessages;
-        private List<StructuredTool>?    _lastTools;
-        private string?                  _lastSchema;
-        private int                      _toolCallDepth;
+        private List<ChatMessage>? _lastMessages;
+        private List<StructuredTool>? _lastTools;
+        private string? _lastSchema;
+        private int _toolCallDepth;
 
         public bool HasPendingRequest => _hasPendingRequest;
-        public int  AdvisorCooldownTicksLeft =>
+        public int AdvisorCooldownTicksLeft =>
             System.Math.Max(0, Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick));
 
         private Pawn Pawn => (Pawn)parent;
@@ -221,7 +221,7 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            IsEnabled        = true;
+            IsEnabled = true;
             _lastRequestTick = -9999;
 
             RimMind.Core.Internal.AIRequestQueue.Instance?.ClearCooldown("Advisor");
@@ -269,7 +269,7 @@ namespace RimMind.Advisor.Comps
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            string label    = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
+            string label = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
             string subLabel = "";
 
             if (IsEnabled)
@@ -284,10 +284,10 @@ namespace RimMind.Advisor.Comps
             yield return new Command_Action
             {
                 defaultLabel = label,
-                defaultDesc  = subLabel.NullOrEmpty()
+                defaultDesc = subLabel.NullOrEmpty()
                     ? "RimMind.Advisor.UI.Gizmo.Desc".Translate()
                     : subLabel,
-                icon   = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                 action = () => IsEnabled = !IsEnabled,
             };
 
@@ -296,8 +296,8 @@ namespace RimMind.Advisor.Comps
                 yield return new Command_Action
                 {
                     defaultLabel = "RimMind.Advisor.UI.Gizmo.ForceRequest".Translate(),
-                    defaultDesc  = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
-                    icon   = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                    defaultDesc = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                     action = ForceRequestAdvice,
                 };
             }

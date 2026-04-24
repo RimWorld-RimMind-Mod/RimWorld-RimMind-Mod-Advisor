@@ -1,94 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-    <!-- RimMindAdvisorMod.cs -->
-
-    <!-- Settings -->
-    <RimMind.Advisor.Settings.Tab>顾问</RimMind.Advisor.Settings.Tab>
-    <RimMind.Advisor.Settings.EnableAdvisor>启用 AI 顾问系统</RimMind.Advisor.Settings.EnableAdvisor>
-    <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>
-    <RimMind.Advisor.Settings.ShowThoughtBubble>显示 AI 决策气泡</RimMind.Advisor.Settings.ShowThoughtBubble>
-    <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>在殖民者头顶显示 AI 选择该行动的理由。</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
-    <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（注入到上下文之前）</RimMind.Advisor.Settings.CustomPrompt>
-    <RimMind.Advisor.Settings.TriggerSources>触发来源</RimMind.Advisor.Settings.TriggerSources>
-    <RimMind.Advisor.Settings.EnableIdleTrigger>小人空闲时触发</RimMind.Advisor.Settings.EnableIdleTrigger>
-    <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>当殖民者没有工作时，AI 主动为其选择下一步行动。</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
-    <RimMind.Advisor.Settings.EnableMoodTrigger>心情低于阈值时触发</RimMind.Advisor.Settings.EnableMoodTrigger>
-    <RimMind.Advisor.Settings.EnableMoodTrigger.Desc>当殖民者心情过低时，AI 优先为其选择能改善心情的行动。</RimMind.Advisor.Settings.EnableMoodTrigger.Desc>
-    <RimMind.Advisor.Settings.PawnScanInterval>小人扫描间隔：{0} ticks（约{1}s）</RimMind.Advisor.Settings.PawnScanInterval>
-    <RimMind.Advisor.Settings.PawnScanInterval.Desc>扫描空闲小人的频率。越小越灵敏，但性能开销越高。</RimMind.Advisor.Settings.PawnScanInterval.Desc>
-    <RimMind.Advisor.Settings.MoodThreshold>心情触发阈值：{0}%</RimMind.Advisor.Settings.MoodThreshold>
-    <RimMind.Advisor.Settings.MoodThreshold.Desc>殖民者心情低于此百分比时触发 AI 顾问。</RimMind.Advisor.Settings.MoodThreshold.Desc>
-    <RimMind.Advisor.Settings.RequestCooldown>请求冷却：{0} 游戏小时（{1} ticks）</RimMind.Advisor.Settings.RequestCooldown>
-    <RimMind.Advisor.Settings.RequestCooldown.Desc>同一殖民者两次 AI 请求之间的最短间隔。</RimMind.Advisor.Settings.RequestCooldown.Desc>
-    <RimMind.Advisor.Settings.MaxConcurrent>最大并发请求数：{0}</RimMind.Advisor.Settings.MaxConcurrent>
-    <RimMind.Advisor.Settings.MaxConcurrent.Desc>同时向 AI 发送请求的上限。增大可提高响应速度，但会增加 API 费用。</RimMind.Advisor.Settings.MaxConcurrent.Desc>
-    <RimMind.Advisor.Settings.Section.Display>显示</RimMind.Advisor.Settings.Section.Display>
-    <RimMind.Advisor.Settings.Section.Request>请求设置</RimMind.Advisor.Settings.Section.Request>
-    <RimMind.Advisor.Settings.RequestExpire>审批请求过期：{0} 游戏天</RimMind.Advisor.Settings.RequestExpire>
-    <RimMind.Advisor.Settings.RequestExpire.Desc>审批悬浮窗的过期时间。超过此时间未响应的审批请求将自动关闭。</RimMind.Advisor.Settings.RequestExpire.Desc>
-    <RimMind.Advisor.Settings.NoTriggerWarning>警告：无触发源已启用，AI 顾问不会自动激活。</RimMind.Advisor.Settings.NoTriggerWarning>
-    <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>警告：审批系统已关闭，风险拦截将不生效，所有动作直接执行。</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
-    <RimMind.Advisor.Settings.Section.Approval>审批与拦截</RimMind.Advisor.Settings.Section.Approval>
-    <RimMind.Advisor.Settings.EnableRequestSystem>启用请求系统（殖民者主动请求需玩家批准）</RimMind.Advisor.Settings.EnableRequestSystem>
-    <RimMind.Advisor.Settings.EnableRequestSystem.Desc>开启后，殖民者可以主动向玩家提出行动请求，需批准后才执行。</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
-    <RimMind.Advisor.Settings.EnableRiskApproval>启用风险拦截（高风险动作需玩家批准）</RimMind.Advisor.Settings.EnableRiskApproval>
-    <RimMind.Advisor.Settings.EnableRiskApproval.Desc>开启后，达到风险等级阈值的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
-    <RimMind.Advisor.Settings.AutoBlockRiskLevel>自动拦截风险等级阈值：{0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
-    <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>达到此风险等级的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
-
-    <!-- CompAIAdvisor.cs -->
-
-    <!-- Gizmo -->
-    <RimMind.Advisor.UI.Gizmo.Enabled>AI顾问：开启</RimMind.Advisor.UI.Gizmo.Enabled>
-    <RimMind.Advisor.UI.Gizmo.Disabled>AI顾问：关闭</RimMind.Advisor.UI.Gizmo.Disabled>
-    <RimMind.Advisor.UI.Gizmo.Cooldown>冷却中（{0} 游戏时）</RimMind.Advisor.UI.Gizmo.Cooldown>
-    <RimMind.Advisor.UI.Gizmo.Waiting>等待 AI 响应…</RimMind.Advisor.UI.Gizmo.Waiting>
-    <RimMind.Advisor.UI.Gizmo.Desc>开启后 AI 在此小人空闲时为其选择下一步行动。</RimMind.Advisor.UI.Gizmo.Desc>
-    <RimMind.Advisor.UI.Gizmo.ForceRequest>立即请求 AI 建议</RimMind.Advisor.UI.Gizmo.ForceRequest>
-    <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>绕过冷却立即请求（仅开发模式）</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
-
-    <!-- Prompt -->
-
-    <!-- JobCandidateBuilder.cs -->
-
-    <!-- Prompt - Section Headers -->
-    <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（action 固定填 assign_work，param 填括号内的 WorkType defName；可加 @x,z 指定坐标）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
-    <RimMind.Advisor.Prompt.NoWorkTargets>  （暂无可执行工作目标）</RimMind.Advisor.Prompt.NoWorkTargets>
-    <RimMind.Advisor.Prompt.InstantSectionHeader>[即时动作]（action 直接填括号内的 intentId；括号外是说明）</RimMind.Advisor.Prompt.InstantSectionHeader>
-
-    <!-- Prompt - Work Hints -->
-    <RimMind.Advisor.Prompt.TargetCountSingle>{0} 个目标，最近 {1} 格</RimMind.Advisor.Prompt.TargetCountSingle>
-    <RimMind.Advisor.Prompt.TargetCountMulti>{0} 个目标，最近 {1} 格（{2}）</RimMind.Advisor.Prompt.TargetCountMulti>
-
-    <!-- Prompt - Instant Action Hints -->
-    <RimMind.Advisor.Prompt.RestLow>体力 {0}%</RimMind.Advisor.Prompt.RestLow>
-    <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>
-    <RimMind.Advisor.Prompt.MoodLow>心情 {0}%，建议放松</RimMind.Advisor.Prompt.MoodLow>
-    <RimMind.Advisor.Prompt.MoodNormal>心情 {0}%</RimMind.Advisor.Prompt.MoodNormal>
-    <RimMind.Advisor.Prompt.SocialDiningHint>需填 target=对方短名，如 {0}</RimMind.Advisor.Prompt.SocialDiningHint>
-    <RimMind.Advisor.Prompt.EatFoodHint>可选食物：{0}；param 填食物 defName（如 Chocolate）</RimMind.Advisor.Prompt.EatFoodHint>
-    <RimMind.Advisor.Prompt.TendPawnHint>target={0}（受伤，需救治）</RimMind.Advisor.Prompt.TendPawnHint>
-    <RimMind.Advisor.Prompt.RescuePawnHint>target={0}（已倒地）</RimMind.Advisor.Prompt.RescuePawnHint>
-    <RimMind.Advisor.Prompt.InspireWork>触发工作狂热灵感</RimMind.Advisor.Prompt.InspireWork>
-    <RimMind.Advisor.Prompt.InspireFight>触发射击狂热灵感</RimMind.Advisor.Prompt.InspireFight>
-    <RimMind.Advisor.Prompt.InspireTrade>触发交易灵感</RimMind.Advisor.Prompt.InspireTrade>
-    <RimMind.Advisor.Prompt.MoveToHint>param 填目标坐标 x,z</RimMind.Advisor.Prompt.MoveToHint>
-
-    <!-- Prompt - Risk Tags -->
-    <RimMind.Advisor.Prompt.Risk.Low>[低]</RimMind.Advisor.Prompt.Risk.Low>
-    <RimMind.Advisor.Prompt.Risk.Medium>[中]</RimMind.Advisor.Prompt.Risk.Medium>
-    <RimMind.Advisor.Prompt.Risk.High>[高]</RimMind.Advisor.Prompt.Risk.High>
-    <RimMind.Advisor.Prompt.Risk.Critical>[危险]</RimMind.Advisor.Prompt.Risk.Critical>
-
-    <!-- Advisor History -->
-    <RimMind.Advisor.Prompt.RecentHistory>[近期请求记录]</RimMind.Advisor.Prompt.RecentHistory>
-    <RimMind.Advisor.Prompt.ResultApproved>已批准</RimMind.Advisor.Prompt.ResultApproved>
-    <RimMind.Advisor.Prompt.ResultRejected>玩家拒绝</RimMind.Advisor.Prompt.ResultRejected>
-    <RimMind.Advisor.Prompt.ResultBlocked>系统拦截</RimMind.Advisor.Prompt.ResultBlocked>
-    <RimMind.Advisor.Prompt.ResultIgnored>已忽略</RimMind.Advisor.Prompt.ResultIgnored>
-
-    <!-- Request System -->
-    <RimMind.Advisor.Request.RiskAction>高危操作: {0}</RimMind.Advisor.Request.RiskAction>
-    <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>
-    <RimMind.Advisor.Request.Reject>拒绝</RimMind.Advisor.Request.Reject>
+  <!-- RimMindAdvisorMod.cs -->
+  <!-- Settings -->
+  <RimMind.Advisor.Settings.Tab>顾问</RimMind.Advisor.Settings.Tab>
+  <RimMind.Advisor.Settings.EnableAdvisor>启用 AI 顾问系统</RimMind.Advisor.Settings.EnableAdvisor>
+  <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>
+  <RimMind.Advisor.Settings.ShowThoughtBubble>显示 AI 决策气泡</RimMind.Advisor.Settings.ShowThoughtBubble>
+  <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>在殖民者头顶显示 AI 选择该行动的理由。</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+  <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（注入到上下文之前）</RimMind.Advisor.Settings.CustomPrompt>
+  <RimMind.Advisor.Settings.TriggerSources>触发来源</RimMind.Advisor.Settings.TriggerSources>
+  <RimMind.Advisor.Settings.EnableIdleTrigger>小人空闲时触发</RimMind.Advisor.Settings.EnableIdleTrigger>
+  <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>当殖民者没有工作时，AI 主动为其选择下一步行动。</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
+  <RimMind.Advisor.Settings.EnableMoodTrigger>心情低于阈值时触发</RimMind.Advisor.Settings.EnableMoodTrigger>
+  <RimMind.Advisor.Settings.EnableMoodTrigger.Desc>当殖民者心情过低时，AI 优先为其选择能改善心情的行动。</RimMind.Advisor.Settings.EnableMoodTrigger.Desc>
+  <RimMind.Advisor.Settings.PawnScanInterval>小人扫描间隔：{0} ticks（约{1}s）</RimMind.Advisor.Settings.PawnScanInterval>
+  <RimMind.Advisor.Settings.PawnScanInterval.Desc>扫描空闲小人的频率。越小越灵敏，但性能开销越高。</RimMind.Advisor.Settings.PawnScanInterval.Desc>
+  <RimMind.Advisor.Settings.MoodThreshold>心情触发阈值：{0}%</RimMind.Advisor.Settings.MoodThreshold>
+  <RimMind.Advisor.Settings.MoodThreshold.Desc>殖民者心情低于此百分比时触发 AI 顾问。</RimMind.Advisor.Settings.MoodThreshold.Desc>
+  <RimMind.Advisor.Settings.RequestCooldown>请求冷却：{0} 游戏小时（{1} ticks）</RimMind.Advisor.Settings.RequestCooldown>
+  <RimMind.Advisor.Settings.RequestCooldown.Desc>同一殖民者两次 AI 请求之间的最短间隔。</RimMind.Advisor.Settings.RequestCooldown.Desc>
+  <RimMind.Advisor.Settings.MaxConcurrent>最大并发请求数：{0}</RimMind.Advisor.Settings.MaxConcurrent>
+  <RimMind.Advisor.Settings.MaxConcurrent.Desc>同时向 AI 发送请求的上限。增大可提高响应速度，但会增加 API 费用。</RimMind.Advisor.Settings.MaxConcurrent.Desc>
+  <RimMind.Advisor.Settings.Section.Display>显示</RimMind.Advisor.Settings.Section.Display>
+  <RimMind.Advisor.Settings.Section.Request>请求设置</RimMind.Advisor.Settings.Section.Request>
+  <RimMind.Advisor.Settings.RequestExpire>审批请求过期：{0} 游戏天</RimMind.Advisor.Settings.RequestExpire>
+  <RimMind.Advisor.Settings.RequestExpire.Desc>审批悬浮窗的过期时间。超过此时间未响应的审批请求将自动关闭。</RimMind.Advisor.Settings.RequestExpire.Desc>
+  <RimMind.Advisor.Settings.NoTriggerWarning>警告：无触发源已启用，AI 顾问不会自动激活。</RimMind.Advisor.Settings.NoTriggerWarning>
+  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>警告：审批系统已关闭，风险拦截将不生效，所有动作直接执行。</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
+  <RimMind.Advisor.Settings.Section.Approval>审批与拦截</RimMind.Advisor.Settings.Section.Approval>
+  <RimMind.Advisor.Settings.EnableRequestSystem>启用请求系统（殖民者主动请求需玩家批准）</RimMind.Advisor.Settings.EnableRequestSystem>
+  <RimMind.Advisor.Settings.EnableRequestSystem.Desc>开启后，殖民者可以主动向玩家提出行动请求，需批准后才执行。</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
+  <RimMind.Advisor.Settings.EnableRiskApproval>启用风险拦截（高风险动作需玩家批准）</RimMind.Advisor.Settings.EnableRiskApproval>
+  <RimMind.Advisor.Settings.EnableRiskApproval.Desc>开启后，达到风险等级阈值的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
+  <RimMind.Advisor.Settings.AutoBlockRiskLevel>自动拦截风险等级阈值：{0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
+  <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>达到此风险等级的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
+  <!-- CompAIAdvisor.cs -->
+  <!-- Gizmo -->
+  <RimMind.Advisor.UI.Gizmo.Enabled>AI顾问：开启</RimMind.Advisor.UI.Gizmo.Enabled>
+  <RimMind.Advisor.UI.Gizmo.Disabled>AI顾问：关闭</RimMind.Advisor.UI.Gizmo.Disabled>
+  <RimMind.Advisor.UI.Gizmo.Cooldown>冷却中（{0} 游戏时）</RimMind.Advisor.UI.Gizmo.Cooldown>
+  <RimMind.Advisor.UI.Gizmo.Waiting>等待 AI 响应…</RimMind.Advisor.UI.Gizmo.Waiting>
+  <RimMind.Advisor.UI.Gizmo.Desc>开启后 AI 在此小人空闲时为其选择下一步行动。</RimMind.Advisor.UI.Gizmo.Desc>
+  <RimMind.Advisor.UI.Gizmo.ForceRequest>立即请求 AI 建议</RimMind.Advisor.UI.Gizmo.ForceRequest>
+  <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>绕过冷却立即请求（仅开发模式）</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
+  <!-- Prompt -->
+  <!-- JobCandidateBuilder.cs -->
+  <!-- Prompt - Section Headers -->
+  <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（action 固定填 assign_work，param 填括号内的 WorkType defName；可加 @x,z 指定坐标）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
+  <RimMind.Advisor.Prompt.NoWorkTargets>  （暂无可执行工作目标）</RimMind.Advisor.Prompt.NoWorkTargets>
+  <RimMind.Advisor.Prompt.InstantSectionHeader>[即时动作]（action 直接填括号内的 intentId；括号外是说明）</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <!-- Prompt - Work Hints -->
+  <RimMind.Advisor.Prompt.TargetCountSingle>{0} 个目标，最近 {1} 格</RimMind.Advisor.Prompt.TargetCountSingle>
+  <RimMind.Advisor.Prompt.TargetCountMulti>{0} 个目标，最近 {1} 格（{2}）</RimMind.Advisor.Prompt.TargetCountMulti>
+  <!-- Prompt - Instant Action Hints -->
+  <RimMind.Advisor.Prompt.RestLow>体力 {0}%</RimMind.Advisor.Prompt.RestLow>
+  <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>
+  <RimMind.Advisor.Prompt.MoodLow>心情 {0}%，建议放松</RimMind.Advisor.Prompt.MoodLow>
+  <RimMind.Advisor.Prompt.MoodNormal>心情 {0}%</RimMind.Advisor.Prompt.MoodNormal>
+  <RimMind.Advisor.Prompt.SocialDiningHint>需填 target=对方短名，如 {0}</RimMind.Advisor.Prompt.SocialDiningHint>
+  <RimMind.Advisor.Prompt.EatFoodHint>可选食物：{0}；param 填食物 defName（如 Chocolate）</RimMind.Advisor.Prompt.EatFoodHint>
+  <RimMind.Advisor.Prompt.TendPawnHint>target={0}（受伤，需救治）</RimMind.Advisor.Prompt.TendPawnHint>
+  <RimMind.Advisor.Prompt.RescuePawnHint>target={0}（已倒地）</RimMind.Advisor.Prompt.RescuePawnHint>
+  <RimMind.Advisor.Prompt.InspireWork>触发工作狂热灵感</RimMind.Advisor.Prompt.InspireWork>
+  <RimMind.Advisor.Prompt.InspireFight>触发射击狂热灵感</RimMind.Advisor.Prompt.InspireFight>
+  <RimMind.Advisor.Prompt.InspireTrade>触发交易灵感</RimMind.Advisor.Prompt.InspireTrade>
+  <RimMind.Advisor.Prompt.MoveToHint>param 填目标坐标 x,z</RimMind.Advisor.Prompt.MoveToHint>
+  <!-- Prompt - Risk Tags -->
+  <RimMind.Advisor.Prompt.Risk.Low>[低]</RimMind.Advisor.Prompt.Risk.Low>
+  <RimMind.Advisor.Prompt.Risk.Medium>[中]</RimMind.Advisor.Prompt.Risk.Medium>
+  <RimMind.Advisor.Prompt.Risk.High>[高]</RimMind.Advisor.Prompt.Risk.High>
+  <RimMind.Advisor.Prompt.Risk.Critical>[危险]</RimMind.Advisor.Prompt.Risk.Critical>
+  <!-- Advisor History -->
+  <RimMind.Advisor.Prompt.RecentHistory>[近期请求记录]</RimMind.Advisor.Prompt.RecentHistory>
+  <RimMind.Advisor.Prompt.ResultApproved>已批准</RimMind.Advisor.Prompt.ResultApproved>
+  <RimMind.Advisor.Prompt.ResultRejected>玩家拒绝</RimMind.Advisor.Prompt.ResultRejected>
+  <RimMind.Advisor.Prompt.ResultBlocked>系统拦截</RimMind.Advisor.Prompt.ResultBlocked>
+  <RimMind.Advisor.Prompt.ResultIgnored>已忽略</RimMind.Advisor.Prompt.ResultIgnored>
+  <!-- Request System -->
+  <RimMind.Advisor.Request.RiskAction>高危操作: {0}</RimMind.Advisor.Request.RiskAction>
+  <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>
+  <RimMind.Advisor.Request.Reject>拒绝</RimMind.Advisor.Request.Reject>
 </LanguageData>

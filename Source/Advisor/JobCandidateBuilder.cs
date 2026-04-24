@@ -129,79 +129,79 @@ namespace RimMind.Advisor.Advisor
             switch (intentId)
             {
                 case "force_rest":
-                {
-                    float rest = pawn.needs?.rest?.CurLevelPercentage ?? 1f;
-                    string restPct = $"{rest * 100:F0}";
-                    return rest < 0.9f
-                        ? "RimMind.Advisor.Prompt.RestLow".Translate(restPct)
-                        : "RimMind.Advisor.Prompt.RestSufficient".Translate(restPct);
-                }
+                    {
+                        float rest = pawn.needs?.rest?.CurLevelPercentage ?? 1f;
+                        string restPct = $"{rest * 100:F0}";
+                        return rest < 0.9f
+                            ? "RimMind.Advisor.Prompt.RestLow".Translate(restPct)
+                            : "RimMind.Advisor.Prompt.RestSufficient".Translate(restPct);
+                    }
 
                 case "social_relax":
-                {
-                    float mood = pawn.needs?.mood?.CurLevelPercentage ?? 1f;
-                    string moodPct = $"{mood * 100:F0}";
-                    return mood < 0.6f
-                        ? "RimMind.Advisor.Prompt.MoodLow".Translate(moodPct)
-                        : "RimMind.Advisor.Prompt.MoodNormal".Translate(moodPct);
-                }
+                    {
+                        float mood = pawn.needs?.mood?.CurLevelPercentage ?? 1f;
+                        string moodPct = $"{mood * 100:F0}";
+                        return mood < 0.6f
+                            ? "RimMind.Advisor.Prompt.MoodLow".Translate(moodPct)
+                            : "RimMind.Advisor.Prompt.MoodNormal".Translate(moodPct);
+                    }
 
                 case "social_dining":
-                {
-                    var others = pawn.Map?.mapPawns.FreeColonistsSpawned
-                        .Where(p => p != pawn).ToList();
-                    if (others == null || others.Count == 0) return null;
-                    var partner = others[0];
-                    return "RimMind.Advisor.Prompt.SocialDiningHint".Translate(partner.Name.ToStringShort);
-                }
+                    {
+                        var others = pawn.Map?.mapPawns.FreeColonistsSpawned
+                            .Where(p => p != pawn).ToList();
+                        if (others == null || others.Count == 0) return null;
+                        var partner = others[0];
+                        return "RimMind.Advisor.Prompt.SocialDiningHint".Translate(partner.Name.ToStringShort);
+                    }
 
                 case "eat_food":
-                {
-                    if (pawn.Map == null) return null;
-                    var joyFoods = EatFoodAction.GetJoyFoodLabels(pawn, 4);
-                    if (joyFoods.Count == 0) return null;
-                    string foodList = string.Join(", ", joyFoods);
-                    return "RimMind.Advisor.Prompt.EatFoodHint".Translate(foodList);
-                }
+                    {
+                        if (pawn.Map == null) return null;
+                        var joyFoods = EatFoodAction.GetJoyFoodLabels(pawn, 4);
+                        if (joyFoods.Count == 0) return null;
+                        string foodList = string.Join(", ", joyFoods);
+                        return "RimMind.Advisor.Prompt.EatFoodHint".Translate(foodList);
+                    }
 
                 case "tend_pawn":
-                {
-                    var injured = pawn.Map?.mapPawns.FreeColonistsSpawned
-                        .Where(p => p != pawn && p.health?.HasHediffsNeedingTend() == true)
-                        .ToList();
-                    if (injured == null || injured.Count == 0) return null;
-                    return "RimMind.Advisor.Prompt.TendPawnHint".Translate(injured[0].Name.ToStringShort);
-                }
+                    {
+                        var injured = pawn.Map?.mapPawns.FreeColonistsSpawned
+                            .Where(p => p != pawn && p.health?.HasHediffsNeedingTend() == true)
+                            .ToList();
+                        if (injured == null || injured.Count == 0) return null;
+                        return "RimMind.Advisor.Prompt.TendPawnHint".Translate(injured[0].Name.ToStringShort);
+                    }
 
                 case "rescue_pawn":
-                {
-                    var downed = pawn.Map?.mapPawns.FreeColonistsSpawned
-                        .Where(p => p != pawn && p.Downed)
-                        .ToList();
-                    if (downed == null || downed.Count == 0) return null;
-                    return "RimMind.Advisor.Prompt.RescuePawnHint".Translate(downed[0].Name.ToStringShort);
-                }
+                    {
+                        var downed = pawn.Map?.mapPawns.FreeColonistsSpawned
+                            .Where(p => p != pawn && p.Downed)
+                            .ToList();
+                        if (downed == null || downed.Count == 0) return null;
+                        return "RimMind.Advisor.Prompt.RescuePawnHint".Translate(downed[0].Name.ToStringShort);
+                    }
 
                 case "inspire_work":
-                {
-                    if (pawn.mindState?.inspirationHandler == null) return null;
-                    if (pawn.Inspired) return null;
-                    return "RimMind.Advisor.Prompt.InspireWork".Translate();
-                }
+                    {
+                        if (pawn.mindState?.inspirationHandler == null) return null;
+                        if (pawn.Inspired) return null;
+                        return "RimMind.Advisor.Prompt.InspireWork".Translate();
+                    }
 
                 case "inspire_fight":
-                {
-                    if (pawn.mindState?.inspirationHandler == null) return null;
-                    if (pawn.Inspired) return null;
-                    return "RimMind.Advisor.Prompt.InspireFight".Translate();
-                }
+                    {
+                        if (pawn.mindState?.inspirationHandler == null) return null;
+                        if (pawn.Inspired) return null;
+                        return "RimMind.Advisor.Prompt.InspireFight".Translate();
+                    }
 
                 case "inspire_trade":
-                {
-                    if (pawn.mindState?.inspirationHandler == null) return null;
-                    if (pawn.Inspired) return null;
-                    return "RimMind.Advisor.Prompt.InspireTrade".Translate();
-                }
+                    {
+                        if (pawn.mindState?.inspirationHandler == null) return null;
+                        if (pawn.Inspired) return null;
+                        return "RimMind.Advisor.Prompt.InspireTrade".Translate();
+                    }
 
                 case "move_to":
                     return "RimMind.Advisor.Prompt.MoveToHint".Translate();
@@ -213,11 +213,11 @@ namespace RimMind.Advisor.Advisor
 
         private static string RiskTag(RiskLevel risk) => risk switch
         {
-            RiskLevel.Low      => "RimMind.Advisor.Prompt.Risk.Low".Translate(),
-            RiskLevel.Medium   => "RimMind.Advisor.Prompt.Risk.Medium".Translate(),
-            RiskLevel.High     => "RimMind.Advisor.Prompt.Risk.High".Translate(),
+            RiskLevel.Low => "RimMind.Advisor.Prompt.Risk.Low".Translate(),
+            RiskLevel.Medium => "RimMind.Advisor.Prompt.Risk.Medium".Translate(),
+            RiskLevel.High => "RimMind.Advisor.Prompt.Risk.High".Translate(),
             RiskLevel.Critical => "RimMind.Advisor.Prompt.Risk.Critical".Translate(),
-            _                  => "",
+            _ => "",
         };
 
         private static string GetActionDesc(string intentId)

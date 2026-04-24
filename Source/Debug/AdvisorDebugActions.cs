@@ -32,9 +32,9 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            var s       = RimMindAdvisorMod.Settings;
-            var coreS   = RimMindCoreMod.Settings;
-            int now     = Find.TickManager.TicksGame;
+            var s = RimMindAdvisorMod.Settings;
+            var coreS = RimMindCoreMod.Settings;
+            int now = Find.TickManager.TicksGame;
             string requestId = $"Advisor_{pawn.ThingID}";
 
             int advisorLeft = comp.AdvisorCooldownTicksLeft;
@@ -141,17 +141,17 @@ namespace RimMind.Advisor.Debug
             }
 
             var coreS = RimMindCoreMod.Settings;
-            var advS  = RimMindAdvisorMod.Settings;
-            var sb    = new StringBuilder("=== All Advisor States ===\n");
+            var advS = RimMindAdvisorMod.Settings;
+            var sb = new StringBuilder("=== All Advisor States ===\n");
             foreach (var pawn in map.mapPawns.FreeColonists)
             {
                 var comp = pawn.GetComp<CompAIAdvisor>();
                 if (comp == null) continue;
 
-                int advisorLeft   = comp.AdvisorCooldownTicksLeft;
-                int coreLeft      = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
-                string aState     = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
-                string cState     = coreLeft    > 0 ? $"CoreCD{coreLeft}t"      : "CoreReady";
+                int advisorLeft = comp.AdvisorCooldownTicksLeft;
+                int coreLeft = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
+                string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
+                string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
                 sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }

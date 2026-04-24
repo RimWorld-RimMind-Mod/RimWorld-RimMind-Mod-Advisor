@@ -60,7 +60,7 @@ namespace RimMind.Advisor
         internal static void DrawSettingsContent(Rect inRect)
         {
             Rect contentArea = SettingsUIHelper.SplitContentArea(inRect);
-            Rect bottomBar  = SettingsUIHelper.SplitBottomBar(inRect);
+            Rect bottomBar = SettingsUIHelper.SplitBottomBar(inRect);
 
             float contentH = EstimateHeight();
             Rect viewRect = new Rect(0f, 0f, contentArea.width - 16f, contentH);
