@@ -57,12 +57,11 @@
   <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>
   <RimMind.Advisor.Prompt.MoodLow>心情 {0}%，建议放松</RimMind.Advisor.Prompt.MoodLow>
   <RimMind.Advisor.Prompt.MoodNormal>心情 {0}%</RimMind.Advisor.Prompt.MoodNormal>
-  <RimMind.Advisor.Prompt.SocialDiningHint>需填 target=对方短名，如 {0}</RimMind.Advisor.Prompt.SocialDiningHint>
   <RimMind.Advisor.Prompt.EatFoodHint>可选食物：{0}；param 填食物 defName（如 Chocolate）</RimMind.Advisor.Prompt.EatFoodHint>
   <RimMind.Advisor.Prompt.TendPawnHint>target={0}（受伤，需救治）</RimMind.Advisor.Prompt.TendPawnHint>
   <RimMind.Advisor.Prompt.RescuePawnHint>target={0}（已倒地）</RimMind.Advisor.Prompt.RescuePawnHint>
   <RimMind.Advisor.Prompt.InspireWork>触发工作狂热灵感</RimMind.Advisor.Prompt.InspireWork>
-  <RimMind.Advisor.Prompt.InspireFight>触发射击狂热灵感</RimMind.Advisor.Prompt.InspireFight>
+  <RimMind.Advisor.Prompt.InspireShoot>触发射击狂热灵感</RimMind.Advisor.Prompt.InspireShoot>
   <RimMind.Advisor.Prompt.InspireTrade>触发交易灵感</RimMind.Advisor.Prompt.InspireTrade>
   <RimMind.Advisor.Prompt.MoveToHint>param 填目标坐标 x,z</RimMind.Advisor.Prompt.MoveToHint>
   <!-- Prompt - Risk Tags -->
@@ -80,4 +79,5 @@
   <RimMind.Advisor.Request.RiskAction>高危操作: {0}</RimMind.Advisor.Request.RiskAction>
   <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>
   <RimMind.Advisor.Request.Reject>拒绝</RimMind.Advisor.Request.Reject>
+  <RimMind.Advisor.Prompt.TaskInstruction>你是一名殖民顾问，负责为殖民者推荐行动。根据当前状态和可用动作，给出最合理的建议。\n\n输出格式：返回 JSON，格式为 {"advices":[{"action":"动作名","pawn":"殖民者名","target":"目标名","param":"参数","reason":"理由","request_type":"Request"}]}\n\n行为约束：\n- 只推荐候选列表中可用的动作\n- 考虑殖民者的当前状态和需求\n- 优先处理紧急情况（低心情、健康问题等）\n- request_type 必须为 Request</RimMind.Advisor.Prompt.TaskInstruction>
 </LanguageData>

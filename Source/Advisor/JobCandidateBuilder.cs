@@ -19,12 +19,11 @@ namespace RimMind.Advisor.Advisor
         {
             "force_rest",
             "social_relax",
-            "social_dining",
             "eat_food",
             "tend_pawn",
             "rescue_pawn",
             "inspire_work",
-            "inspire_fight",
+            "inspire_shoot",
             "inspire_trade",
             "move_to",
         };
@@ -146,15 +145,6 @@ namespace RimMind.Advisor.Advisor
                             : "RimMind.Advisor.Prompt.MoodNormal".Translate(moodPct);
                     }
 
-                case "social_dining":
-                    {
-                        var others = pawn.Map?.mapPawns.FreeColonistsSpawned
-                            .Where(p => p != pawn).ToList();
-                        if (others == null || others.Count == 0) return null;
-                        var partner = others[0];
-                        return "RimMind.Advisor.Prompt.SocialDiningHint".Translate(partner.Name.ToStringShort);
-                    }
-
                 case "eat_food":
                     {
                         if (pawn.Map == null) return null;
@@ -189,11 +179,11 @@ namespace RimMind.Advisor.Advisor
                         return "RimMind.Advisor.Prompt.InspireWork".Translate();
                     }
 
-                case "inspire_fight":
+                case "inspire_shoot":
                     {
                         if (pawn.mindState?.inspirationHandler == null) return null;
                         if (pawn.Inspired) return null;
-                        return "RimMind.Advisor.Prompt.InspireFight".Translate();
+                        return "RimMind.Advisor.Prompt.InspireShoot".Translate();
                     }
 
                 case "inspire_trade":

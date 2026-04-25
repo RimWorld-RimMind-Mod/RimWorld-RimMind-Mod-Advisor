@@ -57,12 +57,11 @@
   <RimMind.Advisor.Prompt.RestSufficient>Stamina {0}% (sufficient)</RimMind.Advisor.Prompt.RestSufficient>
   <RimMind.Advisor.Prompt.MoodLow>Mood {0}%, suggest relaxing</RimMind.Advisor.Prompt.MoodLow>
   <RimMind.Advisor.Prompt.MoodNormal>Mood {0}%</RimMind.Advisor.Prompt.MoodNormal>
-  <RimMind.Advisor.Prompt.SocialDiningHint>Fill target=partner short name, e.g. {0}</RimMind.Advisor.Prompt.SocialDiningHint>
   <RimMind.Advisor.Prompt.EatFoodHint>Available food: {0}; param fill food defName (e.g. Chocolate)</RimMind.Advisor.Prompt.EatFoodHint>
   <RimMind.Advisor.Prompt.TendPawnHint>target={0} (injured, needs treatment)</RimMind.Advisor.Prompt.TendPawnHint>
   <RimMind.Advisor.Prompt.RescuePawnHint>target={0} (downed)</RimMind.Advisor.Prompt.RescuePawnHint>
   <RimMind.Advisor.Prompt.InspireWork>Trigger work frenzy inspiration</RimMind.Advisor.Prompt.InspireWork>
-  <RimMind.Advisor.Prompt.InspireFight>Trigger shooting frenzy inspiration</RimMind.Advisor.Prompt.InspireFight>
+  <RimMind.Advisor.Prompt.InspireShoot>Trigger shooting frenzy inspiration</RimMind.Advisor.Prompt.InspireShoot>
   <RimMind.Advisor.Prompt.InspireTrade>Trigger trade inspiration</RimMind.Advisor.Prompt.InspireTrade>
   <RimMind.Advisor.Prompt.MoveToHint>param fill target coordinates x,z</RimMind.Advisor.Prompt.MoveToHint>
   <!-- Prompt - Risk Tags -->
@@ -80,4 +79,5 @@
   <RimMind.Advisor.Request.RiskAction>High-risk action: {0}</RimMind.Advisor.Request.RiskAction>
   <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>
   <RimMind.Advisor.Request.Reject>Reject</RimMind.Advisor.Request.Reject>
+  <RimMind.Advisor.Prompt.TaskInstruction>You are a colony advisor, responsible for recommending actions for colonists. Based on the current state and available actions, provide the most reasonable advice.\n\nOutput format: Return JSON: {"advices":[{"action":"action_name","pawn":"colonist_name","target":"target_name","param":"params","reason":"reasoning","request_type":"Request"}]}\n\nBehavior constraints:\n- Only recommend actions available in the candidate list\n- Consider the colonist's current state and needs\n- Prioritize urgent situations (low mood, health issues, etc.)\n- request_type must be Request</RimMind.Advisor.Prompt.TaskInstruction>
 </LanguageData>

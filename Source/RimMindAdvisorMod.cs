@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
+using RimMind.Core.Context;
 using RimMind.Core.Prompt;
 using RimMind.Core.UI;
 using UnityEngine;
@@ -46,6 +48,13 @@ namespace RimMind.Advisor
                 }
                 return sb.ToString().TrimEnd();
             }, PromptSection.PriorityAuxiliary);
+
+            ContextKeyRegistry.Register("advisor_task", ContextLayer.L0_Static, 0.95f,
+                pawn =>
+                {
+                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    return new List<ContextEntry> { new ContextEntry("RimMind.Advisor.Prompt.TaskInstruction".Translate()) };
+                }, "RimMind.Advisor");
 
             Log.Message("[RimMind-Advisor] Initialized.");
         }

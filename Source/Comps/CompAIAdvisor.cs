@@ -150,7 +150,7 @@ namespace RimMind.Advisor.Comps
             _pendingRequestTick = Find.TickManager.TicksGame;
             AdvisorConcurrencyTracker.Increment();
 
-            var npcId = $"NPC-{Pawn.ThingID}";
+            var npcId = $"NPC-{Pawn.thingIDNumber}";
             var ctxRequest = new ContextRequest
             {
                 NpcId = npcId,
@@ -178,7 +178,7 @@ namespace RimMind.Advisor.Comps
 
             var aiRequest = new AIRequest
             {
-                SystemPrompt = null,
+                SystemPrompt = null!,
                 Messages = snapshot.Messages,
                 MaxTokens = snapshot.MaxTokens,
                 Temperature = snapshot.Temperature,
@@ -260,7 +260,7 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            HandleToolCalls(response.ToolCallsJson);
+            HandleToolCalls(response.ToolCallsJson!);
         }
 
         private void CompleteRequestCycle()
@@ -369,18 +369,18 @@ namespace RimMind.Advisor.Comps
 
                 Pawn? targetPawn = null;
                 if (!targetName.NullOrEmpty())
-                    targetPawn = FindPawnByName(Pawn.Map, targetName);
+                    targetPawn = FindPawnByName(Pawn.Map, targetName!);
 
                 var riskLevel = RimMindActionsAPI.GetRiskLevel(tc.Name);
                 bool systemBlocked = Settings.enableRiskApproval
                     && riskLevel.HasValue
-                    && riskLevel.Value >= Settings.autoBlockRiskLevel;
+                    && riskLevel.GetValueOrDefault() >= Settings.autoBlockRiskLevel;
 
                 if (systemBlocked)
                 {
                     if (!Settings.enableRequestSystem)
                     {
-                        Log.Message($"[RimMind-Advisor] Action '{tc.Name}' blocked by risk level {riskLevel.Value} (approval system disabled)");
+                        Log.Message($"[RimMind-Advisor] Action '{tc.Name}' blocked by risk level {riskLevel.GetValueOrDefault()} (approval system disabled)");
                         continue;
                     }
                     string title = "RimMind.Advisor.Request.RiskAction".Translate(tc.Name);
@@ -546,7 +546,7 @@ namespace RimMind.Advisor.Comps
                 Messages = messages,
                 MaxTokens = 400,
                 Temperature = 0.7f,
-                RequestId = $"Structured_NPC-{Pawn.ThingID}_fb{_toolCallDepth}",
+                RequestId = $"Structured_NPC-{Pawn.thingIDNumber}_fb{_toolCallDepth}",
                 ModId = "Advisor",
                 ExpireAtTicks = Find.TickManager.TicksGame + Settings.requestExpireTicks,
                 UseJsonMode = true,
