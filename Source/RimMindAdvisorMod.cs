@@ -53,7 +53,10 @@ namespace RimMind.Advisor
                 pawn =>
                 {
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
-                    return new List<ContextEntry> { new ContextEntry("RimMind.Advisor.Prompt.TaskInstruction".Translate()) };
+                    var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
+                        "Role", "Goal", "Process", "Constraint", "Output",
+                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint");
+                    return new List<ContextEntry> { new ContextEntry(instruction) };
                 }, "RimMind.Advisor");
 
             Log.Message("[RimMind-Advisor] Initialized.");
