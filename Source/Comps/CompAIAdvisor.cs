@@ -30,6 +30,7 @@ namespace RimMind.Advisor.Comps
         private List<StructuredTool>? _lastTools;
         private string? _lastSchema;
         private int _toolCallDepth;
+        private string? _lastReasoningContent;
 
         public bool HasPendingRequest => _hasPendingRequest;
         public int AdvisorCooldownTicksLeft =>
@@ -168,13 +169,19 @@ namespace RimMind.Advisor.Comps
 
             if (!Settings.advisorCustomPrompt.NullOrEmpty())
             {
-                snapshot.Messages.Insert(0, new ChatMessage { Role = "system", Content = Settings.advisorCustomPrompt });
+                int lastSysIdx = -1;
+                for (int i = snapshot.Messages.Count - 1; i >= 0; i--)
+                {
+                    if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
+                }
+                snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = Settings.advisorCustomPrompt });
             }
 
             _lastMessages = new List<ChatMessage>(snapshot.Messages);
             _lastTools = tools;
             _lastSchema = schema;
             _toolCallDepth = 0;
+            _lastReasoningContent = null;
 
             var aiRequest = new AIRequest
             {
@@ -255,12 +262,14 @@ namespace RimMind.Advisor.Comps
 
             if (!string.IsNullOrEmpty(response.ToolCallsJson))
             {
+                _lastReasoningContent = response.ReasoningContent;
                 HandleToolCalls(response.ToolCallsJson!);
                 return;
             }
 
             if (!string.IsNullOrEmpty(response.Content))
             {
+                _lastReasoningContent = response.ReasoningContent;
                 var syntheticToolCalls = TryParseContentAsToolCalls(response.Content);
                 if (syntheticToolCalls != null)
                 {
@@ -584,6 +593,7 @@ namespace RimMind.Advisor.Comps
             {
                 Role = "assistant",
                 Content = "",
+                ReasoningContent = _lastReasoningContent,
                 ToolCalls = toolCalls?.Select(tc => new ChatToolCall
                 {
                     Id = tc.Id,
