@@ -253,14 +253,78 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            if (string.IsNullOrEmpty(response.ToolCallsJson))
+            if (!string.IsNullOrEmpty(response.ToolCallsJson))
             {
-                Log.Warning($"[RimMind-Advisor] No tool calls in response for {Pawn.Name.ToStringShort}");
-                CompleteRequestCycle();
+                HandleToolCalls(response.ToolCallsJson!);
                 return;
             }
 
-            HandleToolCalls(response.ToolCallsJson!);
+            if (!string.IsNullOrEmpty(response.Content))
+            {
+                var syntheticToolCalls = TryParseContentAsToolCalls(response.Content);
+                if (syntheticToolCalls != null)
+                {
+                    Log.Message($"[RimMind-Advisor] Parsed {syntheticToolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
+                    HandleToolCalls(JsonConvert.SerializeObject(syntheticToolCalls));
+                    return;
+                }
+            }
+
+            Log.Warning($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+            CompleteRequestCycle();
+        }
+
+        private List<StructuredToolCall>? TryParseContentAsToolCalls(string content)
+        {
+            try
+            {
+                string trimmed = content.Trim();
+                if (trimmed.StartsWith("```"))
+                {
+                    int firstBrace = trimmed.IndexOf('{');
+                    int lastBrace = trimmed.LastIndexOf('}');
+                    if (firstBrace >= 0 && lastBrace > firstBrace)
+                        trimmed = trimmed.Substring(firstBrace, lastBrace - firstBrace + 1);
+                }
+
+                var parsed = JsonConvert.DeserializeObject<Dictionary<string, object>>(trimmed);
+                if (parsed == null || !parsed.ContainsKey("advices")) return null;
+
+                var advicesToken = parsed["advices"];
+                string advicesJson = JsonConvert.SerializeObject(advicesToken);
+                var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(advicesJson);
+                if (advices == null || advices.Count == 0) return null;
+
+                var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
+                var toolCalls = new List<StructuredToolCall>();
+                int idx = 0;
+
+                foreach (var adv in advices)
+                {
+                    if (!adv.TryGetValue("action", out var actionName) || actionName.NullOrEmpty()) continue;
+                    if (!supported.Contains(actionName)) continue;
+
+                    var args = new Dictionary<string, string>();
+                    if (adv.TryGetValue("target", out var target) && !target.NullOrEmpty()) args["target"] = target;
+                    if (adv.TryGetValue("param", out var param) && !param.NullOrEmpty()) args["param"] = param;
+                    if (adv.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()) args["reason"] = reason;
+
+                    toolCalls.Add(new StructuredToolCall
+                    {
+                        Id = $"fallback_{idx}",
+                        Name = actionName,
+                        Arguments = JsonConvert.SerializeObject(args),
+                    });
+                    idx++;
+                }
+
+                return toolCalls.Count > 0 ? toolCalls : null;
+            }
+            catch (System.Exception ex)
+            {
+                Log.Warning($"[RimMind-Advisor] Content fallback parse failed: {ex.Message}");
+                return null;
+            }
         }
 
         private void CompleteRequestCycle()
