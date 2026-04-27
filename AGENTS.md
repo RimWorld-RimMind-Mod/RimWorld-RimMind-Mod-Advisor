@@ -240,8 +240,7 @@ public class AdvisorRequestRecord : IExposable {
    // lambda 内：仅 Decision 场景生效
    // TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
    //   "Role", "Goal", "Process", "Constraint", "Output",
-   //   "FieldRules", "OutputRules", "RiskControl", "DiversityHint")
-   // ⚠️ "CustomRules" 子键未包含（翻译键存在但未使用）
+   //   "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "CustomRules")
 ```
 
 ### 设置项
