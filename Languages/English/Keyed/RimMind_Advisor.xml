@@ -87,16 +87,11 @@
 3. Evaluate candidate actions against personality
 4. Choose the most fitting action</RimMind.Advisor.Prompt.TaskInstruction.Process>
   <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.); request_type must be Request</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>Return JSON: {"advices":[{"action":"action_name","pawn":"colonist_name","target":"target_name","param":"params","reason":"reasoning","request_type":"Request"}]}
-
-Return only JSON, no other content.</RimMind.Advisor.Prompt.TaskInstruction.Output>
-  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Field rules (important):
-- action: required, fill with action ID from the candidate list
-- pawn: current colonist's name
-- target: for tend_pawn / rescue_pawn and similar target-requiring actions, fill with target pawn's short name; otherwise null
-- param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z"; otherwise null
-- reason: short reason, will be displayed in the colonist's thought bubble
-- request_type: optional, default "Request"</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.\n\nIf Tool Calling is unavailable, fallback to JSON: {"advices":[{"action":"action_name","pawn":"colonist_name","target":"target_name","param":"params","reason":"reasoning"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling rules:
+- Each available action is a tool/function; call by matching function name to action ID
+- param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z" coordinates; leave empty for others
+- The returned reason field will be displayed in the colonist's thought bubble</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
   <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>Output count rules:
 - Work tasks (assign_work): can queue multiple (advices array has multiple elements, executed in order)
 - Instant actions (force_rest / social_relax etc.): usually only 1 needed

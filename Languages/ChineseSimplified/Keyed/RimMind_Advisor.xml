@@ -87,16 +87,11 @@
 3. 对照性格评估候选动作
 4. 选择最符合角色的行动</RimMind.Advisor.Prompt.TaskInstruction.Process>
   <RimMind.Advisor.Prompt.TaskInstruction.Constraint>只推荐候选列表中可用的动作；考虑殖民者的当前状态和需求；优先处理紧急情况（低心情、健康问题等）；request_type 必须为 Request</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>返回 JSON，格式为 {"advices":[{"action":"动作名","pawn":"殖民者名","target":"目标名","param":"参数","reason":"理由","request_type":"Request"}]}
-
-只返回 JSON 格式，不要输出其他内容。</RimMind.Advisor.Prompt.TaskInstruction.Output>
-  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>字段规则（重要）：
-- action：必填，填写候选列表中的动作 ID
-- pawn：当前殖民者的名称
-- target：tend_pawn / rescue_pawn 等需要目标的动作，填目标小人短名；其余填 null
-- param：assign_work 填 WorkType defName（如 Mining）；move_to 填 "x,z"；其余填 null
-- reason：简短中文理由，将显示在殖民者头顶气泡中
-- request_type：可选，默认 "Request"</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。\n\n如果无法使用 Tool Calling，回退到 JSON 格式：{"advices":[{"action":"动作名","pawn":"殖民者名","target":"目标名","param":"参数","reason":"理由"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling 规则：
+- 每个可用动作对应一个 tool/function，直接调用 function name 匹配动作 ID
+- param 参数：assign_work 填 WorkType defName（如 Mining）；move_to 填 "x,z" 坐标；其余动作留空
+- 返回的 reason 字段将显示在殖民者头顶气泡中</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
   <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>输出数量规则：
 - 工作任务（assign_work）：可以排队多条（advices 数组有多个元素，按顺序执行）
 - 即时动作（force_rest / social_relax 等）：通常只需 1 条
