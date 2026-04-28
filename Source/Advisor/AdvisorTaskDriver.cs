@@ -67,7 +67,7 @@ namespace RimMind.Advisor.Advisor
 
             var aiRequest = new AIRequest
             {
-                SystemPrompt = null!,
+                SystemPrompt = string.Empty,
                 Messages = snapshot.Messages,
                 MaxTokens = snapshot.MaxTokens,
                 Temperature = snapshot.Temperature,

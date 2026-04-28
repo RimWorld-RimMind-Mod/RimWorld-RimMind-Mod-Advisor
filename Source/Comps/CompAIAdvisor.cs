@@ -8,8 +8,6 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
 using RimMind.Core.Client;
-using RimMind.Core.Comps;
-using RimMind.Core.Context;
 using RimMind.Core.UI;
 using RimWorld;
 using UnityEngine;
@@ -26,6 +24,7 @@ namespace RimMind.Advisor.Comps
         private int _pendingRequestTick;
 
         private AdvisorTaskDriver? _taskDriver;
+        private ApprovalManager? _approvalManager;
 
         public bool HasPendingRequest => _hasPendingRequest;
         public int LastRequestTick => _lastRequestTick;
@@ -204,54 +203,77 @@ namespace RimMind.Advisor.Comps
                         Log.Message($"[RimMind-Advisor] Action '{tc.Name}' blocked by risk level {riskLevel.GetValueOrDefault()} (approval system disabled)");
                         continue;
                     }
-                    string title = "RimMind.Advisor.Request.RiskAction".Translate(tc.Name);
+
+                    if (_approvalManager == null)
+                        _approvalManager = new ApprovalManager(Settings);
+
                     var capturedTc = tc;
                     var capturedTarget = targetPawn;
                     var capturedReason = reason;
                     var capturedParam = param;
-                    string approveLabel = "RimMind.Advisor.Request.Approve".Translate();
-                    string rejectLabel = "RimMind.Advisor.Request.Reject".Translate();
 
-                    var entry = new RequestEntry
+                    var adviceItem = new AdviceItem
                     {
-                        source = "advisor",
-                        pawn = Pawn,
-                        title = title,
-                        description = capturedReason ?? tc.Name,
-                        systemBlocked = systemBlocked,
-                        expireTicks = Settings.requestExpireTicks,
-                        options = new[] { approveLabel, rejectLabel },
-                        callback = choice =>
+                        Action = capturedTc.Name,
+                        Target = capturedTarget?.Name?.ToStringShort,
+                        Param = capturedParam,
+                        Reason = capturedReason,
+                        RiskLevel = riskLevel.GetValueOrDefault(),
+                    };
+
+                    _approvalManager.SubmitForApproval(adviceItem, Pawn,
+                        onApproved: () =>
                         {
-                            if (choice == approveLabel)
+                            var singleIntent = new List<BatchActionIntent>
                             {
-                                var singleIntent = new List<BatchActionIntent>
+                                new BatchActionIntent
                                 {
-                                    new BatchActionIntent
-                                    {
-                                        IntentId = capturedTc.Name,
-                                        Actor = Pawn,
-                                        Target = capturedTarget,
-                                        Param = capturedParam,
-                                        Reason = capturedReason,
-                                    }
-                                };
-                                RimMindActionsAPI.ExecuteBatch(singleIntent);
-                                var historyStore = AdvisorHistoryStore.Instance;
-                                if (historyStore != null)
+                                    IntentId = capturedTc.Name,
+                                    Actor = Pawn,
+                                    Target = capturedTarget,
+                                    Param = capturedParam,
+                                    Reason = capturedReason,
+                                }
+                            };
+                            var results = RimMindActionsAPI.ExecuteBatchWithResults(singleIntent);
+                            _taskDriver?.BroadcastDecisionExecuted(capturedTc.Name, capturedReason);
+
+                            var historyStore = AdvisorHistoryStore.Instance;
+                            if (historyStore != null)
+                            {
+                                foreach (var r in results)
                                 {
                                     historyStore.AddRecord(Pawn, new AdvisorRequestRecord
                                     {
-                                        action = capturedTc.Name,
+                                        action = r.ActionName,
                                         reason = capturedReason ?? "",
-                                        result = "approved",
+                                        result = r.Success ? "success" : r.Reason,
                                         tick = Find.TickManager.TicksGame
                                     });
                                 }
                             }
-                        }
-                    };
-                    RimMindAPI.RegisterPendingRequest(entry);
+
+                            if (Settings.showThoughtBubble && Pawn.Map != null)
+                            {
+                                string moteText = $"[RimMind] {capturedReason ?? capturedTc.Name}";
+                                MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
+                                    new Color(0.6f, 0.9f, 1f), 5f);
+                            }
+                        },
+                        onRejected: () =>
+                        {
+                            var historyStore = AdvisorHistoryStore.Instance;
+                            if (historyStore != null)
+                            {
+                                historyStore.AddRecord(Pawn, new AdvisorRequestRecord
+                                {
+                                    action = capturedTc.Name,
+                                    reason = capturedReason ?? "",
+                                    result = "rejected",
+                                    tick = Find.TickManager.TicksGame
+                                });
+                            }
+                        });
                 }
                 else
                 {
