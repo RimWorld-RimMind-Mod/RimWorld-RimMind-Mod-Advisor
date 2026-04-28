@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using RimMind.Actions;
-using RimMind.Actions.Actions;
 using RimMind.Core;
 using RimWorld;
 using Verse;
@@ -148,9 +147,8 @@ namespace RimMind.Advisor.Advisor
                 case "eat_food":
                     {
                         if (pawn.Map == null) return null;
-                        var joyFoods = EatFoodAction.GetJoyFoodLabels(pawn, 4);
-                        if (joyFoods.Count == 0) return null;
-                        string foodList = string.Join(", ", joyFoods);
+                        var foodList = RimMindActionsAPI.GetActionHintData(pawn, "eat_food");
+                        if (string.IsNullOrEmpty(foodList)) return null;
                         return "RimMind.Advisor.Prompt.EatFoodHint".Translate(foodList);
                     }
 

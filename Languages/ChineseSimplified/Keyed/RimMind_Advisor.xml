@@ -7,7 +7,7 @@
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>
   <RimMind.Advisor.Settings.ShowThoughtBubble>显示 AI 决策气泡</RimMind.Advisor.Settings.ShowThoughtBubble>
   <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>在殖民者头顶显示 AI 选择该行动的理由。</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
-  <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（注入到上下文之前）</RimMind.Advisor.Settings.CustomPrompt>
+  <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（插入到系统消息之后）</RimMind.Advisor.Settings.CustomPrompt>
   <RimMind.Advisor.Settings.TriggerSources>触发来源</RimMind.Advisor.Settings.TriggerSources>
   <RimMind.Advisor.Settings.EnableIdleTrigger>小人空闲时触发</RimMind.Advisor.Settings.EnableIdleTrigger>
   <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>当殖民者没有工作时，AI 主动为其选择下一步行动。</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
@@ -86,8 +86,8 @@
 2. 检查基地需求与优先级
 3. 对照性格评估候选动作
 4. 选择最符合角色的行动</RimMind.Advisor.Prompt.TaskInstruction.Process>
-  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>只推荐候选列表中可用的动作；考虑殖民者的当前状态和需求；优先处理紧急情况（低心情、健康问题等）；request_type 必须为 Request</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。\n\n如果无法使用 Tool Calling，回退到 JSON 格式：{"advices":[{"action":"动作名","pawn":"殖民者名","target":"目标名","param":"参数","reason":"理由"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>只推荐候选列表中可用的动作；考虑殖民者的当前状态和需求；优先处理紧急情况（低心情、健康问题等）</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。\n\n如果无法使用 Tool Calling，回退到 JSON 格式：{"advices":[{"action":"动作名","target":"目标名","param":"参数","reason":"理由"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
   <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling 规则：
 - 每个可用动作对应一个 tool/function，直接调用 function name 匹配动作 ID
 - param 参数：assign_work 填 WorkType defName（如 Mining）；move_to 填 "x,z" 坐标；其余动作留空
@@ -104,6 +104,4 @@
 - 尽量保证多样化的请求，避免重复提交相同类型的请求
 - 如果近期已有类似请求被批准或拒绝，请换一种不同类型的行动</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
-  <RimMind.Advisor.Prompt.HistoryHeader>[近期请求记录]</RimMind.Advisor.Prompt.HistoryHeader>
-  <RimMind.Advisor.Prompt.HistoryCompressed>（{0}条更早的记录已省略）</RimMind.Advisor.Prompt.HistoryCompressed>
 </LanguageData>

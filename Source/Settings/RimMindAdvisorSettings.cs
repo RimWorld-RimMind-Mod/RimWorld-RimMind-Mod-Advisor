@@ -41,6 +41,7 @@ namespace RimMind.Advisor.Settings
         /// <summary>自动拦截的风险等级阈值（Low~Critical）。达到此级别的动作需玩家批准。</summary>
         public RiskLevel autoBlockRiskLevel = RiskLevel.High;
 
+        /// <summary>自定义系统提示词。插入到最后一个 system 消息之后。</summary>
         public string advisorCustomPrompt = string.Empty;
 
         public override void ExposeData()

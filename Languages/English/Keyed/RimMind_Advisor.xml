@@ -7,7 +7,7 @@
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>
   <RimMind.Advisor.Settings.ShowThoughtBubble>Show AI Decision Bubble</RimMind.Advisor.Settings.ShowThoughtBubble>
   <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>Display the AI's reasoning for choosing an action above the colonist.</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
-  <RimMind.Advisor.Settings.CustomPrompt>Custom System Prompt (injected before context)</RimMind.Advisor.Settings.CustomPrompt>
+  <RimMind.Advisor.Settings.CustomPrompt>Custom System Prompt (inserted after system messages)</RimMind.Advisor.Settings.CustomPrompt>
   <RimMind.Advisor.Settings.TriggerSources>Trigger Sources</RimMind.Advisor.Settings.TriggerSources>
   <RimMind.Advisor.Settings.EnableIdleTrigger>Trigger on Colonist Idle</RimMind.Advisor.Settings.EnableIdleTrigger>
   <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>When a colonist has no work, AI will proactively choose their next action.</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
@@ -86,8 +86,8 @@
 2. Check colony needs and priorities
 3. Evaluate candidate actions against personality
 4. Choose the most fitting action</RimMind.Advisor.Prompt.TaskInstruction.Process>
-  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.); request_type must be Request</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.\n\nIf Tool Calling is unavailable, fallback to JSON: {"advices":[{"action":"action_name","pawn":"colonist_name","target":"target_name","param":"params","reason":"reasoning"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.)</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.\n\nIf Tool Calling is unavailable, fallback to JSON: {"advices":[{"action":"action_name","target":"target_name","param":"params","reason":"reasoning"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
   <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling rules:
 - Each available action is a tool/function; call by matching function name to action ID
 - param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z" coordinates; leave empty for others
@@ -104,6 +104,4 @@
 - Try to ensure diverse requests, avoid submitting the same type of request repeatedly
 - If similar requests have been approved or rejected recently, try a different type of action</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
-  <RimMind.Advisor.Prompt.HistoryHeader>[Recent Request History]</RimMind.Advisor.Prompt.HistoryHeader>
-  <RimMind.Advisor.Prompt.HistoryCompressed>({0} older records omitted)</RimMind.Advisor.Prompt.HistoryCompressed>
 </LanguageData>

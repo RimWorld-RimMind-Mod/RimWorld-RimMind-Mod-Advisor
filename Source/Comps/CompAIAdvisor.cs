@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using RimMind.Actions;
+using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
@@ -24,15 +25,12 @@ namespace RimMind.Advisor.Comps
         private int _lastRequestTick = -9999;
         private int _pendingRequestTick;
 
-        private const int MaxToolCallDepth = 3;
-
-        private List<ChatMessage>? _lastMessages;
-        private List<StructuredTool>? _lastTools;
-        private string? _lastSchema;
-        private int _toolCallDepth;
-        private string? _lastReasoningContent;
+        private AdvisorTaskDriver? _taskDriver;
 
         public bool HasPendingRequest => _hasPendingRequest;
+        public int LastRequestTick => _lastRequestTick;
+        public AdvisorTaskDriver? TaskDriver => _taskDriver;
+
         public int AdvisorCooldownTicksLeft =>
             System.Math.Max(0, Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick));
 
@@ -40,92 +38,13 @@ namespace RimMind.Advisor.Comps
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
         private bool DebugLogging => RimMind.Core.RimMindCoreMod.Settings.debugLogging;
 
-        public override void CompTick()
-        {
-            if (Pawn.Map == null) return;
-
-            var s = Settings;
-            if (!Pawn.IsHashIntervalTick(s.pawnScanIntervalTicks)) return;
-
-            if (!s.enableAdvisor)
-            {
-                return;
-            }
-            if (!RimMindAPI.IsConfigured())
-            {
-                DebugSkip("API not configured");
-                return;
-            }
-            if (CompPawnAgent.IsAgentActive(Pawn))
-            {
-                return;
-            }
-            if (_hasPendingRequest)
-            {
-                if (Find.TickManager.TicksGame - _pendingRequestTick > 60000)
-                {
-                    Log.Warning($"[RimMind-Advisor] Pending request timeout for {Pawn.Name.ToStringShort}, resetting.");
-                    _hasPendingRequest = false;
-                    AdvisorConcurrencyTracker.Decrement();
-                }
-                else
-                {
-                    DebugSkip("Pending request exists");
-                    return;
-                }
-            }
-            if (!IsEnabled)
-            {
-                DebugSkip("Advisor toggle off for this colonist");
-                return;
-            }
-            if (!IsEligible())
-            {
-                DebugSkip("Colonist ineligible (dead/slave/drafted/no mood)");
-                return;
-            }
-
-            bool idleTriggered = s.enableIdleTrigger && IsIdle();
-            bool moodTriggered = s.enableMoodTrigger && IsMoodBelowThreshold();
-
-            if (!idleTriggered && !moodTriggered)
-            {
-                DebugSkip($"No trigger met (idle={idleTriggered}, mood={moodTriggered})");
-                return;
-            }
-
-            int ticksGame = Find.TickManager.TicksGame;
-            int advisorCooldownLeft = s.requestCooldownTicks - (ticksGame - _lastRequestTick);
-            if (advisorCooldownLeft > 0)
-            {
-                if (DebugLogging)
-                    Log.Message($"[RimMind-Advisor][Advisor Cooldown] {Pawn.Name.ToStringShort} cooling down, {advisorCooldownLeft} ticks remaining (~{advisorCooldownLeft / 2500f:F2} game hours). requestCooldownTicks={s.requestCooldownTicks}");
-                return;
-            }
-
-            if (AdvisorConcurrencyTracker.ActiveCount >= s.maxConcurrentRequests)
-            {
-                if (DebugLogging)
-                    Log.Message($"[RimMind-Advisor][Concurrency Limit] Current concurrent {AdvisorConcurrencyTracker.ActiveCount}/{s.maxConcurrentRequests}, {Pawn.Name.ToStringShort} skipped.");
-                return;
-            }
-
-            RequestAIAdvice();
-        }
-
-        private void DebugSkip(string reason)
-        {
-            if (DebugLogging)
-                Log.Message($"[RimMind-Advisor][Skip] {Pawn.Name.ToStringShort}: {reason}");
-        }
-
-        private bool IsEligible() =>
+        public bool IsEligible() =>
             Pawn.IsFreeNonSlaveColonist &&
             !Pawn.Dead &&
             !(Pawn.drafter?.Drafted ?? false) &&
             Pawn.needs?.mood != null;
 
-        private bool IsIdle()
+        public bool IsIdle()
         {
             var job = Pawn.jobs?.curJob;
             if (job == null) return true;
@@ -138,86 +57,31 @@ namespace RimMind.Advisor.Comps
                 || def == JobDefOf.Wait_MaintainPosture;
         }
 
-        private bool IsMoodBelowThreshold()
+        public bool IsMoodBelowThreshold()
         {
             var mood = Pawn.needs?.mood;
             if (mood == null) return false;
             return mood.CurLevelPercentage < Settings.moodThreshold;
         }
 
-        private void RequestAIAdvice()
+        public bool ShouldIdleTrigger()
+        {
+            return Settings.enableIdleTrigger && IsIdle();
+        }
+
+        public bool ShouldMoodTrigger()
+        {
+            return Settings.enableMoodTrigger && IsMoodBelowThreshold();
+        }
+
+        public void RequestAdvice(RimMindAdvisorSettings settings)
         {
             _hasPendingRequest = true;
             _pendingRequestTick = Find.TickManager.TicksGame;
             AdvisorConcurrencyTracker.Increment();
 
-            var npcId = $"NPC-{Pawn.thingIDNumber}";
-            var ctxRequest = new ContextRequest
-            {
-                NpcId = npcId,
-                Scenario = ScenarioIds.Decision,
-                Budget = GetDecisionBudget(),
-                MaxTokens = 400,
-                Temperature = 0.7f,
-            };
-
-            var schema = RimMind.Core.Context.SchemaRegistry.AdviceOutput;
-
-            var tools = BuildActionTools();
-
-            var snapshot = RimMindAPI.BuildContextSnapshot(ctxRequest);
-
-            if (!Settings.advisorCustomPrompt.NullOrEmpty())
-            {
-                int lastSysIdx = -1;
-                for (int i = snapshot.Messages.Count - 1; i >= 0; i--)
-                {
-                    if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
-                }
-                snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = Settings.advisorCustomPrompt });
-            }
-
-            _lastMessages = new List<ChatMessage>(snapshot.Messages);
-            _lastTools = tools;
-            _lastSchema = schema;
-            _toolCallDepth = 0;
-            _lastReasoningContent = null;
-
-            var aiRequest = new AIRequest
-            {
-                SystemPrompt = null!,
-                Messages = snapshot.Messages,
-                MaxTokens = snapshot.MaxTokens,
-                Temperature = snapshot.Temperature,
-                RequestId = $"Structured_{npcId}",
-                ModId = "Advisor",
-                ExpireAtTicks = Find.TickManager.TicksGame + Settings.requestExpireTicks,
-                UseJsonMode = true,
-                Priority = AIRequestPriority.Normal,
-            };
-
-            RimMindAPI.RequestStructuredAsync(aiRequest, schema, OnAdviceReceived, tools);
-        }
-
-        private float GetDecisionBudget()
-        {
-            var settings = RimMindCoreMod.Settings?.Context;
-            if (settings == null) return 0.5f;
-            return settings.ContextBudget;
-        }
-
-        private List<StructuredTool>? BuildActionTools()
-        {
-            try
-            {
-                var tools = RimMindActionsAPI.GetStructuredTools();
-                return tools.Count > 0 ? tools : null;
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimMind-Advisor] BuildActionTools failed: {ex.Message}");
-                return null;
-            }
+            _taskDriver = new AdvisorTaskDriver(Pawn, settings);
+            _taskDriver.BuildAndSendRequest(OnAdviceReceived);
         }
 
         public void ForceRequestAdvice()
@@ -242,7 +106,7 @@ namespace RimMind.Advisor.Comps
             RimMind.Core.Internal.AIRequestQueue.Instance?.ClearCooldown("Advisor");
             Log.Message($"[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared (Advisor), sending request...");
 
-            RequestAIAdvice();
+            RequestAdvice(Settings);
         }
 
         private void OnAdviceReceived(AIResponse response)
@@ -260,152 +124,36 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            if (!string.IsNullOrEmpty(response.ToolCallsJson))
+            if (_taskDriver == null)
             {
-                _lastReasoningContent = response.ReasoningContent;
-                HandleToolCalls(response.ToolCallsJson!);
-                return;
-            }
-
-            if (!string.IsNullOrEmpty(response.Content))
-            {
-                _lastReasoningContent = response.ReasoningContent;
-                var syntheticToolCalls = TryParseContentAsToolCalls(response.Content);
-                if (syntheticToolCalls != null)
-                {
-                    Log.Message($"[RimMind-Advisor] Parsed {syntheticToolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
-                    HandleToolCalls(JsonConvert.SerializeObject(syntheticToolCalls));
-                    return;
-                }
-            }
-
-            Log.Warning($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
-            CompleteRequestCycle();
-        }
-
-        private List<StructuredToolCall>? TryParseContentAsToolCalls(string content)
-        {
-            try
-            {
-                string trimmed = content.Trim();
-                if (trimmed.StartsWith("```"))
-                {
-                    int firstBrace = trimmed.IndexOf('{');
-                    int lastBrace = trimmed.LastIndexOf('}');
-                    if (firstBrace >= 0 && lastBrace > firstBrace)
-                        trimmed = trimmed.Substring(firstBrace, lastBrace - firstBrace + 1);
-                }
-
-                var parsed = JsonConvert.DeserializeObject<Dictionary<string, object>>(trimmed);
-                if (parsed == null || !parsed.ContainsKey("advices")) return null;
-
-                var advicesToken = parsed["advices"];
-                string advicesJson = JsonConvert.SerializeObject(advicesToken);
-                var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(advicesJson);
-                if (advices == null || advices.Count == 0) return null;
-
-                var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
-                var toolCalls = new List<StructuredToolCall>();
-                int idx = 0;
-
-                foreach (var adv in advices)
-                {
-                    if (!adv.TryGetValue("action", out var actionName) || actionName.NullOrEmpty()) continue;
-                    if (!supported.Contains(actionName)) continue;
-
-                    var args = new Dictionary<string, string>();
-                    if (adv.TryGetValue("target", out var target) && !target.NullOrEmpty()) args["target"] = target;
-                    if (adv.TryGetValue("param", out var param) && !param.NullOrEmpty()) args["param"] = param;
-                    if (adv.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()) args["reason"] = reason;
-
-                    toolCalls.Add(new StructuredToolCall
-                    {
-                        Id = $"fallback_{idx}",
-                        Name = actionName,
-                        Arguments = JsonConvert.SerializeObject(args),
-                    });
-                    idx++;
-                }
-
-                return toolCalls.Count > 0 ? toolCalls : null;
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimMind-Advisor] Content fallback parse failed: {ex.Message}");
-                return null;
-            }
-        }
-
-        private void CompleteRequestCycle()
-        {
-            if (_hasPendingRequest)
-            {
-                _hasPendingRequest = false;
-                _lastRequestTick = Find.TickManager.TicksGame;
-                AdvisorConcurrencyTracker.Decrement();
-            }
-            _toolCallDepth = 0;
-            _lastMessages = null;
-        }
-
-        public override IEnumerable<Gizmo> CompGetGizmosExtra()
-        {
-            string label = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
-            string subLabel = "";
-
-            if (IsEnabled)
-            {
-                int cooldownLeft = Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick);
-                if (cooldownLeft > 0)
-                    subLabel = "RimMind.Advisor.UI.Gizmo.Cooldown".Translate($"{cooldownLeft / 2500f:F1}");
-                else if (_hasPendingRequest)
-                    subLabel = "RimMind.Advisor.UI.Gizmo.Waiting".Translate();
-            }
-
-            yield return new Command_Action
-            {
-                defaultLabel = label,
-                defaultDesc = subLabel.NullOrEmpty()
-                    ? "RimMind.Advisor.UI.Gizmo.Desc".Translate()
-                    : subLabel,
-                icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
-                action = () => IsEnabled = !IsEnabled,
-            };
-
-            if (Prefs.DevMode)
-            {
-                yield return new Command_Action
-                {
-                    defaultLabel = "RimMind.Advisor.UI.Gizmo.ForceRequest".Translate(),
-                    defaultDesc = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
-                    icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
-                    action = ForceRequestAdvice,
-                };
-            }
-        }
-
-        public override void PostExposeData()
-        {
-            base.PostExposeData();
-            Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
-        }
-
-        private void HandleToolCalls(string toolCallsJson)
-        {
-            List<StructuredToolCall>? toolCalls;
-            try
-            {
-                toolCalls = JsonConvert.DeserializeObject<List<StructuredToolCall>>(toolCallsJson);
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimMind-Advisor] ToolCalls parse failed for {Pawn.Name.ToStringShort}: {ex.Message}");
                 CompleteRequestCycle();
                 return;
             }
 
+            List<StructuredToolCall>? toolCalls = null;
+
+            if (!string.IsNullOrEmpty(response.ToolCallsJson))
+            {
+                _taskDriver.SetReasoningContent(response.ReasoningContent);
+                if (!_taskDriver.TryParseToolCalls(response.ToolCallsJson ?? string.Empty, out toolCalls))
+                {
+                    CompleteRequestCycle();
+                    return;
+                }
+            }
+            else if (!string.IsNullOrEmpty(response.Content))
+            {
+                _taskDriver.SetReasoningContent(response.ReasoningContent);
+                toolCalls = _taskDriver.TryParseContentAsToolCalls(response.Content);
+                if (toolCalls != null)
+                {
+                    Log.Message($"[RimMind-Advisor] Parsed {toolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
+                }
+            }
+
             if (toolCalls == null || toolCalls.Count == 0)
             {
+                Log.Warning($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
                 CompleteRequestCycle();
                 return;
             }
@@ -528,12 +276,18 @@ namespace RimMind.Advisor.Comps
             int succeeded = results.Count(r => r.Success);
             Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{intents.Count} actions for {Pawn.Name.ToStringShort}");
 
-            var historyStore = AdvisorHistoryStore.Instance;
-            if (historyStore != null)
+            // Broadcast decision events
+            foreach (var intent in intents)
+            {
+                _taskDriver.BroadcastDecisionExecuted(intent.IntentId, intent.Reason);
+            }
+
+            var historyStoreForBatch = AdvisorHistoryStore.Instance;
+            if (historyStoreForBatch != null)
             {
                 foreach (var r in results)
                 {
-                    historyStore.AddRecord(Pawn, new AdvisorRequestRecord
+                    historyStoreForBatch.AddRecord(Pawn, new AdvisorRequestRecord
                     {
                         action = r.ActionName,
                         reason = intents.FirstOrDefault(i => i.IntentId == r.ActionName)?.Reason ?? "",
@@ -559,75 +313,75 @@ namespace RimMind.Advisor.Comps
                 }
             }
 
-            if (_toolCallDepth < MaxToolCallDepth)
+            if (_taskDriver.ShouldRequestFeedback())
             {
-                RequestToolFeedback(toolCallsJson, results);
+                _taskDriver.RequestToolFeedback(toolCalls, results, OnAdviceReceived);
             }
             else
             {
-                Log.Message($"[RimMind-Advisor] Max tool call depth ({MaxToolCallDepth}) reached for {Pawn.Name.ToStringShort}");
+                Log.Message($"[RimMind-Advisor] Max tool call depth ({AdvisorTaskDriver.MaxToolCallDepth}) reached for {Pawn.Name.ToStringShort}");
                 CompleteRequestCycle();
             }
         }
 
-        private void RequestToolFeedback(string toolCallsJson, List<ActionResult> results)
+        private void CompleteRequestCycle()
         {
-            _toolCallDepth++;
-            _pendingRequestTick = Find.TickManager.TicksGame;
-
-            List<StructuredToolCall>? toolCalls;
-            try
+            if (_hasPendingRequest)
             {
-                toolCalls = JsonConvert.DeserializeObject<List<StructuredToolCall>>(toolCallsJson);
+                _hasPendingRequest = false;
+                _lastRequestTick = Find.TickManager.TicksGame;
+                AdvisorConcurrencyTracker.Decrement();
             }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimMind-Advisor] RequestToolFeedback deserialization failed for {Pawn.Name.ToStringShort}: {ex.Message}");
-                CompleteRequestCycle();
-                return;
-            }
+            _taskDriver?.ClearState();
+            _taskDriver = null;
+        }
 
-            var messages = new List<ChatMessage>(_lastMessages ?? new List<ChatMessage>());
+        private void DebugSkip(string reason)
+        {
+            if (DebugLogging)
+                Log.Message($"[RimMind-Advisor][Skip] {Pawn.Name.ToStringShort}: {reason}");
+        }
 
-            messages.Add(new ChatMessage
-            {
-                Role = "assistant",
-                Content = "",
-                ReasoningContent = _lastReasoningContent,
-                ToolCalls = toolCalls?.Select(tc => new ChatToolCall
-                {
-                    Id = tc.Id,
-                    Name = tc.Name,
-                    Arguments = tc.Arguments,
-                }).ToList() ?? new List<ChatToolCall>()
-            });
+        public override IEnumerable<Gizmo> CompGetGizmosExtra()
+        {
+            string label = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
+            string subLabel = "";
 
-            foreach (var result in results)
+            if (IsEnabled)
             {
-                var matchingTc = toolCalls?.FirstOrDefault(tc => tc.Name == result.ActionName);
-                messages.Add(new ChatMessage
-                {
-                    Role = "tool",
-                    Content = result.ToString(),
-                    ToolCallId = matchingTc?.Id ?? result.ActionName,
-                });
+                int cooldownLeft = Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick);
+                if (cooldownLeft > 0)
+                    subLabel = "RimMind.Advisor.UI.Gizmo.Cooldown".Translate($"{cooldownLeft / 2500f:F1}");
+                else if (_hasPendingRequest)
+                    subLabel = "RimMind.Advisor.UI.Gizmo.Waiting".Translate();
             }
 
-            _lastMessages = messages;
-
-            var followUpRequest = new AIRequest
+            yield return new Command_Action
             {
-                Messages = messages,
-                MaxTokens = 400,
-                Temperature = 0.7f,
-                RequestId = $"Structured_NPC-{Pawn.thingIDNumber}_fb{_toolCallDepth}",
-                ModId = "Advisor",
-                ExpireAtTicks = Find.TickManager.TicksGame + Settings.requestExpireTicks,
-                UseJsonMode = true,
-                Priority = AIRequestPriority.Normal,
+                defaultLabel = label,
+                defaultDesc = subLabel.NullOrEmpty()
+                    ? "RimMind.Advisor.UI.Gizmo.Desc".Translate()
+                    : subLabel,
+                icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                action = () => IsEnabled = !IsEnabled,
             };
 
-            RimMindAPI.RequestStructuredAsync(followUpRequest, _lastSchema, OnAdviceReceived, _lastTools);
+            if (Prefs.DevMode)
+            {
+                yield return new Command_Action
+                {
+                    defaultLabel = "RimMind.Advisor.UI.Gizmo.ForceRequest".Translate(),
+                    defaultDesc = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                    action = ForceRequestAdvice,
+                };
+            }
+        }
+
+        public override void PostExposeData()
+        {
+            base.PostExposeData();
+            Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
         }
 
         private static Pawn? FindPawnByName(Map? map, string name)
