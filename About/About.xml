@@ -1,33 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-    <name>RimMind - Advisor</name>
-    <author>mcocdaa</author>
-    <packageId>mcocdaa.RimMindAdvisor</packageId>
-    <modVersion>0.0.1</modVersion>
-    <supportedVersions>
-        <li>1.6</li>
-    </supportedVersions>
-    <description>AI-powered pawn advisor. Reads each colonist's state, personality, and available work, then selects the most character-appropriate next action via LLM.</description>
-    <modDependencies>
-        <li>
-            <packageId>brrainz.harmony</packageId>
-            <displayName>Harmony</displayName>
-            <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
-        </li>
-        <li>
-            <packageId>mcocdaa.RimMindCore</packageId>
-            <displayName>RimMind - Core</displayName>
-            <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core</downloadUrl>
-        </li>
-        <li>
-            <packageId>mcocdaa.RimMindActions</packageId>
-            <displayName>RimMind - Actions</displayName>
-            <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions</downloadUrl>
-        </li>
-    </modDependencies>
-    <loadAfter>
-        <li>brrainz.harmony</li>
-        <li>mcocdaa.RimMindCore</li>
-        <li>mcocdaa.RimMindActions</li>
-    </loadAfter>
+  <name>RimMind - Advisor</name>
+  <author>mcocdaa</author>
+  <packageId>mcocdaa.RimMindAdvisor</packageId>
+  <modVersion>0.0.1</modVersion>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>AI-powered pawn advisor. Reads each colonist's state, personality, and available work, then selects the most character-appropriate next action via LLM.</description>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+    <li>
+      <packageId>mcocdaa.RimMindCore</packageId>
+      <displayName>RimMind - Core</displayName>
+      <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core</downloadUrl>
+    </li>
+    <li>
+      <packageId>mcocdaa.RimMindActions</packageId>
+      <displayName>RimMind - Actions</displayName>
+      <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions</downloadUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+    <li>mcocdaa.RimMindCore</li>
+    <li>mcocdaa.RimMindActions</li>
+  </loadAfter>
 </ModMetaData>

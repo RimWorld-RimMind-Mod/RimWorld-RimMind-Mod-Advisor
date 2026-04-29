@@ -14,6 +14,8 @@ namespace RimMind.Advisor.Data
 
         public AdvisorHistoryStore(World world) : base(world)
         {
+            if (_instance != null && _instance != this)
+                Log.Warning($"[RimMind-Advisor] AdvisorHistoryStore: replacing stale instance");
             _instance = this;
         }
 
@@ -29,7 +31,10 @@ namespace RimMind.Advisor.Data
 
         public void AddRecord(Pawn pawn, AdvisorRequestRecord record)
         {
-            GetRecords(pawn).Add(record);
+            var list = GetRecords(pawn);
+            list.Add(record);
+            if (list.Count > 50)
+                list.RemoveRange(0, list.Count - 50);
             _globalLog.Add(record);
             if (_globalLog.Count > 200)
                 _globalLog.RemoveRange(0, _globalLog.Count - 200);

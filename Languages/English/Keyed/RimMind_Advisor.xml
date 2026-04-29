@@ -1,114 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
-    <!-- RimMindAdvisorMod.cs -->
-
-    <!-- Settings -->
-    <RimMind.Advisor.Settings.Tab>Advisor</RimMind.Advisor.Settings.Tab>
-    <RimMind.Advisor.Settings.EnableAdvisor>Enable AI Advisor System</RimMind.Advisor.Settings.EnableAdvisor>
-    <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>
-    <RimMind.Advisor.Settings.ShowThoughtBubble>Show AI Decision Bubble</RimMind.Advisor.Settings.ShowThoughtBubble>
-    <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>Display the AI's reasoning for choosing an action above the colonist.</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
-    <RimMind.Advisor.Settings.TriggerSources>Trigger Sources</RimMind.Advisor.Settings.TriggerSources>
-    <RimMind.Advisor.Settings.EnableIdleTrigger>Trigger on Colonist Idle</RimMind.Advisor.Settings.EnableIdleTrigger>
-    <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>When a colonist has no work, AI will proactively choose their next action.</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
-    <RimMind.Advisor.Settings.EnableMoodTrigger>Trigger on Low Mood</RimMind.Advisor.Settings.EnableMoodTrigger>
-    <RimMind.Advisor.Settings.EnableMoodTrigger.Desc>When a colonist's mood is too low, AI will prioritize actions that improve their mood.</RimMind.Advisor.Settings.EnableMoodTrigger.Desc>
-    <RimMind.Advisor.Settings.PawnScanInterval>Pawn Scan Interval: {0} ticks (~{1}s)</RimMind.Advisor.Settings.PawnScanInterval>
-    <RimMind.Advisor.Settings.PawnScanInterval.Desc>Frequency of scanning for idle colonists. Lower values are more responsive but have higher performance cost.</RimMind.Advisor.Settings.PawnScanInterval.Desc>
-    <RimMind.Advisor.Settings.MoodThreshold>Mood Trigger Threshold: {0}%</RimMind.Advisor.Settings.MoodThreshold>
-    <RimMind.Advisor.Settings.MoodThreshold.Desc>Triggers AI advisor when a colonist's mood falls below this percentage.</RimMind.Advisor.Settings.MoodThreshold.Desc>
-    <RimMind.Advisor.Settings.RequestCooldown>Request Cooldown: {0} game hours ({1} ticks)</RimMind.Advisor.Settings.RequestCooldown>
-    <RimMind.Advisor.Settings.RequestCooldown.Desc>Minimum interval between AI requests for the same colonist.</RimMind.Advisor.Settings.RequestCooldown.Desc>
-    <RimMind.Advisor.Settings.MaxConcurrent>Max Concurrent Requests: {0}</RimMind.Advisor.Settings.MaxConcurrent>
-    <RimMind.Advisor.Settings.MaxConcurrent.Desc>Maximum number of simultaneous AI requests. Higher values improve responsiveness but increase API costs.</RimMind.Advisor.Settings.MaxConcurrent.Desc>
-    <RimMind.Advisor.Settings.CustomPrompt>Custom Advisor Prompt (appended to system prompt end, leave empty to skip):</RimMind.Advisor.Settings.CustomPrompt>
-    <RimMind.Advisor.Settings.Section.Display>Display</RimMind.Advisor.Settings.Section.Display>
-    <RimMind.Advisor.Settings.Section.Request>Request Settings</RimMind.Advisor.Settings.Section.Request>
-    <RimMind.Advisor.Settings.RequestExpire>Request expiry: {0} game days</RimMind.Advisor.Settings.RequestExpire>
-    <RimMind.Advisor.Settings.RequestExpire.Desc>AI requests that don't receive a response within this time are automatically cancelled.</RimMind.Advisor.Settings.RequestExpire.Desc>
-    <RimMind.Advisor.Settings.Section.Approval>Approval &amp; Blocking</RimMind.Advisor.Settings.Section.Approval>
-    <RimMind.Advisor.Settings.EnableRequestSystem>Enable request system (colonist requests require player approval)</RimMind.Advisor.Settings.EnableRequestSystem>
-    <RimMind.Advisor.Settings.EnableRequestSystem.Desc>When enabled, colonists can proactively submit action requests that require player approval before execution.</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
-    <RimMind.Advisor.Settings.EnableRiskApproval>Enable risk blocking (high-risk actions require player approval)</RimMind.Advisor.Settings.EnableRiskApproval>
-    <RimMind.Advisor.Settings.EnableRiskApproval.Desc>When enabled, actions at or above the risk threshold are automatically blocked and require player approval.</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
-    <RimMind.Advisor.Settings.AutoBlockRiskLevel>Auto-block risk level threshold: {0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
-    <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>Actions at or above this risk level are automatically blocked and require player approval.</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
-
-    <!-- CompAIAdvisor.cs -->
-
-    <!-- Gizmo -->
-    <RimMind.Advisor.UI.Gizmo.Enabled>AI Advisor: On</RimMind.Advisor.UI.Gizmo.Enabled>
-    <RimMind.Advisor.UI.Gizmo.Disabled>AI Advisor: Off</RimMind.Advisor.UI.Gizmo.Disabled>
-    <RimMind.Advisor.UI.Gizmo.Cooldown>Cooling down ({0} game hours)</RimMind.Advisor.UI.Gizmo.Cooldown>
-    <RimMind.Advisor.UI.Gizmo.Waiting>Waiting for AI response...</RimMind.Advisor.UI.Gizmo.Waiting>
-    <RimMind.Advisor.UI.Gizmo.Desc>When enabled, AI will choose the next action for this colonist when idle.</RimMind.Advisor.UI.Gizmo.Desc>
-    <RimMind.Advisor.UI.Gizmo.ForceRequest>Request AI Advice Now</RimMind.Advisor.UI.Gizmo.ForceRequest>
-    <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>Bypass cooldown and request immediately (dev mode only)</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
-
-    <!-- Mote -->
-    <RimMind.Advisor.UI.MoteMore> (+{0} more)</RimMind.Advisor.UI.MoteMore>
-
-    <!-- AdvisorPromptBuilder.cs - Five-section -->
-
-    <!-- Prompt -->
-    <RimMind.Advisor.Prompt.System.Role>[Role] You are deeply role-playing the RimWorld colonist [{0}], fully immersed in this character. You are not a bystanding advisor, but {0} themselves thinking about what to do next.</RimMind.Advisor.Prompt.System.Role>
-    <RimMind.Advisor.Prompt.System.Goal>[Goal] Based on your ({0}) current state, personality, skills, and base situation, choose the next action that best fits the character from the candidate task list.</RimMind.Advisor.Prompt.System.Goal>
-    <RimMind.Advisor.Prompt.System.Process>[Process]\n1. Review current state (mood, health, skills, equipment)\n2. Check base needs and priorities\n3. Evaluate candidate actions against your personality\n4. Select the most fitting action(s)</RimMind.Advisor.Prompt.System.Process>
-    <RimMind.Advisor.Prompt.System.Constraint>You are in the RimWorld game world. Stay in character. Do not break the fourth wall. Do not mention game mechanics, 'player', or 'game'.</RimMind.Advisor.Prompt.System.Constraint>
-    <RimMind.Advisor.Prompt.System.Example>[Example]\nInput: Candidate list includes Mining, Cooking, force_rest\nOutput: {{"advices":[{{"action":"force_rest","pawn":null,"target":null,"param":null,"reason":"Too tired, rest first","request_type":"normal"}},{{"action":"assign_work","pawn":null,"target":null,"param":"Mining","reason":"Mine after resting","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Example>
-    <RimMind.Advisor.Prompt.System.Output>[Output] Only return the following JSON format, do not output anything else:\n{{"advices":[{{"action":"...","pawn":null,"target":null,"param":null,"reason":"brief reason","request_type":"normal"}}]}}</RimMind.Advisor.Prompt.System.Output>
-    <RimMind.Advisor.Prompt.System.Fallback>[Fallback] If unable to decide, return {{"advices":[{{"action":"assign_work","pawn":null,"target":null,"param":"Cleaning","reason":"Clean up first","request_type":"normal"}}]}}.</RimMind.Advisor.Prompt.System.Fallback>
-    <RimMind.Advisor.Prompt.FieldRules>Field Rules (important):\n- action: Required.\n    - [Work Tasks] section: action must be "assign_work", param fills the WorkType defName in parentheses (can add @x,z for coordinates)\n    - [Instant Actions] section: action fills the intentId in parentheses directly\n- pawn: Currently only for {0}, fill null\n- target: For actions requiring a target like tend_pawn / rescue_pawn / social_dining, fill the target colonist's short name; otherwise fill null\n- param: For assign_work fill WorkType defName (e.g. Mining or Mining@45,32); for move_to fill "x,z"; otherwise fill null\n- reason: Brief reason, will be displayed in {0}'s thought bubble, should reflect the character's inner monologue\n- request_type: Optional, default "normal".\n    - "normal": Normal action, executed automatically\n    - "request": Colonist initiative request, requires player approval. Use when {0} has a strong need but cannot accomplish it alone (e.g. wants to build a room, change work assignment, arrange social activity)\n    - "high_risk": High-risk action, requires player approval</RimMind.Advisor.Prompt.FieldRules>
-    <RimMind.Advisor.Prompt.OutputRules>Output Quantity Rules:\n- Work Tasks: Can queue multiple (advices array with multiple assign_work elements, executed in order)\n- Instant Actions (force_rest / social_relax / inspire etc.): Usually only 1 needed, do not stack; not every request needs instant actions\n- Mixed Advice (work + instant): Write instant actions first, then work tasks</RimMind.Advisor.Prompt.OutputRules>
-    <RimMind.Advisor.Prompt.RiskControl>Risk Control:\n- Actions marked [High] or [Danger] in the candidate list carry higher risk; prefer low or medium risk actions unless necessary\n- Avoid triggering high-risk actions (such as inspire series, drop_weapon) under normal circumstances</RimMind.Advisor.Prompt.RiskControl>
-    <RimMind.Advisor.Prompt.DiversityHint>Request Diversity:\n- Try to ensure diverse requests; avoid repeatedly submitting the same type of request\n- If a similar request was recently approved or rejected, choose a different type of action</RimMind.Advisor.Prompt.DiversityHint>
-    <RimMind.Advisor.Prompt.CustomRules>[Player Custom Rules]</RimMind.Advisor.Prompt.CustomRules>
-    <RimMind.Advisor.Prompt.CandidateHeader>[Executable Action Candidates]</RimMind.Advisor.Prompt.CandidateHeader>
-
-    <!-- JobCandidateBuilder.cs -->
-
-    <!-- Prompt - Section Headers -->
-    <RimMind.Advisor.Prompt.WorkSectionHeader>[Work Tasks] (action must be assign_work, param fills WorkType defName in parentheses; can add @x,z for coordinates) [Low Risk]</RimMind.Advisor.Prompt.WorkSectionHeader>
-    <RimMind.Advisor.Prompt.NoWorkTargets>  (No executable work targets currently)</RimMind.Advisor.Prompt.NoWorkTargets>
-    <RimMind.Advisor.Prompt.InstantSectionHeader>[Instant Actions] (action fills the intentId in parentheses; outside parentheses is description)</RimMind.Advisor.Prompt.InstantSectionHeader>
-
-    <!-- Prompt - Work Hints -->
-    <RimMind.Advisor.Prompt.TargetCountSingle>{0} target, nearest {1} cells</RimMind.Advisor.Prompt.TargetCountSingle>
-    <RimMind.Advisor.Prompt.TargetCountMulti>{0} targets, nearest {1} cells ({2})</RimMind.Advisor.Prompt.TargetCountMulti>
-
-    <!-- Prompt - Instant Action Hints -->
-    <RimMind.Advisor.Prompt.RestLow>Stamina {0}%</RimMind.Advisor.Prompt.RestLow>
-    <RimMind.Advisor.Prompt.RestSufficient>Stamina {0}% (sufficient)</RimMind.Advisor.Prompt.RestSufficient>
-    <RimMind.Advisor.Prompt.MoodLow>Mood {0}%, suggest relaxing</RimMind.Advisor.Prompt.MoodLow>
-    <RimMind.Advisor.Prompt.MoodNormal>Mood {0}%</RimMind.Advisor.Prompt.MoodNormal>
-    <RimMind.Advisor.Prompt.SocialDiningHint>Fill target=partner short name, e.g. {0}</RimMind.Advisor.Prompt.SocialDiningHint>
-    <RimMind.Advisor.Prompt.EatFoodHint>Available food: {0}; param fill food defName (e.g. Chocolate)</RimMind.Advisor.Prompt.EatFoodHint>
-    <RimMind.Advisor.Prompt.TendPawnHint>target={0} (injured, needs treatment)</RimMind.Advisor.Prompt.TendPawnHint>
-    <RimMind.Advisor.Prompt.RescuePawnHint>target={0} (downed)</RimMind.Advisor.Prompt.RescuePawnHint>
-    <RimMind.Advisor.Prompt.InspireWork>Trigger work frenzy inspiration</RimMind.Advisor.Prompt.InspireWork>
-    <RimMind.Advisor.Prompt.InspireFight>Trigger shooting frenzy inspiration</RimMind.Advisor.Prompt.InspireFight>
-    <RimMind.Advisor.Prompt.InspireTrade>Trigger trade inspiration</RimMind.Advisor.Prompt.InspireTrade>
-    <RimMind.Advisor.Prompt.MoveToHint>param fill target coordinates x,z</RimMind.Advisor.Prompt.MoveToHint>
-
-    <!-- Prompt - Risk Tags -->
-    <RimMind.Advisor.Prompt.Risk.Low>[Low]</RimMind.Advisor.Prompt.Risk.Low>
-    <RimMind.Advisor.Prompt.Risk.Medium>[Medium]</RimMind.Advisor.Prompt.Risk.Medium>
-    <RimMind.Advisor.Prompt.Risk.High>[High]</RimMind.Advisor.Prompt.Risk.High>
-    <RimMind.Advisor.Prompt.Risk.Critical>[Danger]</RimMind.Advisor.Prompt.Risk.Critical>
-
-    <!-- Advisor History -->
-    <RimMind.Advisor.Prompt.RecentHistory>[Recent Request History]</RimMind.Advisor.Prompt.RecentHistory>
-    <RimMind.Advisor.Prompt.ResultApproved>Approved</RimMind.Advisor.Prompt.ResultApproved>
-    <RimMind.Advisor.Prompt.ResultRejected>Player Rejected</RimMind.Advisor.Prompt.ResultRejected>
-    <RimMind.Advisor.Prompt.ResultBlocked>System Blocked</RimMind.Advisor.Prompt.ResultBlocked>
-    <RimMind.Advisor.Prompt.ResultIgnored>Ignored</RimMind.Advisor.Prompt.ResultIgnored>
-    <RimMind.Advisor.Prompt.HistoryHeader>[Recent Request History]</RimMind.Advisor.Prompt.HistoryHeader>
-    <RimMind.Advisor.Prompt.HistoryCompressed>({0} earlier records omitted)</RimMind.Advisor.Prompt.HistoryCompressed>
-
-    <!-- Request System -->
-    <RimMind.Advisor.Request.ColonistRequest>[{0}] Request</RimMind.Advisor.Request.ColonistRequest>
-    <RimMind.Advisor.Request.RiskAction>High-risk action: {0}</RimMind.Advisor.Request.RiskAction>
-    <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>
-    <RimMind.Advisor.Request.Reject>Reject</RimMind.Advisor.Request.Reject>
-    <RimMind.Advisor.Request.Ignore>Ignore</RimMind.Advisor.Request.Ignore>
+  <!-- RimMindAdvisorMod.cs -->
+  <!-- Settings -->
+  <RimMind.Advisor.Settings.Tab>Advisor</RimMind.Advisor.Settings.Tab>
+  <RimMind.Advisor.Settings.EnableAdvisor>Enable AI Advisor System</RimMind.Advisor.Settings.EnableAdvisor>
+  <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>
+  <RimMind.Advisor.Settings.ShowThoughtBubble>Show AI Decision Bubble</RimMind.Advisor.Settings.ShowThoughtBubble>
+  <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>Display the AI's reasoning for choosing an action above the colonist.</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+  <RimMind.Advisor.Settings.CustomPrompt>Custom System Prompt (inserted after system messages)</RimMind.Advisor.Settings.CustomPrompt>
+  <RimMind.Advisor.Settings.TriggerSources>Trigger Sources</RimMind.Advisor.Settings.TriggerSources>
+  <RimMind.Advisor.Settings.EnableIdleTrigger>Trigger on Colonist Idle</RimMind.Advisor.Settings.EnableIdleTrigger>
+  <RimMind.Advisor.Settings.EnableIdleTrigger.Desc>When a colonist has no work, AI will proactively choose their next action.</RimMind.Advisor.Settings.EnableIdleTrigger.Desc>
+  <RimMind.Advisor.Settings.EnableMoodTrigger>Trigger on Low Mood</RimMind.Advisor.Settings.EnableMoodTrigger>
+  <RimMind.Advisor.Settings.EnableMoodTrigger.Desc>When a colonist's mood is too low, AI will prioritize actions that improve their mood.</RimMind.Advisor.Settings.EnableMoodTrigger.Desc>
+  <RimMind.Advisor.Settings.PawnScanInterval>Pawn Scan Interval: {0} ticks (~{1}s)</RimMind.Advisor.Settings.PawnScanInterval>
+  <RimMind.Advisor.Settings.PawnScanInterval.Desc>Frequency of scanning for idle colonists. Lower values are more responsive but have higher performance cost.</RimMind.Advisor.Settings.PawnScanInterval.Desc>
+  <RimMind.Advisor.Settings.MoodThreshold>Mood Trigger Threshold: {0}%</RimMind.Advisor.Settings.MoodThreshold>
+  <RimMind.Advisor.Settings.MoodThreshold.Desc>Triggers AI advisor when a colonist's mood falls below this percentage.</RimMind.Advisor.Settings.MoodThreshold.Desc>
+  <RimMind.Advisor.Settings.RequestCooldown>Request Cooldown: {0} game hours ({1} ticks)</RimMind.Advisor.Settings.RequestCooldown>
+  <RimMind.Advisor.Settings.RequestCooldown.Desc>Minimum interval between AI requests for the same colonist.</RimMind.Advisor.Settings.RequestCooldown.Desc>
+  <RimMind.Advisor.Settings.MaxConcurrent>Max Concurrent Requests: {0}</RimMind.Advisor.Settings.MaxConcurrent>
+  <RimMind.Advisor.Settings.MaxConcurrent.Desc>Maximum number of simultaneous AI requests. Higher values improve responsiveness but increase API costs.</RimMind.Advisor.Settings.MaxConcurrent.Desc>
+  <RimMind.Advisor.Settings.Section.Display>Display</RimMind.Advisor.Settings.Section.Display>
+  <RimMind.Advisor.Settings.Section.Request>Request Settings</RimMind.Advisor.Settings.Section.Request>
+  <RimMind.Advisor.Settings.RequestExpire>Approval request expiry: {0} game days</RimMind.Advisor.Settings.RequestExpire>
+  <RimMind.Advisor.Settings.RequestExpire.Desc>Approval floating window expiry time. Requests not responded to within this time are automatically dismissed.</RimMind.Advisor.Settings.RequestExpire.Desc>
+  <RimMind.Advisor.Settings.NoTriggerWarning>Warning: No trigger source enabled. AI Advisor will not activate automatically.</RimMind.Advisor.Settings.NoTriggerWarning>
+  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>Warning: Approval system is off. Risk blocking will not take effect; all actions execute directly.</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
+  <RimMind.Advisor.Settings.Section.Approval>Approval &amp; Blocking</RimMind.Advisor.Settings.Section.Approval>
+  <RimMind.Advisor.Settings.EnableRequestSystem>Enable request system (colonist requests require player approval)</RimMind.Advisor.Settings.EnableRequestSystem>
+  <RimMind.Advisor.Settings.EnableRequestSystem.Desc>When enabled, colonists can proactively submit action requests that require player approval before execution.</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
+  <RimMind.Advisor.Settings.EnableRiskApproval>Enable risk blocking (high-risk actions require player approval)</RimMind.Advisor.Settings.EnableRiskApproval>
+  <RimMind.Advisor.Settings.EnableRiskApproval.Desc>When enabled, actions at or above the risk threshold are automatically blocked and require player approval.</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
+  <RimMind.Advisor.Settings.AutoBlockRiskLevel>Auto-block risk level threshold: {0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
+  <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>Actions at or above this risk level are automatically blocked and require player approval.</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
+  <!-- CompAIAdvisor.cs -->
+  <!-- Gizmo -->
+  <RimMind.Advisor.UI.Gizmo.Enabled>AI Advisor: On</RimMind.Advisor.UI.Gizmo.Enabled>
+  <RimMind.Advisor.UI.Gizmo.Disabled>AI Advisor: Off</RimMind.Advisor.UI.Gizmo.Disabled>
+  <RimMind.Advisor.UI.Gizmo.Cooldown>Cooling down ({0} game hours)</RimMind.Advisor.UI.Gizmo.Cooldown>
+  <RimMind.Advisor.UI.Gizmo.Waiting>Waiting for AI response...</RimMind.Advisor.UI.Gizmo.Waiting>
+  <RimMind.Advisor.UI.Gizmo.Desc>When enabled, AI will choose the next action for this colonist when idle.</RimMind.Advisor.UI.Gizmo.Desc>
+  <RimMind.Advisor.UI.Gizmo.ForceRequest>Request AI Advice Now</RimMind.Advisor.UI.Gizmo.ForceRequest>
+  <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>Bypass cooldown and request immediately (dev mode only)</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
+  <!-- Prompt -->
+  <!-- JobCandidateBuilder.cs -->
+  <!-- Prompt - Section Headers -->
+  <RimMind.Advisor.Prompt.WorkSectionHeader>[Work Tasks] (action must be assign_work, param fills WorkType defName in parentheses; can add @x,z for coordinates) [Low Risk]</RimMind.Advisor.Prompt.WorkSectionHeader>
+  <RimMind.Advisor.Prompt.NoWorkTargets>  (No executable work targets currently)</RimMind.Advisor.Prompt.NoWorkTargets>
+  <RimMind.Advisor.Prompt.InstantSectionHeader>[Instant Actions] (action fills the intentId in parentheses; outside parentheses is description)</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <!-- Prompt - Work Hints -->
+  <RimMind.Advisor.Prompt.TargetCountSingle>{0} target, nearest {1} cells</RimMind.Advisor.Prompt.TargetCountSingle>
+  <RimMind.Advisor.Prompt.TargetCountMulti>{0} targets, nearest {1} cells ({2})</RimMind.Advisor.Prompt.TargetCountMulti>
+  <!-- Prompt - Instant Action Hints -->
+  <RimMind.Advisor.Prompt.RestLow>Stamina {0}%</RimMind.Advisor.Prompt.RestLow>
+  <RimMind.Advisor.Prompt.RestSufficient>Stamina {0}% (sufficient)</RimMind.Advisor.Prompt.RestSufficient>
+  <RimMind.Advisor.Prompt.MoodLow>Mood {0}%, suggest relaxing</RimMind.Advisor.Prompt.MoodLow>
+  <RimMind.Advisor.Prompt.MoodNormal>Mood {0}%</RimMind.Advisor.Prompt.MoodNormal>
+  <RimMind.Advisor.Prompt.EatFoodHint>Available food: {0}; param fill food defName (e.g. Chocolate)</RimMind.Advisor.Prompt.EatFoodHint>
+  <RimMind.Advisor.Prompt.TendPawnHint>target={0} (injured, needs treatment)</RimMind.Advisor.Prompt.TendPawnHint>
+  <RimMind.Advisor.Prompt.RescuePawnHint>target={0} (downed)</RimMind.Advisor.Prompt.RescuePawnHint>
+  <RimMind.Advisor.Prompt.InspireWork>Trigger work frenzy inspiration</RimMind.Advisor.Prompt.InspireWork>
+  <RimMind.Advisor.Prompt.InspireShoot>Trigger shooting frenzy inspiration</RimMind.Advisor.Prompt.InspireShoot>
+  <RimMind.Advisor.Prompt.InspireTrade>Trigger trade inspiration</RimMind.Advisor.Prompt.InspireTrade>
+  <RimMind.Advisor.Prompt.MoveToHint>param fill target coordinates x,z</RimMind.Advisor.Prompt.MoveToHint>
+  <!-- Prompt - Risk Tags -->
+  <RimMind.Advisor.Prompt.Risk.Low>[Low]</RimMind.Advisor.Prompt.Risk.Low>
+  <RimMind.Advisor.Prompt.Risk.Medium>[Medium]</RimMind.Advisor.Prompt.Risk.Medium>
+  <RimMind.Advisor.Prompt.Risk.High>[High]</RimMind.Advisor.Prompt.Risk.High>
+  <RimMind.Advisor.Prompt.Risk.Critical>[Danger]</RimMind.Advisor.Prompt.Risk.Critical>
+  <!-- Advisor History -->
+  <RimMind.Advisor.Prompt.RecentHistory>[Recent Request History]</RimMind.Advisor.Prompt.RecentHistory>
+  <RimMind.Advisor.Prompt.ResultApproved>Approved</RimMind.Advisor.Prompt.ResultApproved>
+  <RimMind.Advisor.Prompt.ResultRejected>Player Rejected</RimMind.Advisor.Prompt.ResultRejected>
+  <RimMind.Advisor.Prompt.ResultBlocked>System Blocked</RimMind.Advisor.Prompt.ResultBlocked>
+  <RimMind.Advisor.Prompt.ResultIgnored>Ignored</RimMind.Advisor.Prompt.ResultIgnored>
+  <!-- Request System -->
+  <RimMind.Advisor.Request.RiskAction>High-risk action: {0}</RimMind.Advisor.Request.RiskAction>
+  <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>
+  <RimMind.Advisor.Request.Reject>Reject</RimMind.Advisor.Request.Reject>
+  <!-- TaskInstruction sub-keys (extensible list) -->
+  <RimMind.Advisor.Prompt.TaskInstruction.Role>You are a colony advisor, responsible for recommending actions for colonists.</RimMind.Advisor.Prompt.TaskInstruction.Role>
+  <RimMind.Advisor.Prompt.TaskInstruction.Goal>Based on the current state and available actions, provide the most reasonable advice.</RimMind.Advisor.Prompt.TaskInstruction.Goal>
+  <RimMind.Advisor.Prompt.TaskInstruction.Process>1. Examine current state (mood, health, skills, equipment)
+2. Check colony needs and priorities
+3. Evaluate candidate actions against personality
+4. Choose the most fitting action</RimMind.Advisor.Prompt.TaskInstruction.Process>
+  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.)</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.\n\nIf Tool Calling is unavailable, fallback to JSON: {"advices":[{"action":"action_name","target":"target_name","param":"params","reason":"reasoning"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling rules:
+- Each available action is a tool/function; call by matching function name to action ID
+- param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z" coordinates; leave empty for others
+- The returned reason field will be displayed in the colonist's thought bubble</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>Output count rules:
+- Work tasks (assign_work): can queue multiple (advices array has multiple elements, executed in order)
+- Instant actions (force_rest / social_relax etc.): usually only 1 needed
+- Mixed advice (work + instant): write instant actions first, then work tasks</RimMind.Advisor.Prompt.TaskInstruction.OutputRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.RiskControl>Risk control:
+- Actions marked [High] or [Danger] in the candidate list are higher risk
+- Prefer low or medium risk actions when not necessary
+- Avoid triggering high-risk actions (e.g. inspire series, drop_weapon) in normal situations</RimMind.Advisor.Prompt.TaskInstruction.RiskControl>
+  <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>Diversity hints:
+- Try to ensure diverse requests, avoid submitting the same type of request repeatedly
+- If similar requests have been approved or rejected recently, try a different type of action</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 </LanguageData>
