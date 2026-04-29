@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Newtonsoft.Json;
 using RimMind.Actions;
+using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
 using RimMind.Core.Client;
@@ -57,6 +59,23 @@ namespace RimMind.Advisor.Advisor
                     if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
                 }
                 snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = _settings.advisorCustomPrompt });
+
+                string reactionsText = GetRecentRejectedAdvisorDecisions(20);
+                if (!string.IsNullOrEmpty(reactionsText))
+                    snapshot.Messages.Insert(lastSysIdx + 2, new ChatMessage { Role = "system", Content = reactionsText });
+            }
+            else
+            {
+                string reactionsText = GetRecentRejectedAdvisorDecisions(20);
+                if (!string.IsNullOrEmpty(reactionsText))
+                {
+                    int lastSysIdx = -1;
+                    for (int i = snapshot.Messages.Count - 1; i >= 0; i--)
+                    {
+                        if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
+                    }
+                    snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = reactionsText });
+                }
             }
 
             _lastMessages = new List<ChatMessage>(snapshot.Messages);
@@ -244,6 +263,40 @@ namespace RimMind.Advisor.Advisor
             _lastSchema = null;
             _toolCallDepth = 0;
             _lastReasoningContent = null;
+        }
+
+        private static string GetRecentRejectedAdvisorDecisions(int maxCount)
+        {
+            try
+            {
+                var store = AdvisorHistoryStore.Instance;
+                if (store == null) return string.Empty;
+
+                var globalLog = store.GlobalLog;
+                if (globalLog == null || globalLog.Count == 0) return string.Empty;
+
+                var rejected = globalLog
+                    .Where(r => r.result == "rejected")
+                    .OrderByDescending(r => r.tick)
+                    .Take(maxCount)
+                    .ToList();
+
+                if (rejected.Count == 0) return string.Empty;
+
+                var sb = new StringBuilder();
+                sb.AppendLine("[RimMind-Advisor] Player reactions to previous AI advice:");
+                foreach (var r in rejected)
+                {
+                    int day = r.tick / 60000 + 1;
+                    sb.AppendLine($"[Day {day}] Action: {r.action}, Reason: {r.reason ?? "N/A"}, Player rejected");
+                }
+                return sb.ToString().TrimEnd();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[RimMind-Advisor] Failed to get rejected decisions: {ex.Message}");
+                return string.Empty;
+            }
         }
 
         private float GetDecisionBudget()

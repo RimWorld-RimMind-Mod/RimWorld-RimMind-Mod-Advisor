@@ -189,7 +189,7 @@ namespace RimMind.Advisor.Comps
 
                 Pawn? targetPawn = null;
                 if (!targetName.NullOrEmpty())
-                    targetPawn = FindPawnByName(Pawn.Map, targetName!);
+                    targetPawn = FindPawnByName(targetName!);
 
                 var riskLevel = RimMindActionsAPI.GetRiskLevel(tc.Name);
                 bool systemBlocked = Settings.enableRiskApproval
@@ -406,17 +406,20 @@ namespace RimMind.Advisor.Comps
             Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
         }
 
-        private static Pawn? FindPawnByName(Map? map, string name)
+        private static Pawn? FindPawnByName(string name)
         {
-            if (map == null || string.IsNullOrEmpty(name)) return null;
+            if (string.IsNullOrEmpty(name)) return null;
 
             if (int.TryParse(name, out int thingId))
             {
-                var pawn = map.mapPawns.AllPawns.FirstOrDefault(p => p.thingIDNumber == thingId);
-                if (pawn != null) return pawn;
+                foreach (var map in Find.Maps)
+                {
+                    var pawn = map.mapPawns.AllPawns.FirstOrDefault(p => p.thingIDNumber == thingId);
+                    if (pawn != null) return pawn;
+                }
             }
 
-            var matches = map.mapPawns.AllPawns
+            var matches = Find.Maps.SelectMany(m => m.mapPawns.AllPawns)
                 .Where(p => p.Name?.ToStringShort == name)
                 .ToList();
 
