@@ -4,7 +4,7 @@ AI决策层，空闲/心情低落时LLM角色扮演选择最优行动，Tool Cal
 
 ## 项目定位
 
-AdvisorGameComponent 每隔 pawnScanIntervalTicks 扫描殖民者 → CompAIAdvisor 检查触发条件 → AdvisorTaskDriver 构建 ContextEngine Prompt + Tool Calling 请求 → 解析 StructuredToolCall → 审批高风险 → ExecuteBatchWithResults → 反馈循环(最多3层)。含双层冷却(Advisor层+Core层)、并发控制(Interlocked)、决策历史持久化、决策事件广播(PublishPerception)。
+AdvisorGameComponent 每隔 pawnScanIntervalTicks 扫描殖民者 → CompAIAdvisor 检查触发条件 → AdvisorTaskDriver 构建 ContextEngine Prompt + Tool Calling 请求 → 解析 StructuredToolCall → 审批高风险(ApprovalManager) → ExecuteBatchWithResults → 反馈循环(最多3层)。含双层冷却(Advisor层+Core层)、并发控制(Interlocked)、决策历史持久化、决策事件广播(PublishPerception)。
 
 依赖: Core + Actions(编译期)，被其他模块消费(上下文Provider + Perception事件)。
 
@@ -29,8 +29,8 @@ Source/
 ├── Advisor/
 │   ├── AdvisorTaskDriver.cs            请求构建/ToolCall解析/反馈循环/决策广播
 │   ├── AdvisorGameComponent.cs         GameComponent Tick循环: 扫描→触发→并发控制
-│   ├── ApprovalManager.cs             ⚠️ 死代码(未被使用，CompAIAdvisor有内联审批逻辑)
-│   ├── AdvisorResponse.cs             ⚠️ 死代码(AdviceItem + AdvisorResponse静态类未被使用)
+│   ├── ApprovalManager.cs             审批管理(SubmitForApproval/GetRecentApprovalContext)
+│   ├── AdvisorResponse.cs             AdviceItem DTO(审批用数据结构)
 │   └── JobCandidateBuilder.cs          候选任务列表(工作+9个即时动作)
 ├── Data/
 │   ├── AdvisorRequestRecord.cs         单条决策记录(IExposable)
@@ -59,8 +59,9 @@ enableAdvisor → IsConfigured → 每pawnScanIntervalTicks扫描 → EvaluateAl
 ```
 ContextRequest(Scenario=Decision, Budget=ContextBudget) → BuildContextSnapshot
   → advisorCustomPrompt: 插入到最后一个system消息之后(Insert(lastSysIdx+1))
+  → GetRecentRejectedAdvisorDecisions: 注入玩家拒绝历史(从AdvisorHistoryStore读取)
   → BuildActionTools → RimMindActionsAPI.GetStructuredTools
-  → AIRequest(ModId="Advisor", UseJsonMode=true, Schema=AdviceOutput)
+  → AIRequest(ModId="Advisor", UseJsonMode=true, Schema=AdviceOutput, SystemPrompt=string.Empty)
   → RimMindAPI.RequestStructuredAsync(request, schema, callback, tools)
 ```
 
@@ -71,8 +72,11 @@ AIResponse.ToolCallsJson → TryParseToolCalls → List<StructuredToolCall>
   ├── (无ToolCalls) → Content Fallback: TryParseContentAsToolCalls({"advices":[...]})
   ├── 过滤: Name未supported / !IsAllowed → 跳过
   ├── 解析 Arguments → target/param/reason
+  ├── FindPawnByName: 先按ThingID搜索Find.Maps, 再按Name搜索Find.Maps
   ├── 审批: enableRiskApproval && riskLevel >= autoBlockRiskLevel
-  │   ├── 需审批 && enableRequestSystem → RegisterPendingRequest(批准/拒绝)
+  │   ├── 需审批 && enableRequestSystem → ApprovalManager.SubmitForApproval
+  │   │   ├── onApproved: ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 气泡
+  │   │   └── onRejected: AddRecord(result="rejected")
   │   └── 需审批 && !enableRequestSystem → 跳过
   └── 直接执行 → ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 气泡
        └── ShouldRequestFeedback → RequestToolFeedback(最多3层反馈循环)
@@ -115,6 +119,8 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 
 `AdvisorTaskDriver.BroadcastDecisionExecuted` → `RimMindAPI.PublishPerception(pawnId, "advisor_decision", summary, 0.5f)`
 
+⚠️ 已知问题：审批回调中 `_taskDriver` 可能为 null（竞态），导致 `BroadcastDecisionExecuted` 静默失败。见问题文档 #1。
+
 ## 设置项 (13项，全部有XML文档注释+序列化+UI+重置)
 
 | 字段 | 类型 | 默认 | UI控件 |
@@ -140,6 +146,7 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 - 翻译键前缀: `RimMind.Advisor.*`
 - TaskInstruction: `ContextKeyRegistry.Register("advisor_task", ...)` → `TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction", subKeys...)`
 - PawnContextProvider: `RimMindAPI.RegisterPawnContextProvider("advisor_history", ...)` [Obsolete, 应迁移到ContextKeyRegistry]
+- 审批路径: `ApprovalManager.SubmitForApproval` → `RimMindAPI.RegisterPendingRequest`
 
 ## 操作边界
 
@@ -148,14 +155,16 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 - 修改审批逻辑后验证风险分级正确
 - 新即时动作在 `BuildInstantHint` 添加case(返回null=过滤)
 - 修改 AdvisorTaskDriver 后验证反馈循环深度逻辑
+- 审批回调中必须检查 Pawn 有效性（null/dead/map）
 
 ### ⚠️ 先询问
 - 修改 `MaxToolCallDepth`(当前3)
 - 修改 `maxConcurrentRequests` 默认值
-- 重构 `CompAIAdvisor` 审批逻辑为使用 `ApprovalManager`
-- 删除 `ApprovalManager.cs` / `AdvisorResponse.cs` 死代码
+- 删除 `ApprovalManager.GetRecentApprovalContext` 死方法
+- 迁移 `RegisterPawnContextProvider` 到 `ContextKeyRegistry.RegisterPawnContext`
 
 ### 🚫 绝对禁止
 - 后台线程调用 `RimMindActionsAPI.ExecuteBatchWithResults`
 - 绕过 `RimMindAPI` 直接调用 `AIRequestQueue.Instance.ClearCooldown`
-- 审批路径不调用 `BroadcastDecisionExecuted`（与直接执行路径必须一致）
+- 审批回调中不捕获 `_taskDriver` 引用（必须避免竞态导致 BroadcastDecisionExecuted 失败）
+- 审批路径与直接执行路径行为不一致（广播/气泡/历史记录必须一致）
