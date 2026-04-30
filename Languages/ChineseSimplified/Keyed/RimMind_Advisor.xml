@@ -80,7 +80,7 @@
   <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>
   <RimMind.Advisor.Request.Reject>拒绝</RimMind.Advisor.Request.Reject>
   <!-- TaskInstruction sub-keys (extensible list) -->
-  <RimMind.Advisor.Prompt.TaskInstruction.Role>你是一名殖民顾问，负责为殖民者推荐行动。</RimMind.Advisor.Prompt.TaskInstruction.Role>
+  <RimMind.Advisor.Prompt.TaskInstruction.Role>你是一名殖民顾问，负责为下方的殖民者推荐行动。只管理这一个殖民者。</RimMind.Advisor.Prompt.TaskInstruction.Role>
   <RimMind.Advisor.Prompt.TaskInstruction.Goal>根据当前状态和可用动作，给出最合理的建议。</RimMind.Advisor.Prompt.TaskInstruction.Goal>
   <RimMind.Advisor.Prompt.TaskInstruction.Process>1. 审视当前状态（心情、健康、技能、装备）
 2. 检查基地需求与优先级
@@ -103,5 +103,15 @@
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>多样化提示：
 - 尽量保证多样化的请求，避免重复提交相同类型的请求
 - 如果近期已有类似请求被批准或拒绝，请换一种不同类型的行动</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Example>示例————
+状态：Jenni心情53%，健康良好，正在闲逛，食物储备为0，手工(5)
+可用动作（来自L3层）：
+- eat_food: 获取食物
+- assign_work Crafting: 分配手工工作
+- social_relax: 社交放松
+
+Tool Calling输出：调用 assign_work function，param="Crafting"，reason="食物储备严重不足，手工制作物品可以换取食物"
+
+JSON回退输出：{"advices":[{"action":"assign_work","target":"","param":"Crafting","reason":"食物储备为零，优先安排符合技能的生产工作——手工(5)"}]}</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 </LanguageData>

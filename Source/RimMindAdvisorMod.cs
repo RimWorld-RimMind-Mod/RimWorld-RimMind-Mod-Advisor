@@ -49,13 +49,22 @@ namespace RimMind.Advisor
                 return sb.ToString().TrimEnd();
             }, PromptSection.PriorityAuxiliary);
 
+            ContextKeyRegistry.Register("actions_list", ContextLayer.L3_State, 0.85f,
+                pawn =>
+                {
+                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    var text = RimMindActionsAPI.GetActionListText(pawn);
+                    if (string.IsNullOrEmpty(text)) return new List<ContextEntry>();
+                    return new List<ContextEntry> { new ContextEntry(text) };
+                }, "RimMind.Advisor");
+
             ContextKeyRegistry.Register("advisor_task", ContextLayer.L0_Static, 0.95f,
                 pawn =>
                 {
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
                     var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
                         "Role", "Goal", "Process", "Constraint", "Output",
-                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "CustomRules");
+                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "Example");
                     return new List<ContextEntry> { new ContextEntry(instruction) };
                 }, "RimMind.Advisor");
 

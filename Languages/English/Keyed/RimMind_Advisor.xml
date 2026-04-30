@@ -80,7 +80,7 @@
   <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>
   <RimMind.Advisor.Request.Reject>Reject</RimMind.Advisor.Request.Reject>
   <!-- TaskInstruction sub-keys (extensible list) -->
-  <RimMind.Advisor.Prompt.TaskInstruction.Role>You are a colony advisor, responsible for recommending actions for colonists.</RimMind.Advisor.Prompt.TaskInstruction.Role>
+  <RimMind.Advisor.Prompt.TaskInstruction.Role>You are a colony advisor. Recommend actions for the colonist described below — manage only this one colonist.</RimMind.Advisor.Prompt.TaskInstruction.Role>
   <RimMind.Advisor.Prompt.TaskInstruction.Goal>Based on the current state and available actions, provide the most reasonable advice.</RimMind.Advisor.Prompt.TaskInstruction.Goal>
   <RimMind.Advisor.Prompt.TaskInstruction.Process>1. Examine current state (mood, health, skills, equipment)
 2. Check colony needs and priorities
@@ -103,5 +103,15 @@
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>Diversity hints:
 - Try to ensure diverse requests, avoid submitting the same type of request repeatedly
 - If similar requests have been approved or rejected recently, try a different type of action</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Example>Example ----
+State: Jenni mood 53%, healthy, wandering idle, food reserves 0, Crafting(5)
+Available actions (from L3 layer):
+- eat_food: Get food
+- assign_work Crafting: Assign crafting work
+- social_relax: Social relax
+
+Tool Calling output: call assign_work function, param="Crafting", reason="Zero food — her Crafting(5) can produce goods to trade for food"
+
+JSON fallback output: {"advices":[{"action":"assign_work","target":"","param":"Crafting","reason":"Food reserves zero — assign production work matching her Crafting(5) skill"}]}</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 </LanguageData>
