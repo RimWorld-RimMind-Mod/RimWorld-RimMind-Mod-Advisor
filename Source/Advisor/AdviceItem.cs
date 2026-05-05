@@ -9,5 +9,6 @@ namespace RimMind.Advisor.Advisor
         public string? Param;
         public string? Reason;
         public RiskLevel RiskLevel;
+        public string request_type = "normal";
     }
 }

@@ -103,6 +103,11 @@
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>多样化提示：
 - 尽量保证多样化的请求，避免重复提交相同类型的请求
 - 如果近期已有类似请求被批准或拒绝，请换一种不同类型的行动</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>请求规则：
+- 如果殖民者有强烈需求（长期心情低落、社交孤立、技能闲置），可以设置 request_type="request"
+- request 类型的建议是殖民者自己无法完成的事（如建造建筑、安排社交、改变工作分配）
+- 正常风险动作使用 request_type="normal"（自动执行）
+- JSON回退时的格式：{"advices":[{"action":"动作名","target":"目标名","param":"参数","reason":"理由","request_type":"normal"}]}</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>示例————
 状态：Jenni心情53%，健康良好，正在闲逛，食物储备为0，手工(5)
 可用动作（来自L3层）：

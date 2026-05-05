@@ -50,19 +50,20 @@ namespace RimMind.Advisor.Advisor
             var schema = SchemaRegistry.AdviceOutput;
             var tools = BuildActionTools();
             var snapshot = RimMindAPI.BuildContextSnapshot(ctxRequest);
+            var messages = new List<ChatMessage>(snapshot.Messages);
 
             if (!_settings.advisorCustomPrompt.NullOrEmpty())
             {
                 int lastSysIdx = -1;
-                for (int i = snapshot.Messages.Count - 1; i >= 0; i--)
+                for (int i = messages.Count - 1; i >= 0; i--)
                 {
-                    if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
+                    if (messages[i].Role == "system") { lastSysIdx = i; break; }
                 }
-                snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = _settings.advisorCustomPrompt });
+                messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = _settings.advisorCustomPrompt });
 
                 string reactionsText = GetRecentRejectedAdvisorDecisions(20);
                 if (!string.IsNullOrEmpty(reactionsText))
-                    snapshot.Messages.Insert(lastSysIdx + 2, new ChatMessage { Role = "system", Content = reactionsText });
+                    messages.Insert(lastSysIdx + 2, new ChatMessage { Role = "system", Content = reactionsText });
             }
             else
             {
@@ -70,15 +71,15 @@ namespace RimMind.Advisor.Advisor
                 if (!string.IsNullOrEmpty(reactionsText))
                 {
                     int lastSysIdx = -1;
-                    for (int i = snapshot.Messages.Count - 1; i >= 0; i--)
+                    for (int i = messages.Count - 1; i >= 0; i--)
                     {
-                        if (snapshot.Messages[i].Role == "system") { lastSysIdx = i; break; }
+                        if (messages[i].Role == "system") { lastSysIdx = i; break; }
                     }
-                    snapshot.Messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = reactionsText });
+                    messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = reactionsText });
                 }
             }
 
-            _lastMessages = new List<ChatMessage>(snapshot.Messages);
+            _lastMessages = new List<ChatMessage>(messages);
             _lastTools = tools;
             _lastSchema = schema;
             _toolCallDepth = 0;
@@ -87,7 +88,7 @@ namespace RimMind.Advisor.Advisor
             var aiRequest = new AIRequest
             {
                 SystemPrompt = string.Empty,
-                Messages = snapshot.Messages,
+                Messages = messages,
                 MaxTokens = snapshot.MaxTokens,
                 Temperature = snapshot.Temperature,
                 RequestId = $"Structured_{npcId}",

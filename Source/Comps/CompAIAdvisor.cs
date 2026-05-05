@@ -179,6 +179,7 @@ namespace RimMind.Advisor.Comps
                             if (args.TryGetValue("target", out var t)) targetName = t;
                             if (args.TryGetValue("param", out var p)) param = p;
                             if (args.TryGetValue("reason", out var r)) reason = r;
+                            args.TryGetValue("request_type", out var rt);
                         }
                     }
                     catch (System.Exception ex)
@@ -196,7 +197,19 @@ namespace RimMind.Advisor.Comps
                     && riskLevel.HasValue
                     && riskLevel.GetValueOrDefault() >= Settings.autoBlockRiskLevel;
 
-                if (systemBlocked)
+                bool isRequest = false;
+                if (!tc.Arguments.NullOrEmpty())
+                {
+                    try
+                    {
+                        var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(tc.Arguments);
+                        if (args != null && args.TryGetValue("request_type", out var rt) && rt == "request")
+                            isRequest = true;
+                    }
+                    catch { }
+                }
+
+                if (systemBlocked || isRequest)
                 {
                     if (!Settings.enableRequestSystem)
                     {
@@ -247,7 +260,7 @@ namespace RimMind.Advisor.Comps
                                     {
                                         action = r.ActionName,
                                         reason = capturedReason ?? "",
-                                        result = r.Success ? "success" : r.Reason,
+                                        result = r.Success ? "approved" : r.Reason,
                                         tick = Find.TickManager.TicksGame
                                     });
                                 }
@@ -301,7 +314,7 @@ namespace RimMind.Advisor.Comps
             // Broadcast decision events
             foreach (var intent in intents)
             {
-                _taskDriver.BroadcastDecisionExecuted(intent.IntentId, intent.Reason);
+                _taskDriver?.BroadcastDecisionExecuted(intent.IntentId, intent.Reason);
             }
 
             var historyStoreForBatch = AdvisorHistoryStore.Instance;
@@ -313,7 +326,7 @@ namespace RimMind.Advisor.Comps
                     {
                         action = r.ActionName,
                         reason = intents.FirstOrDefault(i => i.IntentId == r.ActionName)?.Reason ?? "",
-                        result = r.Success ? "success" : r.Reason,
+                        result = r.Success ? "approved" : r.Reason,
                         tick = Find.TickManager.TicksGame
                     });
                 }

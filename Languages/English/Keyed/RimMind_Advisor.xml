@@ -103,6 +103,11 @@
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>Diversity hints:
 - Try to ensure diverse requests, avoid submitting the same type of request repeatedly
 - If similar requests have been approved or rejected recently, try a different type of action</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>Request rules:
+- If the colonist has strong needs (chronic low mood, social isolation, idle skills), set request_type="request"
+- request_type actions are things the colonist cannot do alone (build rooms, arrange social events, change work assignments)
+- Normal risk actions use request_type="normal" (auto-execute)
+- JSON fallback format: {"advices":[{"action":"action_name","target":"target_name","param":"params","reason":"reasoning","request_type":"normal"}]}</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>Example ----
 State: Jenni mood 53%, healthy, wandering idle, food reserves 0, Crafting(5)
 Available actions (from L3 layer):

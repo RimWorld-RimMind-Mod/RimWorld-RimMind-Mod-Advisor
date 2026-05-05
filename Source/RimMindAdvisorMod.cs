@@ -64,7 +64,7 @@ namespace RimMind.Advisor
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
                     var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
                         "Role", "Goal", "Process", "Constraint", "Output",
-                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "Example");
+                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example");
                     return new List<ContextEntry> { new ContextEntry(instruction) };
                 }, "RimMind.Advisor");
 
