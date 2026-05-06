@@ -1,3 +1,5 @@
+using Verse;
+
 namespace RimMind.Advisor.Concurrency
 {
     /// <summary>
@@ -13,7 +15,14 @@ namespace RimMind.Advisor.Concurrency
         public static void Increment() =>
             System.Threading.Interlocked.Increment(ref _active);
 
-        public static void Decrement() =>
-            System.Threading.Interlocked.Decrement(ref _active);
+        public static void Decrement()
+        {
+            var current = System.Threading.Interlocked.Decrement(ref _active);
+            if (current < 0)
+            {
+                System.Threading.Interlocked.Increment(ref _active);
+                Log.Warning("[RimMind-Advisor] Concurrency tracker went negative, auto-corrected");
+            }
+        }
     }
 }

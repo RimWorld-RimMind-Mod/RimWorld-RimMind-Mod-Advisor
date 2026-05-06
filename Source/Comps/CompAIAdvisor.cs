@@ -19,91 +19,31 @@ namespace RimMind.Advisor.Comps
     {
         public bool IsEnabled = false;
 
-        private bool    _hasPendingRequest;
-        private int     _lastRequestTick = -9999;
-        private string? _pendingReason;
+        private bool _hasPendingRequest;
+        private int _lastRequestTick = -9999;
+        private int _pendingRequestTick;
+
+        private AdvisorTaskDriver? _taskDriver;
+        private ApprovalManager? _approvalManager;
 
         public bool HasPendingRequest => _hasPendingRequest;
-        public int  AdvisorCooldownTicksLeft =>
+        public int LastRequestTick => _lastRequestTick;
+        public AdvisorTaskDriver? TaskDriver => _taskDriver;
+
+        public int AdvisorCooldownTicksLeft =>
             System.Math.Max(0, Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick));
 
         private Pawn Pawn => (Pawn)parent;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
         private bool DebugLogging => RimMind.Core.RimMindCoreMod.Settings.debugLogging;
 
-        public override void CompTick()
-        {
-            if (Pawn.Map == null) return;
-
-            var s = Settings;
-            if (!Pawn.IsHashIntervalTick(s.pawnScanIntervalTicks)) return;
-
-            if (!s.enableAdvisor)
-            {
-                return;
-            }
-            if (!RimMindAPI.IsConfigured())
-            {
-                DebugSkip("API not configured");
-                return;
-            }
-            if (_hasPendingRequest)
-            {
-                DebugSkip("Pending request exists");
-                return;
-            }
-            if (!IsEnabled)
-            {
-                DebugSkip("Advisor toggle off for this colonist");
-                return;
-            }
-            if (!IsEligible())
-            {
-                DebugSkip("Colonist ineligible (dead/slave/drafted/no mood)");
-                return;
-            }
-
-            bool idleTriggered = s.enableIdleTrigger && IsIdle();
-            bool moodTriggered = s.enableMoodTrigger && IsMoodBelowThreshold();
-
-            if (!idleTriggered && !moodTriggered)
-            {
-                DebugSkip($"No trigger met (idle={idleTriggered}, mood={moodTriggered})");
-                return;
-            }
-
-            int ticksGame = Find.TickManager.TicksGame;
-            int advisorCooldownLeft = s.requestCooldownTicks - (ticksGame - _lastRequestTick);
-            if (advisorCooldownLeft > 0)
-            {
-                if (DebugLogging)
-                    Log.Message($"[RimMind-Advisor][Advisor Cooldown] {Pawn.Name.ToStringShort} cooling down, {advisorCooldownLeft} ticks remaining (~{advisorCooldownLeft / 2500f:F2} game hours). requestCooldownTicks={s.requestCooldownTicks}");
-                return;
-            }
-
-            if (AdvisorConcurrencyTracker.ActiveCount >= s.maxConcurrentRequests)
-            {
-                if (DebugLogging)
-                    Log.Message($"[RimMind-Advisor][Concurrency Limit] Current concurrent {AdvisorConcurrencyTracker.ActiveCount}/{s.maxConcurrentRequests}, {Pawn.Name.ToStringShort} skipped.");
-                return;
-            }
-
-            RequestAIAdvice();
-        }
-
-        private void DebugSkip(string reason)
-        {
-            if (DebugLogging)
-                Log.Message($"[RimMind-Advisor][Skip] {Pawn.Name.ToStringShort}: {reason}");
-        }
-
-        private bool IsEligible() =>
+        public bool IsEligible() =>
             Pawn.IsFreeNonSlaveColonist &&
             !Pawn.Dead &&
             !(Pawn.drafter?.Drafted ?? false) &&
             Pawn.needs?.mood != null;
 
-        private bool IsIdle()
+        public bool IsIdle()
         {
             var job = Pawn.jobs?.curJob;
             if (job == null) return true;
@@ -116,245 +56,330 @@ namespace RimMind.Advisor.Comps
                 || def == JobDefOf.Wait_MaintainPosture;
         }
 
-        private bool IsMoodBelowThreshold()
+        public bool IsMoodBelowThreshold()
         {
             var mood = Pawn.needs?.mood;
             if (mood == null) return false;
             return mood.CurLevelPercentage < Settings.moodThreshold;
         }
 
-        private void RequestAIAdvice()
+        public bool ShouldIdleTrigger()
+        {
+            return Settings.enableIdleTrigger && IsIdle();
+        }
+
+        public bool ShouldMoodTrigger()
+        {
+            return Settings.enableMoodTrigger && IsMoodBelowThreshold();
+        }
+
+        public void RequestAdvice(RimMindAdvisorSettings settings)
         {
             _hasPendingRequest = true;
+            _pendingRequestTick = Find.TickManager.TicksGame;
             AdvisorConcurrencyTracker.Increment();
 
-            var request = new AIRequest
-            {
-                SystemPrompt = AdvisorPromptBuilder.BuildSystemPrompt(Pawn),
-                UserPrompt   = AdvisorPromptBuilder.BuildUserPrompt(Pawn),
-                MaxTokens    = 400,
-                Temperature  = 0.7f,
-                RequestId    = $"Advisor_{Pawn.ThingID}",
-                ModId        = "Advisor",
-                ExpireAtTicks = Find.TickManager.TicksGame + Settings.requestExpireTicks,
-                UseJsonMode  = true,
-                Priority     = AIRequestPriority.Normal,
-            };
-
-            RimMindAPI.RequestAsync(request, OnAdviceReceived);
+            _taskDriver = new AdvisorTaskDriver(Pawn, settings);
+            _taskDriver.BuildAndSendRequest(OnAdviceReceived);
         }
 
         public void ForceRequestAdvice()
         {
             if (_hasPendingRequest)
             {
-                Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
-                return;
+                if (Find.TickManager.TicksGame - _pendingRequestTick > 60000)
+                {
+                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} pending request timed out, resetting.");
+                    CompleteRequestCycle();
+                }
+                else
+                {
+                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
+                    return;
+                }
             }
 
-            IsEnabled        = true;
+            IsEnabled = true;
             _lastRequestTick = -9999;
 
             RimMind.Core.Internal.AIRequestQueue.Instance?.ClearCooldown("Advisor");
             Log.Message($"[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared (Advisor), sending request...");
 
-            RequestAIAdvice();
+            RequestAdvice(Settings);
         }
 
         private void OnAdviceReceived(AIResponse response)
         {
-            _hasPendingRequest = false;
-            AdvisorConcurrencyTracker.Decrement();
+            if (Pawn == null || Pawn.Dead || Pawn.Map == null)
+            {
+                CompleteRequestCycle();
+                return;
+            }
 
             if (!response.Success)
             {
                 Log.Warning($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {response.Error}");
+                CompleteRequestCycle();
                 return;
             }
 
-            AdviceBatch? batch;
-            try
+            if (_taskDriver == null)
             {
-                batch = JsonConvert.DeserializeObject<AdviceBatch>(response.Content);
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning($"[RimMind-Advisor] JSON parse failed for {Pawn.Name.ToStringShort}: {ex.Message}\nContent: {response.Content}");
+                CompleteRequestCycle();
                 return;
             }
 
-            if (batch?.advices == null || batch.advices.Count == 0)
+            List<StructuredToolCall>? toolCalls = null;
+
+            if (!string.IsNullOrEmpty(response.ToolCallsJson))
             {
-                Log.Warning($"[RimMind-Advisor] No valid advice for {Pawn.Name.ToStringShort}");
+                _taskDriver.SetReasoningContent(response.ReasoningContent);
+                if (!_taskDriver.TryParseToolCalls(response.ToolCallsJson ?? string.Empty, out toolCalls))
+                {
+                    CompleteRequestCycle();
+                    return;
+                }
+            }
+            else if (!string.IsNullOrEmpty(response.Content))
+            {
+                _taskDriver.SetReasoningContent(response.ReasoningContent);
+                toolCalls = _taskDriver.TryParseContentAsToolCalls(response.Content);
+                if (toolCalls != null)
+                {
+                    Log.Message($"[RimMind-Advisor] Parsed {toolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
+                }
+            }
+
+            if (toolCalls == null || toolCalls.Count == 0)
+            {
+                Log.Warning($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+                CompleteRequestCycle();
                 return;
             }
 
             var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
-            var intents   = new List<BatchActionIntent>();
+            var intents = new List<BatchActionIntent>();
 
-            foreach (var advice in batch.advices)
+            foreach (var tc in toolCalls)
             {
-                if (advice.action.NullOrEmpty() || !supported.Contains(advice.action)) continue;
-                if (!RimMindActionsAPI.IsAllowed(advice.action)) continue;
+                if (tc.Name.NullOrEmpty() || !supported.Contains(tc.Name)) continue;
+                if (!RimMindActionsAPI.IsAllowed(tc.Name)) continue;
 
-                var riskLevel = RimMindActionsAPI.GetRiskLevel(advice.action);
-                bool systemBlocked = Settings.enableRiskApproval
-                    && riskLevel.HasValue
-                    && riskLevel.Value >= Settings.autoBlockRiskLevel;
+                string? targetName = null;
+                string? param = tc.Arguments;
+                string? reason = tc.Name;
 
-                string rt = advice.request_type?.ToLowerInvariant() ?? "normal";
-                bool needsApproval = systemBlocked
-                    || rt == "request"
-                    || rt == "high_risk";
-
-                if (DebugLogging)
-                    Log.Message($"[RimMind-Advisor][Advice] {Pawn.Name.ToStringShort}: action={advice.action}, request_type(raw)={advice.request_type}, rt={rt}, needsApproval={needsApproval}, systemBlocked={systemBlocked}");
-
-                Pawn actor = Pawn;
-                if (!advice.pawn.NullOrEmpty())
+                if (!tc.Arguments.NullOrEmpty())
                 {
-                    actor = Pawn.Map?.mapPawns.FreeColonists
-                        .FirstOrDefault(p => p.Name?.ToStringShort == advice.pawn)
-                        ?? Pawn;
+                    try
+                    {
+                        var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(tc.Arguments);
+                        if (args != null)
+                        {
+                            if (args.TryGetValue("target", out var t)) targetName = t;
+                            if (args.TryGetValue("param", out var p)) param = p;
+                            if (args.TryGetValue("reason", out var r)) reason = r;
+                            args.TryGetValue("request_type", out var rt);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Log.Warning($"[RimMind-Advisor] Failed to parse tool call arguments for {tc.Name}: {ex.Message}");
+                    }
                 }
 
                 Pawn? targetPawn = null;
-                if (!advice.target.NullOrEmpty())
-                    targetPawn = Pawn.Map?.mapPawns.AllPawns
-                        .FirstOrDefault(p => p.Name?.ToStringShort == advice.target);
+                if (!targetName.NullOrEmpty())
+                    targetPawn = FindPawnByName(targetName!);
 
-                if (needsApproval && Settings.enableRequestSystem)
+                var riskLevel = RimMindActionsAPI.GetRiskLevel(tc.Name);
+                bool systemBlocked = Settings.enableRiskApproval
+                    && riskLevel.HasValue
+                    && riskLevel.GetValueOrDefault() >= Settings.autoBlockRiskLevel;
+
+                bool isRequest = false;
+                if (!tc.Arguments.NullOrEmpty())
                 {
-                    string title = rt == "request"
-                        ? "RimMind.Advisor.Request.ColonistRequest".Translate(actor.Name.ToStringShort)
-                        : "RimMind.Advisor.Request.RiskAction".Translate(advice.action);
-
-                    var capturedActor = actor;
-                    var capturedTarget = targetPawn;
-                    var capturedAdvice = advice;
-
-                    string approveLabel = "RimMind.Advisor.Request.Approve".Translate();
-                    string rejectLabel  = "RimMind.Advisor.Request.Reject".Translate();
-                    string ignoreLabel  = "RimMind.Advisor.Request.Ignore".Translate();
-
-                    var entry = new RequestEntry
+                    try
                     {
-                        source = "advisor",
-                        pawn = capturedActor,
-                        title = title,
-                        description = capturedAdvice.reason,
-                        systemBlocked = systemBlocked,
-                        expireTicks = Settings.requestExpireTicks,
-                        options = systemBlocked
-                            ? new[] { approveLabel, rejectLabel }
-                            : new[] { approveLabel, rejectLabel, ignoreLabel },
-                        callback = choice =>
-                        {
-                            string result;
-                            if (choice == approveLabel)
-                            {
-                                var singleIntent = new List<BatchActionIntent>
-                                {
-                                    new BatchActionIntent
-                                    {
-                                        IntentId = capturedAdvice.action,
-                                        Actor = capturedActor,
-                                        Target = capturedTarget,
-                                        Param = capturedAdvice.param,
-                                        Reason = capturedAdvice.reason,
-                                    }
-                                };
-                                int executed = RimMindActionsAPI.ExecuteBatch(singleIntent);
-                                result = "approved";
+                        var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(tc.Arguments);
+                        if (args != null && args.TryGetValue("request_type", out var rt) && rt == "request")
+                            isRequest = true;
+                    }
+                    catch { }
+                }
 
-                                if (executed > 0 && capturedActor.Map != null)
+                if (systemBlocked || isRequest)
+                {
+                    if (!Settings.enableRequestSystem)
+                    {
+                        Log.Message($"[RimMind-Advisor] Action '{tc.Name}' blocked by risk level {riskLevel.GetValueOrDefault()} (approval system disabled)");
+                        continue;
+                    }
+
+                    if (_approvalManager == null)
+                        _approvalManager = new ApprovalManager(Settings);
+
+                    var capturedTc = tc;
+                    var capturedTarget = targetPawn;
+                    var capturedReason = reason;
+                    var capturedParam = param;
+
+                    var adviceItem = new AdviceItem
+                    {
+                        Action = capturedTc.Name,
+                        Target = capturedTarget?.Name?.ToStringShort,
+                        Param = capturedParam,
+                        Reason = capturedReason,
+                        RiskLevel = riskLevel.GetValueOrDefault(),
+                    };
+
+                    _approvalManager.SubmitForApproval(adviceItem, Pawn,
+                        onApproved: () =>
+                        {
+                            var singleIntent = new List<BatchActionIntent>
+                            {
+                                new BatchActionIntent
                                 {
-                                    string moteText = !capturedAdvice.reason.NullOrEmpty()
-                                        ? $"[RimMind] {capturedAdvice.reason}"
-                                        : $"[RimMind] {capturedAdvice.action}";
-                                    MoteMaker.ThrowText(
-                                        capturedActor.DrawPos,
-                                        capturedActor.Map,
-                                        moteText,
-                                        new Color(0.4f, 1f, 0.6f),
-                                        5f);
+                                    IntentId = capturedTc.Name,
+                                    Actor = Pawn,
+                                    Target = capturedTarget,
+                                    Param = capturedParam,
+                                    Reason = capturedReason,
                                 }
-                            }
-                            else if (choice == rejectLabel)
-                            {
-                                result = systemBlocked ? "system_blocked" : "rejected";
-                            }
-                            else
-                            {
-                                result = "ignored";
-                            }
+                            };
+                            var results = RimMindActionsAPI.ExecuteBatchWithResults(singleIntent);
+                            _taskDriver?.BroadcastDecisionExecuted(capturedTc.Name, capturedReason);
 
                             var historyStore = AdvisorHistoryStore.Instance;
                             if (historyStore != null)
                             {
-                                historyStore.AddRecord(capturedActor, new AdvisorRequestRecord
+                                foreach (var r in results)
                                 {
-                                    action = capturedAdvice.action,
-                                    reason = capturedAdvice.reason ?? "",
-                                    result = result,
-                                    tick = Find.TickManager.TicksGame,
+                                    historyStore.AddRecord(Pawn, new AdvisorRequestRecord
+                                    {
+                                        action = r.ActionName,
+                                        reason = capturedReason ?? "",
+                                        result = r.Success ? "approved" : r.Reason,
+                                        tick = Find.TickManager.TicksGame
+                                    });
+                                }
+                            }
+
+                            if (Settings.showThoughtBubble && Pawn.Map != null)
+                            {
+                                string moteText = $"[RimMind] {capturedReason ?? capturedTc.Name}";
+                                MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
+                                    new Color(0.6f, 0.9f, 1f), 5f);
+                            }
+                        },
+                        onRejected: () =>
+                        {
+                            var historyStore = AdvisorHistoryStore.Instance;
+                            if (historyStore != null)
+                            {
+                                historyStore.AddRecord(Pawn, new AdvisorRequestRecord
+                                {
+                                    action = capturedTc.Name,
+                                    reason = capturedReason ?? "",
+                                    result = "rejected",
+                                    tick = Find.TickManager.TicksGame
                                 });
                             }
-                        }
-                    };
-                    RimMindAPI.RegisterPendingRequest(entry);
+                        });
                 }
                 else
                 {
                     intents.Add(new BatchActionIntent
                     {
-                        IntentId = advice.action,
-                        Actor = actor,
+                        IntentId = tc.Name,
+                        Actor = Pawn,
                         Target = targetPawn,
-                        Param = advice.param,
-                        Reason = advice.reason,
+                        Param = param,
+                        Reason = reason,
                     });
                 }
             }
 
-            if (intents.Count == 0) return;
-
-            int count = RimMindActionsAPI.ExecuteBatch(intents);
-            Log.Message($"[RimMind-Advisor] Executed {count}/{intents.Count} actions for {Pawn.Name.ToStringShort}");
-
-            if (Settings.showThoughtBubble && Pawn.Map != null)
+            if (intents.Count == 0)
             {
-                var reasons = new System.Collections.Generic.List<string>();
-                foreach (var intent in intents)
-                    if (!intent.Reason.NullOrEmpty()) reasons.Add(intent.Reason!);
+                CompleteRequestCycle();
+                return;
+            }
 
-                _pendingReason = reasons.Count > 0 ? reasons[0] : null;
+            var results = RimMindActionsAPI.ExecuteBatchWithResults(intents);
+            int succeeded = results.Count(r => r.Success);
+            Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{intents.Count} actions for {Pawn.Name.ToStringShort}");
 
-                if (reasons.Count > 0)
+            // Broadcast decision events
+            foreach (var intent in intents)
+            {
+                _taskDriver?.BroadcastDecisionExecuted(intent.IntentId, intent.Reason);
+            }
+
+            var historyStoreForBatch = AdvisorHistoryStore.Instance;
+            if (historyStoreForBatch != null)
+            {
+                foreach (var r in results)
                 {
-                    string moteText;
-                    if (reasons.Count == 1)
-                        moteText = $"[RimMind] {reasons[0]}";
-                    else if (reasons.Count == 2)
-                        moteText = $"[RimMind] {reasons[0]} / {reasons[1]}";
-                    else
-                        moteText = $"[RimMind] {reasons[0]} / {reasons[1]}" + "RimMind.Advisor.UI.MoteMore".Translate(reasons.Count - 2);
-
-                    MoteMaker.ThrowText(
-                        Pawn.DrawPos,
-                        Pawn.Map,
-                        moteText,
-                        new Color(0.6f, 0.9f, 1f),
-                        5f);
+                    historyStoreForBatch.AddRecord(Pawn, new AdvisorRequestRecord
+                    {
+                        action = r.ActionName,
+                        reason = intents.FirstOrDefault(i => i.IntentId == r.ActionName)?.Reason ?? "",
+                        result = r.Success ? "approved" : r.Reason,
+                        tick = Find.TickManager.TicksGame
+                    });
                 }
             }
 
-            _lastRequestTick = Find.TickManager.TicksGame;
+            if (Settings.showThoughtBubble && Pawn.Map != null)
+            {
+                var reasons = new List<string>();
+                foreach (var intent in intents)
+                    if (!intent.Reason.NullOrEmpty()) reasons.Add(intent.Reason!);
+
+                if (reasons.Count > 0)
+                {
+                    string moteText = reasons.Count == 1
+                        ? $"[RimMind] {reasons[0]}"
+                        : $"[RimMind] {reasons[0]} / {reasons[1]}";
+                    MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
+                        new Color(0.6f, 0.9f, 1f), 5f);
+                }
+            }
+
+            if (_taskDriver.ShouldRequestFeedback())
+            {
+                _taskDriver.RequestToolFeedback(toolCalls, results, OnAdviceReceived);
+            }
+            else
+            {
+                Log.Message($"[RimMind-Advisor] Max tool call depth ({AdvisorTaskDriver.MaxToolCallDepth}) reached for {Pawn.Name.ToStringShort}");
+                CompleteRequestCycle();
+            }
+        }
+
+        private void CompleteRequestCycle()
+        {
+            if (_hasPendingRequest)
+            {
+                _hasPendingRequest = false;
+                _lastRequestTick = Find.TickManager.TicksGame;
+                AdvisorConcurrencyTracker.Decrement();
+            }
+            _taskDriver?.ClearState();
+            _taskDriver = null;
+        }
+
+        private void DebugSkip(string reason)
+        {
+            if (DebugLogging)
+                Log.Message($"[RimMind-Advisor][Skip] {Pawn.Name.ToStringShort}: {reason}");
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            string label    = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
+            string label = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
             string subLabel = "";
 
             if (IsEnabled)
@@ -369,10 +394,10 @@ namespace RimMind.Advisor.Comps
             yield return new Command_Action
             {
                 defaultLabel = label,
-                defaultDesc  = subLabel.NullOrEmpty()
+                defaultDesc = subLabel.NullOrEmpty()
                     ? "RimMind.Advisor.UI.Gizmo.Desc".Translate()
                     : subLabel,
-                icon   = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                 action = () => IsEnabled = !IsEnabled,
             };
 
@@ -381,8 +406,8 @@ namespace RimMind.Advisor.Comps
                 yield return new Command_Action
                 {
                     defaultLabel = "RimMind.Advisor.UI.Gizmo.ForceRequest".Translate(),
-                    defaultDesc  = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
-                    icon   = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
+                    defaultDesc = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
+                    icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                     action = ForceRequestAdvice,
                 };
             }
@@ -392,6 +417,30 @@ namespace RimMind.Advisor.Comps
         {
             base.PostExposeData();
             Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
+        }
+
+        private static Pawn? FindPawnByName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+
+            if (int.TryParse(name, out int thingId))
+            {
+                foreach (var map in Find.Maps)
+                {
+                    var pawn = map.mapPawns.AllPawns.FirstOrDefault(p => p.thingIDNumber == thingId);
+                    if (pawn != null) return pawn;
+                }
+            }
+
+            var matches = Find.Maps.SelectMany(m => m.mapPawns.AllPawns)
+                .Where(p => p.Name?.ToStringShort == name)
+                .ToList();
+
+            if (matches.Count == 1) return matches[0];
+            if (matches.Count > 1)
+                Log.Warning($"[RimMind-Advisor] FindPawnByName: '{name}' matches {matches.Count} pawns, using first. Consider using ThingID for disambiguation.");
+
+            return matches.FirstOrDefault();
         }
     }
 }

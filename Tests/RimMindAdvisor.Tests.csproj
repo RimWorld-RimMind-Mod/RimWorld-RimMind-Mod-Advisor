@@ -7,6 +7,7 @@
     <AssemblyName>RimMindAdvisor.Tests</AssemblyName>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,12 +17,14 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <!-- 纯逻辑文件（无 RimWorld 依赖） -->
   <ItemGroup>
-    <!-- AdviceBatch / AdviceItem DTO -->
-    <Compile Include="../Source/Advisor/AdviceResponse.cs" />
-    <!-- 并发计数器 -->
+    <Compile Include="VerseStubs.cs" />
+    <Compile Include="AdvisorConcurrencyTrackerTests.cs" />
+    <Compile Include="AdvisorParseTests.cs" />
+    <Compile Include="AdvisorTaskDriver_ParseTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
+    <Compile Include="../Source/Advisor/AdviceItem.cs" />
+    <Compile Include="../../RimMind-Actions/Source/Actions/RiskLevel.cs" LinkBase="Actions" />
   </ItemGroup>
 
 </Project>

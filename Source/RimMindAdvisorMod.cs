@@ -1,9 +1,12 @@
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Contracts.Extension;
 using RimMind.Core;
+using RimMind.Core.Context;
 using RimMind.Core.Prompt;
 using RimMind.Core.UI;
 using UnityEngine;
@@ -21,8 +24,10 @@ namespace RimMind.Advisor
             Settings = GetSettings<RimMindAdvisorSettings>();
             new Harmony("mcocdaa.RimMindAdvisor").PatchAll();
 
-            RimMindAPI.RegisterSettingsTab("advisor", () => "RimMind.Advisor.Settings.Tab".Translate(), DrawSettingsContent);
-            RimMindAPI.RegisterModCooldown("Advisor", () => Settings.requestCooldownTicks);
+            RimMindAPI.Extensions<ISettingsTab>().Register(new AdvisorSettingsTab(this));
+            RimMindAPI.Extensions<IToggleBehavior>().Register(new AdvisorToggleBehavior(Settings));
+            RimMindAPI.Extensions<IModCooldown>().Register(new AdvisorModCooldown(Settings));
+            RimMindAPI.Extensions<ISkipCheck>().Register(new AdvisorActionSkipCheck());
 
             RimMindAPI.RegisterPawnContextProvider("advisor_history", pawn =>
             {
@@ -47,6 +52,25 @@ namespace RimMind.Advisor
                 return sb.ToString().TrimEnd();
             }, PromptSection.PriorityAuxiliary);
 
+            ContextKeyRegistry.Register("actions_list", ContextLayer.L3_State, 0.85f,
+                pawn =>
+                {
+                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    var text = RimMindActionsAPI.GetActionListText(pawn);
+                    if (string.IsNullOrEmpty(text)) return new List<ContextEntry>();
+                    return new List<ContextEntry> { new ContextEntry(text) };
+                }, "RimMind.Advisor");
+
+            ContextKeyRegistry.Register("advisor_task", ContextLayer.L0_Static, 0.95f,
+                pawn =>
+                {
+                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
+                        "Role", "Goal", "Process", "Constraint", "Output",
+                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example");
+                    return new List<ContextEntry> { new ContextEntry(instruction) };
+                }, "RimMind.Advisor");
+
             Log.Message("[RimMind-Advisor] Initialized.");
         }
 
@@ -60,7 +84,7 @@ namespace RimMind.Advisor
         internal static void DrawSettingsContent(Rect inRect)
         {
             Rect contentArea = SettingsUIHelper.SplitContentArea(inRect);
-            Rect bottomBar  = SettingsUIHelper.SplitBottomBar(inRect);
+            Rect bottomBar = SettingsUIHelper.SplitBottomBar(inRect);
 
             float contentH = EstimateHeight();
             Rect viewRect = new Rect(0f, 0f, contentArea.width - 16f, contentH);
@@ -97,14 +121,18 @@ namespace RimMind.Advisor
                 GUI.color = Color.white;
                 Settings.moodThreshold = listing.Slider(Settings.moodThreshold, 0.25f, 0.6f);
             }
-
-            SettingsUIHelper.DrawCustomPromptSection(listing,
-                "RimMind.Advisor.Settings.CustomPrompt".Translate(),
-                ref Settings.advisorCustomPrompt);
+            if (!Settings.enableIdleTrigger && !Settings.enableMoodTrigger)
+            {
+                GUI.color = Color.yellow;
+                listing.Label("RimMind.Advisor.Settings.NoTriggerWarning".Translate());
+                GUI.color = Color.white;
+            }
 
             SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Display".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.ShowThoughtBubble".Translate(), ref Settings.showThoughtBubble,
                 "RimMind.Advisor.Settings.ShowThoughtBubble.Desc".Translate());
+            listing.Label("RimMind.Advisor.Settings.CustomPrompt".Translate());
+            Settings.advisorCustomPrompt = listing.TextEntry(Settings.advisorCustomPrompt, 5);
 
             SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Request".Translate());
             string cooldownHours = $"{Settings.requestCooldownTicks / 2500f:F1}";
@@ -134,6 +162,12 @@ namespace RimMind.Advisor
                 "RimMind.Advisor.Settings.EnableRequestSystem.Desc".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableRiskApproval".Translate(), ref Settings.enableRiskApproval,
                 "RimMind.Advisor.Settings.EnableRiskApproval.Desc".Translate());
+            if (!Settings.enableRequestSystem && Settings.enableRiskApproval)
+            {
+                GUI.color = Color.yellow;
+                listing.Label("RimMind.Advisor.Settings.RiskWithoutApprovalWarning".Translate());
+                GUI.color = Color.white;
+            }
             if (Settings.enableRiskApproval)
             {
                 string[] riskLabels = new[] { "Low", "Medium", "High", "Critical" };
@@ -159,11 +193,11 @@ namespace RimMind.Advisor
                 Settings.maxConcurrentRequests = 3;
                 Settings.pawnScanIntervalTicks = 3600;
                 Settings.moodThreshold = 0.3f;
-                Settings.advisorCustomPrompt = "";
                 Settings.requestExpireTicks = 30000;
                 Settings.enableRequestSystem = true;
                 Settings.enableRiskApproval = true;
                 Settings.autoBlockRiskLevel = RiskLevel.High;
+                Settings.advisorCustomPrompt = string.Empty;
             });
 
             Settings.Write();
@@ -177,12 +211,17 @@ namespace RimMind.Advisor
             if (Settings.enableIdleTrigger)
                 h += 24f + 32f;
             h += 24f;
+            if (!Settings.enableIdleTrigger && !Settings.enableMoodTrigger)
+                h += 24f;
             if (Settings.enableMoodTrigger)
                 h += 24f + 32f;
             h += 24f + 80f;
             h += 24f + 24f;
+            h += 24f + 24f;
             h += 24f + 24f + 32f + 24f + 32f + 24f + 32f;
             h += 24f + 24f + 24f;
+            if (!Settings.enableRequestSystem && Settings.enableRiskApproval)
+                h += 24f;
             if (Settings.enableRiskApproval)
                 h += 24f + 32f;
             return h + 40f;

@@ -1,10 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using LudeonTK;
+using Newtonsoft.Json;
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
+using RimMind.Advisor.Data;
 using RimMind.Core;
+using RimMind.Core.Client;
+using RimMind.Core.Context;
 using RimMind.Core.Internal;
+using RimMind.Core.UI;
 using Verse;
 
 namespace RimMind.Advisor.Debug
@@ -30,9 +38,9 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            var s       = RimMindAdvisorMod.Settings;
-            var coreS   = RimMindCoreMod.Settings;
-            int now     = Find.TickManager.TicksGame;
+            var s = RimMindAdvisorMod.Settings;
+            var coreS = RimMindCoreMod.Settings;
+            int now = Find.TickManager.TicksGame;
             string requestId = $"Advisor_{pawn.ThingID}";
 
             int advisorLeft = comp.AdvisorCooldownTicksLeft;
@@ -111,9 +119,20 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            string sys  = AdvisorPromptBuilder.BuildSystemPrompt(pawn);
-            string user = AdvisorPromptBuilder.BuildUserPrompt(pawn);
-            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{sys}\n\n=== User Prompt ===\n{user}");
+            var npcId = $"NPC-{pawn.thingIDNumber}";
+            var request = new ContextRequest
+            {
+                NpcId = npcId,
+                Scenario = ScenarioIds.Decision,
+                Budget = 0.5f,
+                MaxTokens = 400,
+                Temperature = 0.7f,
+            };
+            var engine = RimMindAPI.GetContextEngine();
+            var snapshot = engine.BuildSnapshot(request);
+            var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
+            var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
+            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
         }
 
         [DebugAction("RimMind Advisor", "List All Advisor States",
@@ -128,17 +147,17 @@ namespace RimMind.Advisor.Debug
             }
 
             var coreS = RimMindCoreMod.Settings;
-            var advS  = RimMindAdvisorMod.Settings;
-            var sb    = new StringBuilder("=== All Advisor States ===\n");
+            var advS = RimMindAdvisorMod.Settings;
+            var sb = new StringBuilder("=== All Advisor States ===\n");
             foreach (var pawn in map.mapPawns.FreeColonists)
             {
                 var comp = pawn.GetComp<CompAIAdvisor>();
                 if (comp == null) continue;
 
-                int advisorLeft   = comp.AdvisorCooldownTicksLeft;
-                int coreLeft      = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
-                string aState     = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
-                string cState     = coreLeft    > 0 ? $"CoreCD{coreLeft}t"      : "CoreReady";
+                int advisorLeft = comp.AdvisorCooldownTicksLeft;
+                int coreLeft = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
+                string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
+                string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
                 sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }
@@ -162,6 +181,96 @@ namespace RimMind.Advisor.Debug
             while (AdvisorConcurrencyTracker.ActiveCount > 0)
                 AdvisorConcurrencyTracker.Decrement();
             Log.Message("[RimMind-Advisor] Concurrency count reset to 0.");
+        }
+
+        [DebugAction("RimMind Advisor", "Show Decision History (selected)",
+            actionType = DebugActionType.Action)]
+        private static void ShowDecisionHistorySelected()
+        {
+            var pawn = Find.Selector.SingleSelectedThing as Pawn;
+            if (pawn == null)
+            {
+                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                return;
+            }
+
+            var store = AdvisorHistoryStore.Instance;
+            if (store == null)
+            {
+                Log.Warning("[RimMind-Advisor] AdvisorHistoryStore not available (no world loaded?).");
+                return;
+            }
+
+            var records = store.GetRecords(pawn);
+            if (records.Count == 0)
+            {
+                Log.Message($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no decision history.");
+                return;
+            }
+
+            int skip = Math.Max(0, records.Count - 10);
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === {pawn.Name.ToStringShort} Decision History (last {records.Count - skip} of {records.Count}) ===");
+            for (int i = skip; i < records.Count; i++)
+            {
+                var r = records[i];
+                sb.AppendLine($"  [{i + 1}] action={r.action}  reason={r.reason}  result={r.result}  tick={r.tick}");
+            }
+            Log.Message(sb.ToString());
+        }
+
+        [DebugAction("RimMind Advisor", "Show Approval Queue",
+            actionType = DebugActionType.Action)]
+        private static void ShowApprovalQueue()
+        {
+            var pending = RimMindAPI.GetPendingRequests();
+            if (pending.Count == 0)
+            {
+                Log.Message("[RimMind-Advisor] Approval queue is empty.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === Approval Queue ({pending.Count} pending) ===");
+            for (int i = 0; i < pending.Count; i++)
+            {
+                var entry = pending[i];
+                string pawnName = entry.pawn?.Name?.ToStringShort ?? "null";
+                sb.AppendLine($"  [{i + 1}] source={entry.source}  pawn={pawnName}  title={entry.title}  desc={entry.description ?? "null"}  systemBlocked={entry.systemBlocked}  tick={entry.tick}  expire={entry.expireTicks}");
+            }
+            Log.Message(sb.ToString());
+        }
+
+        [DebugAction("RimMind Advisor", "Test Tool Call Parse",
+            actionType = DebugActionType.Action)]
+        private static void TestToolCallParse()
+        {
+            string json = "[{\"id\":\"call_001\",\"name\":\"social_relax\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":null,\\\"reason\\\":\\\"need relax\\\"}\"},{\"id\":\"call_002\",\"name\":\"assign_work\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":\\\"Mining\\\",\\\"reason\\\":\\\"good at mining\\\"}\"}]";
+
+            List<StructuredToolCall>? toolCalls;
+            try
+            {
+                toolCalls = JsonConvert.DeserializeObject<List<StructuredToolCall>>(json);
+            }
+            catch (System.Exception ex)
+            {
+                Log.Warning($"[RimMind-Advisor] Tool call parse failed: {ex.Message}");
+                return;
+            }
+
+            if (toolCalls == null || toolCalls.Count == 0)
+            {
+                Log.Warning("[RimMind-Advisor] Tool call parse returned null or empty.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === Tool Call Parse Result ({toolCalls.Count} calls) ===");
+            foreach (var tc in toolCalls)
+            {
+                sb.AppendLine($"  id={tc.Id}  name={tc.Name}  arguments={tc.Arguments}");
+            }
+            Log.Message(sb.ToString());
         }
     }
 }
