@@ -3,11 +3,11 @@
   <name>RimMind - Advisor</name>
   <author>mcocdaa</author>
   <packageId>mcocdaa.RimMindAdvisor</packageId>
-  <modVersion>0.0.1</modVersion>
+  <modVersion>2.0.0</modVersion>
   <supportedVersions>
     <li>1.6</li>
   </supportedVersions>
-  <description>AI-powered pawn advisor. Reads each colonist's state, personality, and available work, then selects the most character-appropriate next action via LLM.</description>
+  <description>AI-powered pawn advisor. Reads each colonist's state, personality, and available work, then selects the most character-appropriate next action via LLM. [v2.0 BREAKING CHANGES]</description>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
