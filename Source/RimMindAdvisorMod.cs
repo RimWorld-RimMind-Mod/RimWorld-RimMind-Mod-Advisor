@@ -4,6 +4,7 @@ using HarmonyLib;
 using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Contracts.Extension;
 using RimMind.Core;
 using RimMind.Core.Context;
 using RimMind.Core.Prompt;
@@ -23,8 +24,10 @@ namespace RimMind.Advisor
             Settings = GetSettings<RimMindAdvisorSettings>();
             new Harmony("mcocdaa.RimMindAdvisor").PatchAll();
 
-            RimMindAPI.RegisterSettingsTab("advisor", () => "RimMind.Advisor.Settings.Tab".Translate(), DrawSettingsContent);
-            RimMindAPI.RegisterModCooldown("Advisor", () => Settings.requestCooldownTicks);
+            RimMindAPI.Extensions<ISettingsTab>().Register(new AdvisorSettingsTab(this));
+            RimMindAPI.Extensions<IToggleBehavior>().Register(new AdvisorToggleBehavior(Settings));
+            RimMindAPI.Extensions<IModCooldown>().Register(new AdvisorModCooldown(Settings));
+            RimMindAPI.Extensions<ISkipCheck>().Register(new AdvisorActionSkipCheck());
 
             RimMindAPI.RegisterPawnContextProvider("advisor_history", pawn =>
             {

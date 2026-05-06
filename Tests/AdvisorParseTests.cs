@@ -25,7 +25,7 @@ namespace RimMind.Advisor.Tests
 
             Assert.NotNull(advices);
             Assert.Equal(2, advices!.Count);
-            Assert.Equal("move_to", advices[0]["action"]);
+            Assert.Equal("move_to", advices![0]["action"]);
             Assert.Equal("eat_food", advices[1]["action"]);
         }
 
@@ -77,9 +77,9 @@ namespace RimMind.Advisor.Tests
             var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(advicesJson);
 
             Assert.Single(advices!);
-            Assert.Equal("move_to", advices[0]["action"]);
-            Assert.False(advices[0].ContainsKey("target"));
-            Assert.False(advices[0].ContainsKey("param"));
+            Assert.Equal("move_to", advices![0]["action"]);
+            Assert.False(advices![0].ContainsKey("target"));
+            Assert.False(advices![0].ContainsKey("param"));
         }
 
         [Fact]
