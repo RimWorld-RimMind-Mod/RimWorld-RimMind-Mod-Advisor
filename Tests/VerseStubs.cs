@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Verse
 {
@@ -69,7 +69,7 @@ namespace RimMind.Core.Client
     public enum AIRequestPriority { Normal }
 }
 
-namespace RimMind.Core.Context
+namespace RimMind.Kernel.Context
 {
     public class ContextRequest
     {

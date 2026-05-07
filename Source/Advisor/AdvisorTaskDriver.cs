@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
 using RimMind.Core.Client;
-using RimMind.Core.Context;
+using RimMind.Kernel.Context;
 using RimWorld;
 using Verse;
 

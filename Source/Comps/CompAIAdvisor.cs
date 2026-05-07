@@ -8,7 +8,7 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
 using RimMind.Core.Client;
-using RimMind.Core.UI;
+using RimMind.Adapters.UI;
 using RimWorld;
 using UnityEngine;
 using Verse;

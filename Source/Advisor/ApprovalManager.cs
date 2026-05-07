@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using RimMind.Actions;
 using RimMind.Advisor.Settings;
 using RimMind.Core;
-using RimMind.Core.UI;
+using RimMind.Adapters.UI;
 using Verse;
 
 namespace RimMind.Advisor.Advisor

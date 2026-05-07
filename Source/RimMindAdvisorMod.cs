@@ -6,9 +6,9 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.Extension;
 using RimMind.Core;
-using RimMind.Core.Context;
-using RimMind.Core.Prompt;
-using RimMind.Core.UI;
+using RimMind.Kernel.Context;
+using RimMind.Kernel.Prompt;
+using RimMind.Adapters.UI;
 using UnityEngine;
 using Verse;
 

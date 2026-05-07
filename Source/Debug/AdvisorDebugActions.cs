@@ -10,9 +10,9 @@ using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
 using RimMind.Core;
 using RimMind.Core.Client;
-using RimMind.Core.Context;
+using RimMind.Kernel.Context;
 using RimMind.Core.Internal;
-using RimMind.Core.UI;
+using RimMind.Adapters.UI;
 using Verse;
 
 namespace RimMind.Advisor.Debug
