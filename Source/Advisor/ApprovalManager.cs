@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RimMind.Actions;
 using RimMind.Advisor.Settings;
+using RimMind.Contracts.UI;
 using RimMind.Core;
 using RimMind.Adapters.UI;
 using Verse;

@@ -1,3 +1,4 @@
+using RimMind.Advisor.Settings;
 using RimMind.Contracts.Extension;
 
 namespace RimMind.Advisor

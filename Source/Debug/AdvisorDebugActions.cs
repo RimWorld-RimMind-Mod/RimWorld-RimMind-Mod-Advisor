@@ -8,8 +8,8 @@ using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
+using RimMind.Contracts.Client;
 using RimMind.Core;
-using RimMind.Core.Client;
 using RimMind.Kernel.Context;
 using RimMind.Core.Internal;
 using RimMind.Adapters.UI;
@@ -235,7 +235,7 @@ namespace RimMind.Advisor.Debug
             for (int i = 0; i < pending.Count; i++)
             {
                 var entry = pending[i];
-                string pawnName = entry.pawn?.Name?.ToStringShort ?? "null";
+                string pawnName = (entry.pawn is Verse.Pawn p) ? p.Name?.ToStringShort ?? "null" : "null";
                 sb.AppendLine($"  [{i + 1}] source={entry.source}  pawn={pawnName}  title={entry.title}  desc={entry.description ?? "null"}  systemBlocked={entry.systemBlocked}  tick={entry.tick}  expire={entry.expireTicks}");
             }
             Log.Message(sb.ToString());

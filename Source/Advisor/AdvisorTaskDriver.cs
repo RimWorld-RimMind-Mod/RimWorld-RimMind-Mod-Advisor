@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,8 +6,8 @@ using Newtonsoft.Json;
 using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Contracts.Client;
 using RimMind.Core;
-using RimMind.Core.Client;
 using RimMind.Kernel.Context;
 using RimWorld;
 using Verse;

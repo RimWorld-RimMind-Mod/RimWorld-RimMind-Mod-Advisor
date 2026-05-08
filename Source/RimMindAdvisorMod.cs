@@ -4,7 +4,9 @@ using HarmonyLib;
 using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Contracts.Context;
 using RimMind.Contracts.Extension;
+using RimMind.Contracts.Prompt;
 using RimMind.Core;
 using RimMind.Kernel.Context;
 using RimMind.Kernel.Prompt;
@@ -53,16 +55,17 @@ namespace RimMind.Advisor
             }, PromptSection.PriorityAuxiliary);
 
             ContextKeyRegistry.Register("actions_list", ContextLayer.L3_State, 0.85f,
-                pawn =>
+                pawnObj =>
                 {
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    var pawn = pawnObj as Pawn;
                     var text = RimMindActionsAPI.GetActionListText(pawn);
                     if (string.IsNullOrEmpty(text)) return new List<ContextEntry>();
                     return new List<ContextEntry> { new ContextEntry(text) };
                 }, "RimMind.Advisor");
 
             ContextKeyRegistry.Register("advisor_task", ContextLayer.L0_Static, 0.95f,
-                pawn =>
+                pawnObj =>
                 {
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
                     var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
