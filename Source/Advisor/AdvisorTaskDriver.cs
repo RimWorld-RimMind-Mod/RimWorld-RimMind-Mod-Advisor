@@ -9,6 +9,7 @@ using RimMind.Advisor.Settings;
 using RimMind.Contracts.Client;
 using RimMind.Core;
 using RimMind.Kernel.Context;
+using RimMind.Contracts.Context;
 using RimWorld;
 using Verse;
 

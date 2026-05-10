@@ -11,7 +11,9 @@ using RimMind.Advisor.Data;
 using RimMind.Contracts.Client;
 using RimMind.Core;
 using RimMind.Kernel.Context;
-using RimMind.Core.Internal;
+using RimMind.Contracts.Context;
+using RimMind.Core.Registry;
+using RimMind.Contracts.Internal;
 using RimMind.Adapters.UI;
 using Verse;
 
