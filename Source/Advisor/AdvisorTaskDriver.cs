@@ -7,6 +7,7 @@ using RimMind.Actions;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.Client;
+using RimMind.Contracts.Result;
 using RimMind.Core;
 using RimMind.Kernel.Context;
 using RimMind.Contracts.Context;
@@ -36,7 +37,7 @@ namespace RimMind.Advisor.Advisor
 
         public bool HasPendingState => _lastMessages != null;
 
-        public void BuildAndSendRequest(Action<AIResponse> onComplete)
+        public void BuildAndSendRequest(Action<Result<AIResponse, RimMindError>> onComplete)
         {
             var npcId = $"NPC-{_pawn.thingIDNumber}";
             var ctxRequest = new ContextRequest
@@ -197,7 +198,7 @@ namespace RimMind.Advisor.Advisor
             return _toolCallDepth < MaxToolCallDepth && _lastMessages != null && _lastSchema != null;
         }
 
-        public void RequestToolFeedback(List<StructuredToolCall> toolCalls, List<ActionResult> results, Action<AIResponse> onComplete)
+        public void RequestToolFeedback(List<StructuredToolCall> toolCalls, List<ActionResult> results, Action<Result<AIResponse, RimMindError>> onComplete)
         {
             _toolCallDepth++;
 

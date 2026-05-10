@@ -7,6 +7,7 @@ using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.Client;
+using RimMind.Contracts.Result;
 using RimMind.Core;
 using RimMind.Adapters.UI;
 using RimWorld;
@@ -108,7 +109,7 @@ namespace RimMind.Advisor.Comps
             RequestAdvice(Settings);
         }
 
-        private void OnAdviceReceived(AIResponse response)
+        private void OnAdviceReceived(Result<AIResponse, RimMindError> result)
         {
             if (Pawn == null || Pawn.Dead || Pawn.Map == null)
             {
@@ -116,12 +117,14 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            if (!response.Success)
+            if (result.IsErr)
             {
-                Log.Warning($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {response.Error}");
+                Log.Warning($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {result.Error}");
                 CompleteRequestCycle();
                 return;
             }
+
+            var response = result.Value;
 
             if (_taskDriver == null)
             {
