@@ -102,7 +102,7 @@ namespace RimMind.Advisor.Comps
             IsEnabled = true;
             _lastRequestTick = -9999;
 
-            RimMind.Core.Registry.AIRequestQueue.Instance?.ClearCooldown("Advisor");
+            RimMind.Core.Runtime.AIRequestQueue.Instance?.ClearCooldown("Advisor");
             Log.Message($"[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared (Advisor), sending request...");
 
             RequestAdvice(Settings);

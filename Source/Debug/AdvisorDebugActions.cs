@@ -12,7 +12,7 @@ using RimMind.Contracts.Client;
 using RimMind.Core;
 using RimMind.Kernel.Context;
 using RimMind.Contracts.Context;
-using RimMind.Core.Registry;
+using RimMind.Core.Runtime;
 using RimMind.Contracts.Internal;
 using RimMind.Adapters.UI;
 using Verse;
