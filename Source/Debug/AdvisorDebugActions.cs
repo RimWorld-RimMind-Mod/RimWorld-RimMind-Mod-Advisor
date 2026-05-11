@@ -16,6 +16,7 @@ using RimMind.Core.Runtime;
 using RimMind.Contracts.Internal;
 using RimMind.Adapters.UI;
 using Verse;
+using RimMind.Contracts.Result;
 
 namespace RimMind.Advisor.Debug
 {
@@ -29,14 +30,14 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
                 return;
             }
 
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                Log.Warning($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
@@ -74,20 +75,20 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
                 return;
             }
 
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                Log.Warning($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
             if (!RimMindAPI.IsConfigured())
             {
-                Log.Warning("[RimMind-Advisor] API not configured. Please enter API Key in Mod settings.");
+                RimMindErrors.Warn("[RimMind-Advisor] API not configured. Please enter API Key in Mod settings.");
                 return;
             }
 
@@ -102,7 +103,7 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
                 return;
             }
 
@@ -117,7 +118,7 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
                 return;
             }
 
@@ -144,7 +145,7 @@ namespace RimMind.Advisor.Debug
             var map = Find.CurrentMap;
             if (map == null)
             {
-                Log.Warning("[RimMind-Advisor] No map available.");
+                RimMindErrors.Warn("[RimMind-Advisor] No map available.");
                 return;
             }
 
@@ -192,14 +193,14 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
                 return;
             }
 
             var store = AdvisorHistoryStore.Instance;
             if (store == null)
             {
-                Log.Warning("[RimMind-Advisor] AdvisorHistoryStore not available (no world loaded?).");
+                RimMindErrors.Warn("[RimMind-Advisor] AdvisorHistoryStore not available (no world loaded?).");
                 return;
             }
 
@@ -256,13 +257,13 @@ namespace RimMind.Advisor.Debug
             }
             catch (System.Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] Tool call parse failed: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Tool call parse failed: {ex.Message}");
                 return;
             }
 
             if (toolCalls == null || toolCalls.Count == 0)
             {
-                Log.Warning("[RimMind-Advisor] Tool call parse returned null or empty.");
+                RimMindErrors.Warn("[RimMind-Advisor] Tool call parse returned null or empty.");
                 return;
             }
 

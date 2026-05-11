@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RimWorld.Planet;
 using Verse;
+using RimMind.Contracts.Result;
 
 namespace RimMind.Advisor.Data
 {
@@ -15,7 +16,7 @@ namespace RimMind.Advisor.Data
         public AdvisorHistoryStore(World world) : base(world)
         {
             if (_instance != null && _instance != this)
-                Log.Warning($"[RimMind-Advisor] AdvisorHistoryStore: replacing stale instance");
+                RimMindErrors.Warn($"[RimMind-Advisor] AdvisorHistoryStore: replacing stale instance");
             _instance = this;
         }
 

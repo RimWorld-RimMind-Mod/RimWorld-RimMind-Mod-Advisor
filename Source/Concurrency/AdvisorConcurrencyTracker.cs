@@ -1,4 +1,5 @@
 using Verse;
+using RimMind.Contracts.Result;
 
 namespace RimMind.Advisor.Concurrency
 {
@@ -21,7 +22,7 @@ namespace RimMind.Advisor.Concurrency
             if (current < 0)
             {
                 System.Threading.Interlocked.Increment(ref _active);
-                Log.Warning("[RimMind-Advisor] Concurrency tracker went negative, auto-corrected");
+                RimMindErrors.Warn("[RimMind-Advisor] Concurrency tracker went negative, auto-corrected");
             }
         }
     }

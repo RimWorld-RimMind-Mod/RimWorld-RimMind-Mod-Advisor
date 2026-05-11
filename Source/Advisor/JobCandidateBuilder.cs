@@ -7,6 +7,7 @@ using RimMind.Core;
 using RimWorld;
 using Verse;
 using Verse.AI;
+using RimMind.Contracts.Result;
 
 namespace RimMind.Advisor.Advisor
 {
@@ -91,7 +92,7 @@ namespace RimMind.Advisor.Advisor
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning($"[RimMind-Advisor] GetWorkTargets failed for {workType.defName}: {ex.Message}");
+                    RimMindErrors.Warn($"[RimMind-Advisor] GetWorkTargets failed for {workType.defName}: {ex.Message}");
                     continue;
                 }
 

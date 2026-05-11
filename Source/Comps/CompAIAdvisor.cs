@@ -90,12 +90,12 @@ namespace RimMind.Advisor.Comps
             {
                 if (Find.TickManager.TicksGame - _pendingRequestTick > 60000)
                 {
-                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} pending request timed out, resetting.");
+                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} pending request timed out, resetting.");
                     CompleteRequestCycle();
                 }
                 else
                 {
-                    Log.Warning($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
+                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {Pawn.Name.ToStringShort} already has a pending request, skipping.");
                     return;
                 }
             }
@@ -119,7 +119,7 @@ namespace RimMind.Advisor.Comps
 
             if (result.IsErr)
             {
-                Log.Warning($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {result.Error}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {result.Error}");
                 CompleteRequestCycle();
                 return;
             }
@@ -155,7 +155,7 @@ namespace RimMind.Advisor.Comps
 
             if (toolCalls == null || toolCalls.Count == 0)
             {
-                Log.Warning($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+                RimMindErrors.Warn($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
                 CompleteRequestCycle();
                 return;
             }
@@ -187,7 +187,7 @@ namespace RimMind.Advisor.Comps
                     }
                     catch (System.Exception ex)
                     {
-                        Log.Warning($"[RimMind-Advisor] Failed to parse tool call arguments for {tc.Name}: {ex.Message}");
+                        RimMindErrors.Warn($"[RimMind-Advisor] Failed to parse tool call arguments for {tc.Name}: {ex.Message}");
                     }
                 }
 
@@ -441,7 +441,7 @@ namespace RimMind.Advisor.Comps
 
             if (matches.Count == 1) return matches[0];
             if (matches.Count > 1)
-                Log.Warning($"[RimMind-Advisor] FindPawnByName: '{name}' matches {matches.Count} pawns, using first. Consider using ThingID for disambiguation.");
+                RimMindErrors.Warn($"[RimMind-Advisor] FindPawnByName: '{name}' matches {matches.Count} pawns, using first. Consider using ThingID for disambiguation.");
 
             return matches.FirstOrDefault();
         }

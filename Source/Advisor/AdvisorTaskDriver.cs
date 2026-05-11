@@ -112,7 +112,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] BuildActionTools failed: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] BuildActionTools failed: {ex.Message}");
                 return null;
             }
         }
@@ -135,7 +135,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}: {ex.Message}");
                 return false;
             }
         }
@@ -188,7 +188,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] Content fallback parse failed: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Content fallback parse failed: {ex.Message}");
                 return null;
             }
         }
@@ -255,7 +255,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] Failed to publish decision perception: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to publish decision perception: {ex.Message}");
             }
         }
 
@@ -297,7 +297,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                Log.Warning($"[RimMind-Advisor] Failed to get rejected decisions: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to get rejected decisions: {ex.Message}");
                 return string.Empty;
             }
         }

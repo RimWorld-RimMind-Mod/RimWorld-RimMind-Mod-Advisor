@@ -27,4 +27,8 @@
     <Compile Include="../../RimMind-Actions/Source/Actions/RiskLevel.cs" LinkBase="Actions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../RimMind-Core/Source/Contracts/RimMindCore.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>
