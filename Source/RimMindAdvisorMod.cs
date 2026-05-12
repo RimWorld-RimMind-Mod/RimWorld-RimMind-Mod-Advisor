@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.Context;

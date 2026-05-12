@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.UI;
 using RimMind.Core;

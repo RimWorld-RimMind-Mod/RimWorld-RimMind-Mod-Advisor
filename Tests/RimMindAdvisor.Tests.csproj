@@ -24,7 +24,7 @@
     <Compile Include="AdvisorTaskDriver_ParseTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
-    <Compile Include="../../RimMind-Actions/Source/Actions/RiskLevel.cs" LinkBase="Actions" />
+    <Compile Include="../../RimMind-Core/Source/Core/Agent/RiskLevel.cs" LinkBase="Actions" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,4 @@
-using RimMind.Actions;
+using RimMind.Core.Agent;
 
 namespace RimMind.Advisor.Advisor
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Contracts.Client;

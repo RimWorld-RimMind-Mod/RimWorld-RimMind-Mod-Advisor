@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using RimMind.Core;
 using RimWorld;
 using Verse;

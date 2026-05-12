@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
@@ -195,7 +195,8 @@ namespace RimMind.Advisor.Comps
                 if (!targetName.NullOrEmpty())
                     targetPawn = FindPawnByName(targetName!);
 
-                var riskLevel = RimMindActionsAPI.GetRiskLevel(tc.Name);
+                var riskLevelObj = RimMindActionsAPI.GetRiskLevel(tc.Name);
+                RiskLevel? riskLevel = riskLevelObj is RiskLevel rl ? rl : null;
                 bool systemBlocked = Settings.enableRiskApproval
                     && riskLevel.HasValue
                     && riskLevel.GetValueOrDefault() >= Settings.autoBlockRiskLevel;

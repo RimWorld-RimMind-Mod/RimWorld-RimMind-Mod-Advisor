@@ -1,4 +1,4 @@
-using RimMind.Actions;
+using RimMind.Core.Agent;
 using Verse;
 
 namespace RimMind.Advisor.Settings
