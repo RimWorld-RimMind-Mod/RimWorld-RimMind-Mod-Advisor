@@ -3,14 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using RimMind.Core.Agent;
+using RimMind.Presentation.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
-using RimMind.Contracts.Client;
-using RimMind.Contracts.Result;
-using RimMind.Core;
-using RimMind.Kernel.Context;
-using RimMind.Contracts.Context;
+using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Domain.ValueObjects;
+using RimMind.Actions;
+using RimMind.Application.Common.Models.Client;
+using RimMind.Application.Common.Models.Context;
+using RimMind.Application.Common.Models.Tools;
+using RimMind.Presentation;
+using RimMind.Application.Features.Context;
+using RimMind.Application.Common.Interfaces.Context;
 using RimWorld;
 using Verse;
 
@@ -49,7 +53,7 @@ namespace RimMind.Advisor.Advisor
                 Temperature = 0.7f,
             };
 
-            var schema = SchemaRegistry.AdviceOutput;
+            var schema = (string?)null;
             var tools = BuildActionTools();
             var snapshot = RimMindAPI.BuildContextSnapshot(ctxRequest);
             var messages = new List<ChatMessage>(snapshot.Messages);
@@ -107,8 +111,14 @@ namespace RimMind.Advisor.Advisor
         {
             try
             {
-                var tools = RimMindActionsAPI.GetStructuredTools();
-                return tools.Count > 0 ? tools : null;
+                var defs = RimMindAPI.Tools.GetAllDefinitions();
+                if (defs.Count == 0) return null;
+                return defs.Select(d => new StructuredTool
+                {
+                    Name = d.Id,
+                    Description = d.Description,
+                    Parameters = d.ParametersSchema,
+                }).ToList();
             }
             catch (Exception ex)
             {

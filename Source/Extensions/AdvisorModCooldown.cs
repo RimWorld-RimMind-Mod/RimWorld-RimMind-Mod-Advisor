@@ -1,5 +1,5 @@
 using RimMind.Advisor.Settings;
-using RimMind.Contracts.Extension;
+using RimMind.Application.Common.Interfaces.Extension;
 
 namespace RimMind.Advisor
 {

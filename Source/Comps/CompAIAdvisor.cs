@@ -1,15 +1,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
-using RimMind.Core.Agent;
+using RimMind.Presentation.Agent;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
-using RimMind.Contracts.Client;
-using RimMind.Contracts.Result;
-using RimMind.Core;
-using RimMind.Adapters.UI;
+using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Domain.ValueObjects;
+using RimMind.Actions;
+using RimMind.Application.Common.Models.Client;
+using RimMind.Domain.Enums;
+using RimMind.Presentation;
+using RimMind.Infrastructure.UI;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -36,7 +39,7 @@ namespace RimMind.Advisor.Comps
 
         private Pawn Pawn => (Pawn)parent;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
-        private bool DebugLogging => RimMind.Core.RimMindCoreMod.Settings.debugLogging;
+        private bool DebugLogging => RimMind.Presentation.RimMindCoreMod.Settings.debugLogging;
 
         public bool IsEligible() =>
             Pawn.IsFreeNonSlaveColonist &&
@@ -103,7 +106,7 @@ namespace RimMind.Advisor.Comps
             IsEnabled = true;
             _lastRequestTick = -9999;
 
-            RimMind.Core.Runtime.AIRequestQueue.Instance?.ClearCooldown("Advisor");
+            RimMindAPI.ClearModCooldown("Advisor");
             Log.Message($"[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared (Advisor), sending request...");
 
             RequestAdvice(Settings);

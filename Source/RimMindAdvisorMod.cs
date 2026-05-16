@@ -1,16 +1,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
-using RimMind.Core.Agent;
+using RimMind.Presentation.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
-using RimMind.Contracts.Context;
-using RimMind.Contracts.Extension;
-using RimMind.Contracts.Prompt;
-using RimMind.Core;
-using RimMind.Kernel.Context;
-using RimMind.Kernel.Prompt;
-using RimMind.Adapters.UI;
+using RimMind.Actions;
+using RimMind.Application.Common.Interfaces.Context;
+using RimMind.Application.Common.Interfaces.Extension;
+using RimMind.Application.Common.Models.Context;
+using RimMind.Application.Common.Models.Prompt;
+using RimMind.Domain.Enums;
+using RimMind.Domain.ValueObjects;
+using RimMind.Presentation;
+using RimMind.Presentation.Context;
+using RimMind.Presentation.Settings;
+using RimMind.Application.Features.Context;
+using RimMind.Infrastructure.UI;
 using UnityEngine;
 using Verse;
 
@@ -68,9 +73,9 @@ namespace RimMind.Advisor
                 pawnObj =>
                 {
                     if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
-                    var instruction = TaskInstructionBuilder.Build("RimMind.Advisor.Prompt.TaskInstruction",
-                        "Role", "Goal", "Process", "Constraint", "Output",
-                        "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example");
+                    var instruction = string.Join("\n\n", new[] { "Role", "Goal", "Process", "Constraint", "Output", "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example" }
+                        .Select(k => (string)$"RimMind.Advisor.Prompt.TaskInstruction.{k}".Translate())
+                        .Where(t => !string.IsNullOrEmpty(t)));
                     return new List<ContextEntry> { new ContextEntry(instruction) };
                 }, "RimMind.Advisor");
 

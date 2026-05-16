@@ -1,5 +1,5 @@
 using Verse;
-using RimMind.Contracts.Result;
+using RimMind.Domain.ValueObjects;
 
 namespace RimMind.Advisor.Concurrency
 {

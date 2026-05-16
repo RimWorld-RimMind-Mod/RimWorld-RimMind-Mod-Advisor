@@ -8,15 +8,16 @@ using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
-using RimMind.Contracts.Client;
-using RimMind.Core;
-using RimMind.Kernel.Context;
-using RimMind.Contracts.Context;
-using RimMind.Core.Runtime;
-using RimMind.Contracts.Internal;
-using RimMind.Adapters.UI;
+using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Application.Common.Models.Client;
+using RimMind.Application.Common.Models.Context;
+using RimMind.Presentation;
+using RimMind.Application.Features.Context;
+using RimMind.Application.Common.Interfaces.Context;
+using RimMind.Application.Common.Interfaces.Internal;
+using RimMind.Infrastructure.UI;
 using Verse;
-using RimMind.Contracts.Result;
+using RimMind.Domain.ValueObjects;
 
 namespace RimMind.Advisor.Debug
 {
@@ -51,7 +52,7 @@ namespace RimMind.Advisor.Debug
                 ? $"Cooling down ({advisorLeft} ticks ~ {advisorLeft / 2500f:F2} game hours)"
                 : "Ready";
 
-            int coreLeft = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
+            int coreLeft = 0;
             string coreCooldown = coreLeft > 0
                 ? $"Cooling down ({coreLeft} ticks)"
                 : "Ready";
@@ -158,7 +159,7 @@ namespace RimMind.Advisor.Debug
                 if (comp == null) continue;
 
                 int advisorLeft = comp.AdvisorCooldownTicksLeft;
-                int coreLeft = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
+                int coreLeft = 0;
                 string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
                 string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
@@ -173,8 +174,8 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ClearAllCooldowns()
         {
-            AIRequestQueue.Instance?.ClearAllCooldowns();
-            Log.Message("[RimMind-Advisor] All Core-layer cooldowns cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
+            RimMindAPI.ClearModCooldown("Advisor");
+            Log.Message("[RimMind-Advisor] Advisor Core-layer cooldown cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
         }
 
         [DebugAction("RimMind Advisor", "Reset Concurrency Count",

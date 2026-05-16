@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using RimWorld.Planet;
 using Verse;
-using RimMind.Contracts.Result;
+using RimMind.Domain.ValueObjects;
 
 namespace RimMind.Advisor.Data
 {

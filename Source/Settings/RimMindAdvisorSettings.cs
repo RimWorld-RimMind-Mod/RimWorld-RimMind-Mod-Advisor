@@ -1,4 +1,5 @@
-using RimMind.Core.Agent;
+using RimMind.Domain.Enums;
+using RimMind.Presentation.Agent;
 using Verse;
 
 namespace RimMind.Advisor.Settings

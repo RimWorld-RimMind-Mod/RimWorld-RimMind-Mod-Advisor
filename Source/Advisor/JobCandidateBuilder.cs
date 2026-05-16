@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using RimMind.Core.Agent;
-using RimMind.Core;
+using RimMind.Presentation.Agent;
+using RimMind.Actions;
+using RimMind.Domain.Enums;
+using RimMind.Presentation;
 using RimWorld;
 using Verse;
 using Verse.AI;
-using RimMind.Contracts.Result;
+using RimMind.Domain.ValueObjects;
 
 namespace RimMind.Advisor.Advisor
 {
@@ -108,7 +110,7 @@ namespace RimMind.Advisor.Advisor
 
             var allActions = RimMindActionsAPI.GetActionDescriptions();
 
-            foreach (var (intentId, displayName, riskLevel) in allActions)
+            foreach (var (intentId, displayName, riskLevelStr) in allActions)
             {
                 if (!AdvisorInstantActions.Contains(intentId)) continue;
                 if (!RimMindActionsAPI.IsAllowed(intentId)) continue;
@@ -117,6 +119,7 @@ namespace RimMind.Advisor.Advisor
                 string? hint = BuildInstantHint(pawn, intentId);
                 if (hint == null) continue;
 
+                var riskLevel = Enum.TryParse<RiskLevel>(riskLevelStr, out var rl) ? rl : RiskLevel.Low;
                 result.Add((displayName, intentId, riskLevel, hint));
             }
 
