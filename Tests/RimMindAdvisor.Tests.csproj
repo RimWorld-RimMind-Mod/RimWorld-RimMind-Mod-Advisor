@@ -24,11 +24,10 @@
     <Compile Include="AdvisorTaskDriver_ParseTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
-    <Compile Include="../../RimMind-Core/Source/Core/Agent/RiskLevel.cs" LinkBase="Actions" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../RimMind-Core/Source/Contracts/RimMindCore.Contracts.csproj" />
+    <ProjectReference Include="../../RimMind-Core/Source/Domain/RimMindCore.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,4 @@
 using RimMind.Domain.Enums;
-using RimMind.Presentation.Agent;
 
 namespace RimMind.Advisor.Advisor
 {
