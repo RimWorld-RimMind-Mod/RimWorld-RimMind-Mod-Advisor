@@ -1,6 +1,6 @@
 using UnityEngine;
 using Verse;
-using RimMind.Application.Common.Interfaces.Extension;
+using RimMind.Presentation.Settings;
 
 namespace RimMind.Advisor
 {
