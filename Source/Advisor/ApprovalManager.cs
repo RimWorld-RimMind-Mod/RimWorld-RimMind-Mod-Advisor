@@ -6,7 +6,6 @@ using RimMind.Application.Common.Interfaces.UI;
 using RimMind.Application.Common.Models.UI;
 using RimMind.Domain.Enums;
 using RimMind.Presentation;
-using RimMind.Infrastructure.UI;
 using Verse;
 
 namespace RimMind.Advisor.Advisor

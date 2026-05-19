@@ -15,7 +15,6 @@ using RimMind.Presentation;
 using RimMind.Application.Features.Context;
 using RimMind.Application.Common.Interfaces.Context;
 using RimMind.Application.Common.Interfaces.Internal;
-using RimMind.Infrastructure.UI;
 using Verse;
 using RimMind.Domain.ValueObjects;
 

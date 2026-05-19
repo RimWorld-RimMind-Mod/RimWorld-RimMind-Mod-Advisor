@@ -12,7 +12,6 @@ using RimMind.Actions;
 using RimMind.Application.Common.Models.Client;
 using RimMind.Domain.Enums;
 using RimMind.Presentation;
-using RimMind.Infrastructure.UI;
 using RimWorld;
 using UnityEngine;
 using Verse;

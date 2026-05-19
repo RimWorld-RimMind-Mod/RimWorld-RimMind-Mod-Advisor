@@ -15,7 +15,7 @@ using RimMind.Presentation;
 using RimMind.Presentation.Context;
 using RimMind.Presentation.Settings;
 using RimMind.Application.Features.Context;
-using RimMind.Infrastructure.UI;
+using RimMind.Presentation.UI;
 using UnityEngine;
 using Verse;
 
