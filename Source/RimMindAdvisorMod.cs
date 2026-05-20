@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
-using RimMind.Presentation.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Actions;
@@ -12,9 +11,7 @@ using RimMind.Application.Common.Models.Prompt;
 using RimMind.Domain.Enums;
 using RimMind.Domain.ValueObjects;
 using RimMind.Presentation;
-using RimMind.Presentation.Context;
 using RimMind.Presentation.Settings;
-using RimMind.Application.Features.Context;
 using RimMind.Presentation.UI;
 using UnityEngine;
 using Verse;
@@ -59,20 +56,20 @@ namespace RimMind.Advisor
                 return sb.ToString().TrimEnd();
             }, PromptSection.PriorityAuxiliary);
 
-            ContextKeyRegistry.Register("actions_list", ContextLayer.L3_State, 0.85f,
+            RimMindAPI.Context.RegisterContextKey("actions_list", ContextLayer.L3_State, 0.85f,
                 pawnObj =>
                 {
-                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    if (RimMindAPI.Context.CurrentScenario != RimMindAPI.Context.ScenarioDecision) return new List<ContextEntry>();
                     var pawn = pawnObj as Pawn;
                     var text = RimMindActionsAPI.GetActionListText(pawn);
                     if (string.IsNullOrEmpty(text)) return new List<ContextEntry>();
                     return new List<ContextEntry> { new ContextEntry(text) };
                 }, "RimMind.Advisor");
 
-            ContextKeyRegistry.Register("advisor_task", ContextLayer.L0_Static, 0.95f,
+            RimMindAPI.Context.RegisterContextKey("advisor_task", ContextLayer.L0_Static, 0.95f,
                 pawnObj =>
                 {
-                    if (ContextKeyRegistry.CurrentScenario != ScenarioIds.Decision) return new List<ContextEntry>();
+                    if (RimMindAPI.Context.CurrentScenario != RimMindAPI.Context.ScenarioDecision) return new List<ContextEntry>();
                     var instruction = string.Join("\n\n", new[] { "Role", "Goal", "Process", "Constraint", "Output", "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example" }
                         .Select(k => (string)$"RimMind.Advisor.Prompt.TaskInstruction.{k}".Translate())
                         .Where(t => !string.IsNullOrEmpty(t)));

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using RimMind.Presentation.Agent;
 using RimMind.Actions;
 using RimMind.Domain.Enums;
 using RimMind.Presentation;

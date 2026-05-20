@@ -1,8 +1,6 @@
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Settings;
-using RimMind.Application.Common.Interfaces.Agent;
-using RimMind.Application.Common.Interfaces.Internal;
 using RimMind.Presentation;
 using Verse;
 
@@ -54,7 +52,7 @@ namespace RimMind.Advisor.Advisor
 
                     var comp = pawn.GetComp<CompAIAdvisor>();
                     if (comp == null || !comp.IsEligible() || comp.HasPendingRequest || !comp.IsEnabled) continue;
-                    if (RimMindServiceLocator.Get<IAgentActiveChecker>()?.IsAgentActive(pawn.ThingID) == true) continue;
+                    if (RimMindAPI.IsAgentActive(pawn.ThingID)) continue;
 
                     bool shouldTrigger = comp.ShouldIdleTrigger() || comp.ShouldMoodTrigger();
                     if (!shouldTrigger) continue;

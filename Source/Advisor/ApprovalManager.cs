@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using RimMind.Presentation.Agent;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.UI;
 using RimMind.Application.Common.Models.UI;

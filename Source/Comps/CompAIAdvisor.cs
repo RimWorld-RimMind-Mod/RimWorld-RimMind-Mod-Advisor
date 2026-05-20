@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
-using RimMind.Presentation.Agent;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
@@ -38,7 +37,7 @@ namespace RimMind.Advisor.Comps
 
         private Pawn Pawn => (Pawn)parent;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
-        private bool DebugLogging => RimMind.Presentation.RimMindCoreMod.Settings.debugLogging;
+        private bool DebugLogging => RimMindAPI.Settings.DebugLogging;
 
         public bool IsEligible() =>
             Pawn.IsFreeNonSlaveColonist &&

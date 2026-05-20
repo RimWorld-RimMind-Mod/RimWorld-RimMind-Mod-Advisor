@@ -12,9 +12,7 @@ using RimMind.Application.Common.Interfaces.Client;
 using RimMind.Application.Common.Models.Client;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Presentation;
-using RimMind.Application.Features.Context;
 using RimMind.Application.Common.Interfaces.Context;
-using RimMind.Application.Common.Interfaces.Internal;
 using Verse;
 using RimMind.Domain.ValueObjects;
 
@@ -42,7 +40,6 @@ namespace RimMind.Advisor.Debug
             }
 
             var s = RimMindAdvisorMod.Settings;
-            var coreS = RimMindCoreMod.Settings;
             int now = Find.TickManager.TicksGame;
             string requestId = $"Advisor_{pawn.ThingID}";
 
@@ -64,7 +61,7 @@ namespace RimMind.Advisor.Debug
             sb.AppendLine($"  [Advisor Cooldown] {advisorCooldown}  (requestCooldownTicks={s.requestCooldownTicks})");
             sb.AppendLine($"  [Core Cooldown]    {coreCooldown}  (mod cooldown for Advisor)");
             sb.AppendLine($"  Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{s.maxConcurrentRequests}");
-            sb.AppendLine($"  debugLogging: {coreS.debugLogging}");
+            sb.AppendLine($"  debugLogging: {RimMindAPI.Settings.DebugLogging}");
             Log.Message(sb.ToString());
         }
 
@@ -126,7 +123,7 @@ namespace RimMind.Advisor.Debug
             var request = new ContextRequest
             {
                 NpcId = npcId,
-                Scenario = ScenarioIds.Decision,
+                Scenario = RimMindAPI.Context.ScenarioDecision,
                 Budget = 0.5f,
                 MaxTokens = 400,
                 Temperature = 0.7f,
@@ -149,7 +146,6 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            var coreS = RimMindCoreMod.Settings;
             var advS = RimMindAdvisorMod.Settings;
             var sb = new StringBuilder("=== All Advisor States ===\n");
             foreach (var pawn in map.mapPawns.FreeColonists)
@@ -165,7 +161,7 @@ namespace RimMind.Advisor.Debug
                 sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }
             sb.AppendLine($"Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{advS.maxConcurrentRequests}  " +
-                          $"API={RimMindAPI.IsConfigured()}  debugLogging={coreS.debugLogging}");
+                          $"API={RimMindAPI.IsConfigured()}  debugLogging={RimMindAPI.Settings.DebugLogging}");
             Log.Message(sb.ToString());
         }
 

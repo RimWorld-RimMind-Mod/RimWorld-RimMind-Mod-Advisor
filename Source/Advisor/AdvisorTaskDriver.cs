@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using RimMind.Presentation.Agent;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Client;
@@ -13,8 +12,6 @@ using RimMind.Application.Common.Models.Client;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Presentation;
-using RimMind.Application.Features.Context;
-using RimMind.Application.Common.Interfaces.Context;
 using RimWorld;
 using Verse;
 
@@ -47,7 +44,7 @@ namespace RimMind.Advisor.Advisor
             var ctxRequest = new ContextRequest
             {
                 NpcId = npcId,
-                Scenario = ScenarioIds.Decision,
+                Scenario = RimMindAPI.Context.ScenarioDecision,
                 Budget = GetDecisionBudget(),
                 MaxTokens = 400,
                 Temperature = 0.7f,
@@ -314,7 +311,7 @@ namespace RimMind.Advisor.Advisor
 
         private float GetDecisionBudget()
         {
-            var coreSettings = RimMindCoreMod.Settings?.Context;
+            var coreSettings = RimMindAPI.Settings.ContextSettings;
             if (coreSettings == null) return 0.5f;
             return coreSettings.ContextBudget;
         }
