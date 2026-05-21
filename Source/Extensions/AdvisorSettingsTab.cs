@@ -9,6 +9,7 @@ namespace RimMind.Advisor
         private readonly RimMindAdvisorMod _mod;
         public AdvisorSettingsTab(RimMindAdvisorMod mod) { _mod = mod; }
         public string Id => "advisor";
+        public string OwnerModId => "RimMindAdvisor";
         public string Label => "RimMind.Advisor.Settings.Tab".Translate();
         public void Draw(Rect rect) => RimMindAdvisorMod.DrawSettingsContent(rect);
     }

@@ -34,14 +34,14 @@ namespace RimMind.Actions
             return new List<string> { "assign_job", "forbid_area", "social_relax", "add_thought" };
         }
 
-        public static List<RimMind.Core.Client.StructuredTool> GetStructuredTools()
+        public static List<RimMind.Application.Common.Models.Client.StructuredTool> GetStructuredTools()
         {
-            return new List<RimMind.Core.Client.StructuredTool>();
+            return new List<RimMind.Application.Common.Models.Client.StructuredTool>();
         }
     }
 }
 
-namespace RimMind.Core.Client
+namespace RimMind.Application.Common.Models.Client
 {
     public class StructuredTool
     {
@@ -69,7 +69,7 @@ namespace RimMind.Core.Client
     public enum AIRequestPriority { Normal }
 }
 
-namespace RimMind.Kernel.Context
+namespace RimMind.Application.Common.Interfaces.Context
 {
     public class ContextRequest
     {
@@ -81,7 +81,7 @@ namespace RimMind.Kernel.Context
     }
 }
 
-namespace RimMind.Core
+namespace RimMind.Presentation
 {
     public static class RimMindAPI
     {

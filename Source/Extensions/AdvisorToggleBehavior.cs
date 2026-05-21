@@ -8,6 +8,7 @@ namespace RimMind.Advisor
         private readonly RimMindAdvisorSettings _settings;
         public AdvisorToggleBehavior(RimMindAdvisorSettings settings) { _settings = settings; }
         public string Id => "advisor.toggle";
+        public string OwnerModId => "RimMindAdvisor";
         public bool IsActive => _settings.enableAdvisor;
         public void Toggle() => _settings.enableAdvisor = !_settings.enableAdvisor;
     }
