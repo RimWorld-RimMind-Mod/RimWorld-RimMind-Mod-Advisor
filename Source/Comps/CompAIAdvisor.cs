@@ -6,6 +6,7 @@ using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
 using RimMind.Actions;
 using RimMind.Application.Common.Models.Client;
@@ -14,6 +15,8 @@ using RimMind.Presentation;
 using RimWorld;
 using UnityEngine;
 using Verse;
+
+using ClientStructuredToolCall = RimMind.Application.Common.Models.Client.StructuredToolCall;
 
 namespace RimMind.Advisor.Comps
 {
@@ -110,7 +113,7 @@ namespace RimMind.Advisor.Comps
             RequestAdvice(Settings);
         }
 
-        private void OnAdviceReceived(Result<AIResponse, RimMindError> result)
+        private void OnAdviceReceived(Result<LlmResponse, RimMindError> result)
         {
             if (Pawn == null || Pawn.Dead || Pawn.Map == null)
             {
@@ -133,7 +136,7 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            List<StructuredToolCall>? toolCalls = null;
+            List<ClientStructuredToolCall>? toolCalls = null;
 
             if (!string.IsNullOrEmpty(response.ToolCallsJson))
             {

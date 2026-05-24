@@ -5,15 +5,16 @@ using System.Text;
 using Newtonsoft.Json;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
-using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
 using RimMind.Actions;
-using RimMind.Application.Common.Models.Client;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Presentation;
 using RimWorld;
 using Verse;
+
+using ClientStructuredToolCall = RimMind.Application.Common.Models.Client.StructuredToolCall;
 
 namespace RimMind.Advisor.Advisor
 {
@@ -38,22 +39,18 @@ namespace RimMind.Advisor.Advisor
 
         public bool HasPendingState => _lastMessages != null;
 
-        public void BuildAndSendRequest(Action<Result<AIResponse, RimMindError>> onComplete)
+        public void BuildAndSendRequest(Action<Result<LlmResponse, RimMindError>> onComplete)
         {
             var npcId = $"NPC-{_pawn.thingIDNumber}";
-            var ctxRequest = new ContextRequest
-            {
-                NpcId = npcId,
-                Scenario = RimMindAPI.Context.ScenarioDecision,
-                Budget = GetDecisionBudget(),
-                MaxTokens = 400,
-                Temperature = 0.7f,
-            };
+            var engine = RimMindAPI.Settings.GetContextEngine();
+            var snapshot = engine?.BuildSnapshotFromEnvelope(
+                npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
 
             var schema = (string?)null;
             var tools = BuildActionTools();
-            var snapshot = RimMindAPI.BuildContextSnapshot(ctxRequest);
-            var messages = new List<ChatMessage>(snapshot.Messages);
+            var messages = snapshot != null
+                ? new List<ChatMessage>(snapshot.Messages)
+                : new List<ChatMessage>();
 
             if (!_settings.advisorCustomPrompt.NullOrEmpty())
             {
@@ -88,20 +85,23 @@ namespace RimMind.Advisor.Advisor
             _toolCallDepth = 0;
             _lastReasoningContent = null;
 
-            var aiRequest = new AIRequest
-            {
-                SystemPrompt = string.Empty,
-                Messages = messages,
-                MaxTokens = snapshot.MaxTokens,
-                Temperature = snapshot.Temperature,
-                RequestId = $"Structured_{npcId}",
-                ModId = "Advisor",
-                ExpireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks,
-                UseJsonMode = true,
-                Priority = AIRequestPriority.Normal,
-            };
+            var maxTokens = snapshot?.MaxTokens ?? 400;
+            var temperature = snapshot?.Temperature ?? 0.7f;
+            var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
-            RimMindAPI.RequestStructuredAsync(aiRequest, schema, onComplete, tools);
+            var envelope = LlmRequestEnvelopeBuilder
+                .ForScenario("Advisor")
+                .WithModId("RimMind.Advisor")
+                .WithNpcId(npcId)
+                .WithSchema(schema)
+                .WithMessages(messages)
+                .WithTools(tools)
+                .WithMaxTokens(maxTokens)
+                .WithTemperature(temperature)
+                .WithExpireAtTicks(expireAtTicks)
+                .Build();
+
+            RimMindAPI.Request.Send(envelope, onComplete);
         }
 
         public List<StructuredTool>? BuildActionTools()
@@ -131,12 +131,12 @@ namespace RimMind.Advisor.Advisor
 
         public string? LastReasoningContent => _lastReasoningContent;
 
-        public bool TryParseToolCalls(string toolCallsJson, out List<StructuredToolCall> toolCalls)
+        public bool TryParseToolCalls(string toolCallsJson, out List<ClientStructuredToolCall> toolCalls)
         {
-            toolCalls = new List<StructuredToolCall>();
+            toolCalls = new List<ClientStructuredToolCall>();
             try
             {
-                var parsed = JsonConvert.DeserializeObject<List<StructuredToolCall>>(toolCallsJson);
+                var parsed = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(toolCallsJson);
                 if (parsed != null) toolCalls = parsed;
                 return true;
             }
@@ -147,7 +147,7 @@ namespace RimMind.Advisor.Advisor
             }
         }
 
-        public List<StructuredToolCall>? TryParseContentAsToolCalls(string content)
+        public List<ClientStructuredToolCall>? TryParseContentAsToolCalls(string content)
         {
             try
             {
@@ -169,7 +169,7 @@ namespace RimMind.Advisor.Advisor
                 if (advices == null || advices.Count == 0) return null;
 
                 var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
-                var toolCalls = new List<StructuredToolCall>();
+                var toolCalls = new List<ClientStructuredToolCall>();
                 int idx = 0;
 
                 foreach (var adv in advices)
@@ -182,7 +182,7 @@ namespace RimMind.Advisor.Advisor
                     if (adv.TryGetValue("param", out var param) && !param.NullOrEmpty()) args["param"] = param;
                     if (adv.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()) args["reason"] = reason;
 
-                    toolCalls.Add(new StructuredToolCall
+                    toolCalls.Add(new ClientStructuredToolCall
                     {
                         Id = $"fallback_{idx}",
                         Name = actionName,
@@ -205,7 +205,7 @@ namespace RimMind.Advisor.Advisor
             return _toolCallDepth < MaxToolCallDepth && _lastMessages != null && _lastSchema != null;
         }
 
-        public void RequestToolFeedback(List<StructuredToolCall> toolCalls, List<ActionResult> results, Action<Result<AIResponse, RimMindError>> onComplete)
+        public void RequestToolFeedback(List<ClientStructuredToolCall> toolCalls, List<ActionResult> results, Action<Result<LlmResponse, RimMindError>> onComplete)
         {
             _toolCallDepth++;
 
@@ -237,19 +237,22 @@ namespace RimMind.Advisor.Advisor
 
             _lastMessages = messages;
 
-            var followUpRequest = new AIRequest
-            {
-                Messages = messages,
-                MaxTokens = 400,
-                Temperature = 0.7f,
-                RequestId = $"Structured_NPC-{_pawn.thingIDNumber}_fb{_toolCallDepth}",
-                ModId = "Advisor",
-                ExpireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks,
-                UseJsonMode = true,
-                Priority = AIRequestPriority.Normal,
-            };
+            var npcId = $"NPC-{_pawn.thingIDNumber}";
+            var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
-            RimMindAPI.RequestStructuredAsync(followUpRequest, _lastSchema!, onComplete, _lastTools);
+            var envelope = LlmRequestEnvelopeBuilder
+                .ForScenario("Advisor")
+                .WithModId("RimMind.Advisor")
+                .WithNpcId(npcId)
+                .WithSchema(_lastSchema)
+                .WithMessages(messages)
+                .WithTools(_lastTools)
+                .WithMaxTokens(400)
+                .WithTemperature(0.7f)
+                .WithExpireAtTicks(expireAtTicks)
+                .Build();
+
+            RimMindAPI.Request.Send(envelope, onComplete);
         }
 
         public void BroadcastDecisionExecuted(string actionName, string? reason)
@@ -307,13 +310,6 @@ namespace RimMind.Advisor.Advisor
                 RimMindErrors.Warn($"[RimMind-Advisor] Failed to get rejected decisions: {ex.Message}");
                 return string.Empty;
             }
-        }
-
-        private float GetDecisionBudget()
-        {
-            var coreSettings = RimMindAPI.Settings.ContextSettings;
-            if (coreSettings == null) return 0.5f;
-            return coreSettings.ContextBudget;
         }
     }
 }

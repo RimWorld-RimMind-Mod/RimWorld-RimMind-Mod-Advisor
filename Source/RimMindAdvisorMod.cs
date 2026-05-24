@@ -88,8 +88,8 @@ namespace RimMind.Advisor
 
         internal static void DrawSettingsContent(Rect inRect)
         {
-            Rect contentArea = SettingsUIHelper.SplitContentArea(inRect);
-            Rect bottomBar = SettingsUIHelper.SplitBottomBar(inRect);
+            Rect contentArea = SettingsUIDrawer.SplitContentArea(inRect);
+            Rect bottomBar = SettingsUIDrawer.SplitBottomBar(inRect);
 
             float contentH = EstimateHeight();
             Rect viewRect = new Rect(0f, 0f, contentArea.width - 16f, contentH);
@@ -101,7 +101,7 @@ namespace RimMind.Advisor
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableAdvisor".Translate(), ref Settings.enableAdvisor,
                 "RimMind.Advisor.Settings.EnableAdvisor.Desc".Translate());
 
-            SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.TriggerSources".Translate());
+            SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.TriggerSources".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableIdleTrigger".Translate(), ref Settings.enableIdleTrigger,
                 "RimMind.Advisor.Settings.EnableIdleTrigger.Desc".Translate());
             if (Settings.enableIdleTrigger)
@@ -133,13 +133,13 @@ namespace RimMind.Advisor
                 GUI.color = Color.white;
             }
 
-            SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Display".Translate());
+            SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Display".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.ShowThoughtBubble".Translate(), ref Settings.showThoughtBubble,
                 "RimMind.Advisor.Settings.ShowThoughtBubble.Desc".Translate());
             listing.Label("RimMind.Advisor.Settings.CustomPrompt".Translate());
             Settings.advisorCustomPrompt = listing.TextEntry(Settings.advisorCustomPrompt, 5);
 
-            SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Request".Translate());
+            SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Request".Translate());
             string cooldownHours = $"{Settings.requestCooldownTicks / 2500f:F1}";
             string cooldownTicks = $"{Settings.requestCooldownTicks}";
             listing.Label("RimMind.Advisor.Settings.RequestCooldown".Translate(cooldownHours, cooldownTicks));
@@ -162,7 +162,7 @@ namespace RimMind.Advisor
             Settings.requestExpireTicks = (int)listing.Slider(Settings.requestExpireTicks, 3600f, 120000f);
             Settings.requestExpireTicks = (Settings.requestExpireTicks / 1500) * 1500;
 
-            SettingsUIHelper.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Approval".Translate());
+            SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Approval".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableRequestSystem".Translate(), ref Settings.enableRequestSystem,
                 "RimMind.Advisor.Settings.EnableRequestSystem.Desc".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableRiskApproval".Translate(), ref Settings.enableRiskApproval,
@@ -188,7 +188,7 @@ namespace RimMind.Advisor
             listing.End();
             Widgets.EndScrollView();
 
-            SettingsUIHelper.DrawBottomBar(bottomBar, () =>
+            SettingsUIDrawer.DrawBottomBar(bottomBar, () =>
             {
                 Settings.enableAdvisor = true;
                 Settings.showThoughtBubble = true;

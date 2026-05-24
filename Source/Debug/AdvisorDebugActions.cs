@@ -9,12 +9,14 @@ using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
 using RimMind.Application.Common.Interfaces.Client;
-using RimMind.Application.Common.Models.Client;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Presentation;
 using RimMind.Application.Common.Interfaces.Context;
 using Verse;
 using RimMind.Domain.ValueObjects;
+using RimMind.Domain.Llm;
+
+using ClientStructuredToolCall = RimMind.Application.Common.Models.Client.StructuredToolCall;
 
 namespace RimMind.Advisor.Debug
 {
@@ -120,16 +122,14 @@ namespace RimMind.Advisor.Debug
             }
 
             var npcId = $"NPC-{pawn.thingIDNumber}";
-            var request = new ContextRequest
+            var engine = RimMindAPI.Settings.GetContextEngine();
+            var snapshot = engine?.BuildSnapshotFromEnvelope(
+                npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
+            if (snapshot == null)
             {
-                NpcId = npcId,
-                Scenario = RimMindAPI.Context.ScenarioDecision,
-                Budget = 0.5f,
-                MaxTokens = 400,
-                Temperature = 0.7f,
-            };
-            var engine = RimMindAPI.GetContextEngine();
-            var snapshot = engine.BuildSnapshot(request);
+                RimMindErrors.Warn("[RimMind-Advisor] Failed to build context snapshot.");
+                return;
+            }
             var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
             var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
             Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
@@ -246,10 +246,10 @@ namespace RimMind.Advisor.Debug
         {
             string json = "[{\"id\":\"call_001\",\"name\":\"social_relax\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":null,\\\"reason\\\":\\\"need relax\\\"}\"},{\"id\":\"call_002\",\"name\":\"assign_work\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":\\\"Mining\\\",\\\"reason\\\":\\\"good at mining\\\"}\"}]";
 
-            List<StructuredToolCall>? toolCalls;
+            List<ClientStructuredToolCall>? toolCalls;
             try
             {
-                toolCalls = JsonConvert.DeserializeObject<List<StructuredToolCall>>(json);
+                toolCalls = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(json);
             }
             catch (System.Exception ex)
             {
