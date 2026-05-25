@@ -1,13 +1,12 @@
-using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using HarmonyLib;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Actions;
 using RimMind.Application.Common.Interfaces.Context;
 using RimMind.Application.Common.Interfaces.Extension;
-using RimMind.Application.Common.Models.Context;
-using RimMind.Application.Common.Models.Prompt;
 using RimMind.Domain.Enums;
 using RimMind.Domain.ValueObjects;
 using RimMind.Presentation;
@@ -33,48 +32,57 @@ namespace RimMind.Advisor
             RimMindAPI.Extensions<IModCooldown>().Register(new AdvisorModCooldown(Settings));
             RimMindAPI.Extensions<ISkipCheck>().Register(new AdvisorActionSkipCheck());
 
-            RimMindAPI.RegisterPawnContextProvider("advisor_history", pawn =>
-            {
-                var historyStore = AdvisorHistoryStore.Instance;
-                if (historyStore == null) return null;
-                var records = historyStore.GetRecords(pawn);
-                if (records.Count == 0) return null;
-                var recent = records.Skip(System.Math.Max(0, records.Count - 5)).ToList();
-                var sb = new System.Text.StringBuilder();
-                sb.AppendLine("RimMind.Advisor.Prompt.RecentHistory".Translate());
-                foreach (var r in recent)
+            RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
+                "advisor_history", ContextLayer.L4_History, 0.8f,
+                async (ctx, ct) =>
                 {
-                    string resultLabel = r.result switch
+                    if (ctx.PawnId <= 0) return null;
+                    var pawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId)
+                        ?? Find.CurrentMap?.mapPawns?.FreeColonists.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId);
+                    if (pawn == null) return null;
+                    var historyStore = AdvisorHistoryStore.Instance;
+                    if (historyStore == null) return null;
+                    var records = historyStore.GetRecords(pawn);
+                    if (records.Count == 0) return null;
+                    var recent = records.Skip(System.Math.Max(0, records.Count - 5)).ToList();
+                    var sb = new System.Text.StringBuilder();
+                    sb.AppendLine("RimMind.Advisor.Prompt.RecentHistory".Translate());
+                    foreach (var r in recent)
                     {
-                        "approved" => "RimMind.Advisor.Prompt.ResultApproved".Translate(),
-                        "rejected" => "RimMind.Advisor.Prompt.ResultRejected".Translate(),
-                        "system_blocked" => "RimMind.Advisor.Prompt.ResultBlocked".Translate(),
-                        _ => "RimMind.Advisor.Prompt.ResultIgnored".Translate()
-                    };
-                    sb.AppendLine($"- {r.action}: {r.reason} → {resultLabel}");
-                }
-                return sb.ToString().TrimEnd();
-            }, PromptSection.PriorityAuxiliary);
+                        string resultLabel = r.result switch
+                        {
+                            "approved" => "RimMind.Advisor.Prompt.ResultApproved".Translate(),
+                            "rejected" => "RimMind.Advisor.Prompt.ResultRejected".Translate(),
+                            "system_blocked" => "RimMind.Advisor.Prompt.ResultBlocked".Translate(),
+                            _ => "RimMind.Advisor.Prompt.ResultIgnored".Translate()
+                        };
+                        sb.AppendLine($"- {r.action}: {r.reason} → {resultLabel}");
+                    }
+                    return sb.ToString().TrimEnd();
+                }, "RimMind.Advisor", stalenessTicks: 3000, invalidationTriggers: new[] { "AdvisorEvent" }));
 
-            RimMindAPI.Context.RegisterContextKey("actions_list", ContextLayer.L3_State, 0.85f,
-                pawnObj =>
+            RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
+                "actions_list", ContextLayer.L3_State, 0.85f,
+                async (ctx, ct) =>
                 {
-                    if (RimMindAPI.Context.CurrentScenario != RimMindAPI.Context.ScenarioDecision) return new List<ContextEntry>();
-                    var pawn = pawnObj as Pawn;
+                    if (ctx.Scenario != RimMindAPI.Context.ScenarioDecision) return null;
+                    if (ctx.PawnId <= 0) return null;
+                    var pawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId)
+                        ?? Find.CurrentMap?.mapPawns?.FreeColonists.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId);
                     var text = RimMindActionsAPI.GetActionListText(pawn);
-                    if (string.IsNullOrEmpty(text)) return new List<ContextEntry>();
-                    return new List<ContextEntry> { new ContextEntry(text) };
-                }, "RimMind.Advisor");
+                    return string.IsNullOrEmpty(text) ? null : text;
+                }, "RimMind.Advisor", stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
 
-            RimMindAPI.Context.RegisterContextKey("advisor_task", ContextLayer.L0_Static, 0.95f,
-                pawnObj =>
+            RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
+                "advisor_task", ContextLayer.L0_Static, 0.95f,
+                async (ctx, ct) =>
                 {
-                    if (RimMindAPI.Context.CurrentScenario != RimMindAPI.Context.ScenarioDecision) return new List<ContextEntry>();
+                    if (ctx.Scenario != RimMindAPI.Context.ScenarioDecision) return null;
                     var instruction = string.Join("\n\n", new[] { "Role", "Goal", "Process", "Constraint", "Output", "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example" }
                         .Select(k => (string)$"RimMind.Advisor.Prompt.TaskInstruction.{k}".Translate())
                         .Where(t => !string.IsNullOrEmpty(t)));
-                    return new List<ContextEntry> { new ContextEntry(instruction) };
-                }, "RimMind.Advisor");
+                    return instruction;
+                }, "RimMind.Advisor", stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
 
             Log.Message("[RimMind-Advisor] Initialized.");
         }

@@ -16,7 +16,7 @@ using Verse;
 using RimMind.Domain.ValueObjects;
 using RimMind.Domain.Llm;
 
-using ClientStructuredToolCall = RimMind.Application.Common.Models.Client.StructuredToolCall;
+using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
 
 namespace RimMind.Advisor.Debug
 {

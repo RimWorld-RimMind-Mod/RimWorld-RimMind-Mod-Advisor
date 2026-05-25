@@ -16,7 +16,7 @@ using RimWorld;
 using UnityEngine;
 using Verse;
 
-using ClientStructuredToolCall = RimMind.Application.Common.Models.Client.StructuredToolCall;
+using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
 
 namespace RimMind.Advisor.Comps
 {
