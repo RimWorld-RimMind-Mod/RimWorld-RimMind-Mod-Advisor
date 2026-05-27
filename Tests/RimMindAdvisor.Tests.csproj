@@ -22,8 +22,16 @@
     <Compile Include="AdvisorConcurrencyTrackerTests.cs" />
     <Compile Include="AdvisorParseTests.cs" />
     <Compile Include="AdvisorTaskDriver_ParseTests.cs" />
+    <Compile Include="ApprovalManagerTests.cs" />
+    <Compile Include="AdvisorHistoryStoreTests.cs" />
+    <Compile Include="AdvisorTaskDriver_FeedbackAndStateTests.cs" />
+    <Compile Include="AdvisorTaskDriver_TryParseToolCallsTests.cs" />
+    <Compile Include="AdvisorTaskDriver_ContentFallbackTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
+    <Compile Include="../Source/Advisor/ApprovalManager.cs" />
+    <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
+    <Compile Include="../Source/Data/AdvisorRequestRecord.cs" />
   </ItemGroup>
 
   <ItemGroup>
