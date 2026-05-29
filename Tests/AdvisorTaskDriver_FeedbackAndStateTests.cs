@@ -32,10 +32,10 @@ namespace RimMind.Advisor.Tests
             /// <summary>
             /// 模拟 BuildAndSendRequest 后的状态设置
             /// </summary>
-            public void SimulateBuildRequest(string? schema = null)
+            public void SimulateBuildRequest(string? schema = null, bool includeTools = true)
             {
                 _lastMessages = new List<object> { new() };
-                _lastTools = new List<object> { new() };
+                _lastTools = includeTools ? new List<object> { new() } : new List<object>();
                 _lastSchema = schema;
                 _toolCallDepth = 0;
                 _lastReasoningContent = null;
@@ -43,7 +43,7 @@ namespace RimMind.Advisor.Tests
 
             public bool ShouldRequestFeedback()
             {
-                return _toolCallDepth < MaxToolCallDepth && _lastMessages != null && _lastSchema != null;
+                return _toolCallDepth < MaxToolCallDepth && _lastMessages != null && _lastTools != null && _lastTools.Count > 0;
             }
 
             public void SimulateToolFeedback()
@@ -121,11 +121,19 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
-        public void ShouldRequestFeedback_WithPendingStateNoSchema_ReturnsFalse()
+        public void ShouldRequestFeedback_WithPendingStateNoSchemaAndTools_ReturnsTrue()
         {
-            // 有待处理状态但无 schema 时不需要反馈
+            // 有待处理状态且有 tools 时，无 schema 也需要反馈
             var sim = new TaskDriverStateSimulator();
             sim.SimulateBuildRequest(schema: null);
+            Assert.True(sim.ShouldRequestFeedback());
+        }
+
+        [Fact]
+        public void ShouldRequestFeedback_WithPendingStateNoTools_ReturnsFalse()
+        {
+            var sim = new TaskDriverStateSimulator();
+            sim.SimulateBuildRequest(schema: null, includeTools: false);
             Assert.False(sim.ShouldRequestFeedback());
         }
 
