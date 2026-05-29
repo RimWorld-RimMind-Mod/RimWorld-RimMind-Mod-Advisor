@@ -57,6 +57,15 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_RiskResolver_Uses_Core_Mechanism_Metadata()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorToolRiskResolver.cs"));
+            Assert.Contains("RimMindAPI.Mechanisms.FindById", source);
+            Assert.Contains("GetRiskForOperation", source);
+            Assert.Contains("MechanismRisk.Dangerous", source);
+        }
+
+        [Fact]
         public void Advisor_NormalPromptKeys_Do_Not_Advertise_LegacyJsonFallback()
         {
             var languageFiles = new[]
