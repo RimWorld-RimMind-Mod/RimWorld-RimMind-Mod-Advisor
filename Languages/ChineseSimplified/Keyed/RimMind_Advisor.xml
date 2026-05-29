@@ -7,6 +7,8 @@
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>
   <RimMind.Advisor.Settings.ShowThoughtBubble>显示 AI 决策气泡</RimMind.Advisor.Settings.ShowThoughtBubble>
   <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>在殖民者头顶显示 AI 选择该行动的理由。</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+  <RimMind.Advisor.Settings.EnableLegacyJsonFallback>启用旧版 JSON 回退</RimMind.Advisor.Settings.EnableLegacyJsonFallback>
+  <RimMind.Advisor.Settings.EnableLegacyJsonFallback.Desc>允许将旧提示词返回的文本 JSON 建议解析为工具调用。新提示词应只使用原生 ToolCall。</RimMind.Advisor.Settings.EnableLegacyJsonFallback.Desc>
   <RimMind.Advisor.Settings.CustomPrompt>自定义系统提示词（插入到系统消息之后）</RimMind.Advisor.Settings.CustomPrompt>
   <RimMind.Advisor.Settings.TriggerSources>触发来源</RimMind.Advisor.Settings.TriggerSources>
   <RimMind.Advisor.Settings.EnableIdleTrigger>小人空闲时触发</RimMind.Advisor.Settings.EnableIdleTrigger>

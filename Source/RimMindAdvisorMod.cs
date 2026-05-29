@@ -108,6 +108,10 @@ namespace RimMind.Advisor
 
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableAdvisor".Translate(), ref Settings.enableAdvisor,
                 "RimMind.Advisor.Settings.EnableAdvisor.Desc".Translate());
+            listing.CheckboxLabeled(
+                "RimMind.Advisor.Settings.EnableLegacyJsonFallback".Translate(),
+                ref Settings.enableLegacyJsonFallback,
+                "RimMind.Advisor.Settings.EnableLegacyJsonFallback.Desc".Translate());
 
             SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.TriggerSources".Translate());
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableIdleTrigger".Translate(), ref Settings.enableIdleTrigger,
@@ -199,6 +203,7 @@ namespace RimMind.Advisor
             SettingsUIDrawer.DrawBottomBar(bottomBar, () =>
             {
                 Settings.enableAdvisor = true;
+                Settings.enableLegacyJsonFallback = false;
                 Settings.showThoughtBubble = true;
                 Settings.enableIdleTrigger = true;
                 Settings.enableMoodTrigger = true;
@@ -219,6 +224,7 @@ namespace RimMind.Advisor
         private static float EstimateHeight()
         {
             float h = 30f;
+            h += 24f;
             h += 24f;
             h += 24f + 24f;
             if (Settings.enableIdleTrigger)

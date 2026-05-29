@@ -17,6 +17,9 @@ namespace RimMind.Advisor.Settings
         /// <summary>显示 AI 决策理由气泡。</summary>
         public bool showThoughtBubble = true;
 
+        /// <summary>允许旧版文本 JSON 建议回退解析。</summary>
+        public bool enableLegacyJsonFallback = false;
+
         /// <summary>小人空闲时触发。</summary>
         public bool enableIdleTrigger = true;
 
@@ -50,6 +53,7 @@ namespace RimMind.Advisor.Settings
             Scribe_Values.Look(ref requestCooldownTicks, "requestCooldownTicks", 30000);
             Scribe_Values.Look(ref maxConcurrentRequests, "maxConcurrentRequests", 3);
             Scribe_Values.Look(ref showThoughtBubble, "showThoughtBubble", true);
+            Scribe_Values.Look(ref enableLegacyJsonFallback, "enableLegacyJsonFallback", false);
             Scribe_Values.Look(ref enableIdleTrigger, "enableIdleTrigger", true);
             Scribe_Values.Look(ref enableMoodTrigger, "enableMoodTrigger", true);
             Scribe_Values.Look(ref pawnScanIntervalTicks, "pawnScanIntervalTicks", 3600);

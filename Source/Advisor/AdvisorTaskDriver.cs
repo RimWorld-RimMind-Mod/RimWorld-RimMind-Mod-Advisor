@@ -52,6 +52,20 @@ namespace RimMind.Advisor.Advisor
                 ? new List<ChatMessage>(snapshot.Messages)
                 : new List<ChatMessage>();
 
+            if (_settings.enableLegacyJsonFallback)
+            {
+                int lastSysIdx = -1;
+                for (int i = messages.Count - 1; i >= 0; i--)
+                {
+                    if (messages[i].Role == "system") { lastSysIdx = i; break; }
+                }
+                messages.Insert(lastSysIdx + 1, new ChatMessage
+                {
+                    Role = "system",
+                    Content = "[Legacy compatibility] Native ToolCall is preferred. If your model cannot emit tool_calls, respond with JSON object {\"advices\":[{\"action\":\"tool.id\",\"param\":\"{}\",\"reason\":\"short reason\"}]}."
+                });
+            }
+
             if (!_settings.advisorCustomPrompt.NullOrEmpty())
             {
                 int lastSysIdx = -1;
@@ -96,6 +110,7 @@ namespace RimMind.Advisor.Advisor
                 .WithSchema(schema)
                 .WithMessages(messages)
                 .WithTools(tools)
+                .WithToolDispatchMode(ToolCallDispatchMode.Manual)
                 .WithMaxTokens(maxTokens)
                 .WithTemperature(temperature)
                 .WithExpireAtTicks(expireAtTicks)
@@ -145,6 +160,11 @@ namespace RimMind.Advisor.Advisor
                 RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}: {ex.Message}");
                 return false;
             }
+        }
+
+        public List<ClientStructuredToolCall>? TryParseContentAsToolCallsIfEnabled(string content)
+        {
+            return _settings.enableLegacyJsonFallback ? TryParseContentAsToolCalls(content) : null;
         }
 
         public List<ClientStructuredToolCall>? TryParseContentAsToolCalls(string content)
@@ -247,6 +267,7 @@ namespace RimMind.Advisor.Advisor
                 .WithSchema(_lastSchema)
                 .WithMessages(messages)
                 .WithTools(_lastTools)
+                .WithToolDispatchMode(ToolCallDispatchMode.Manual)
                 .WithMaxTokens(400)
                 .WithTemperature(0.7f)
                 .WithExpireAtTicks(expireAtTicks)

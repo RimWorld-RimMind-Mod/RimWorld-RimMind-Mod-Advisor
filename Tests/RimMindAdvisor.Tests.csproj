@@ -27,6 +27,7 @@
     <Compile Include="AdvisorTaskDriver_FeedbackAndStateTests.cs" />
     <Compile Include="AdvisorTaskDriver_TryParseToolCallsTests.cs" />
     <Compile Include="AdvisorTaskDriver_ContentFallbackTests.cs" />
+    <Compile Include="AdvisorToolCallArchitectureTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />

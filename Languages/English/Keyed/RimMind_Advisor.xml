@@ -7,6 +7,8 @@
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>
   <RimMind.Advisor.Settings.ShowThoughtBubble>Show AI Decision Bubble</RimMind.Advisor.Settings.ShowThoughtBubble>
   <RimMind.Advisor.Settings.ShowThoughtBubble.Desc>Display the AI's reasoning for choosing an action above the colonist.</RimMind.Advisor.Settings.ShowThoughtBubble.Desc>
+  <RimMind.Advisor.Settings.EnableLegacyJsonFallback>Enable legacy JSON fallback</RimMind.Advisor.Settings.EnableLegacyJsonFallback>
+  <RimMind.Advisor.Settings.EnableLegacyJsonFallback.Desc>Allow text JSON advice to be parsed into tool calls for old prompts. New prompts should use native ToolCall only.</RimMind.Advisor.Settings.EnableLegacyJsonFallback.Desc>
   <RimMind.Advisor.Settings.CustomPrompt>Custom System Prompt (inserted after system messages)</RimMind.Advisor.Settings.CustomPrompt>
   <RimMind.Advisor.Settings.TriggerSources>Trigger Sources</RimMind.Advisor.Settings.TriggerSources>
   <RimMind.Advisor.Settings.EnableIdleTrigger>Trigger on Colonist Idle</RimMind.Advisor.Settings.EnableIdleTrigger>
