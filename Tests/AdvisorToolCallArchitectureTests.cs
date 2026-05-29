@@ -66,6 +66,15 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_ToolCallExecutor_Uses_Core_ToolRegistry()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorToolCallExecutor.cs"));
+            Assert.Contains("RimMindAPI.Tools.FindById", source);
+            Assert.Contains("ToolCallArgs", source);
+            Assert.Contains("ExecuteAsync", source);
+        }
+
+        [Fact]
         public void Advisor_NormalPromptKeys_Do_Not_Advertise_LegacyJsonFallback()
         {
             var languageFiles = new[]
