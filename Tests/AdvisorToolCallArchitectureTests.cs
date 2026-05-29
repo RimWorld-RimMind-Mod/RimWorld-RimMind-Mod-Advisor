@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace RimMind.Advisor.Tests
@@ -13,6 +15,13 @@ namespace RimMind.Advisor.Tests
         {
             var path = Path.Combine(RepoRoot, "RimMind-Advisor", "Source", relativePath);
             Assert.True(File.Exists(path), $"Missing source file: {path}");
+            return File.ReadAllText(path);
+        }
+
+        private static string ReadAdvisorFile(string relativePath)
+        {
+            var path = Path.Combine(RepoRoot, "RimMind-Advisor", relativePath);
+            Assert.True(File.Exists(path), $"Missing Advisor file: {path}");
             return File.ReadAllText(path);
         }
 
@@ -36,6 +45,57 @@ namespace RimMind.Advisor.Tests
             var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorTaskDriver.cs"));
             Assert.Contains("_settings.enableLegacyJsonFallback", source);
             Assert.Contains("TryParseContentAsToolCalls", source);
+        }
+
+        [Fact]
+        public void Advisor_NormalPromptKeys_Do_Not_Advertise_LegacyJsonFallback()
+        {
+            var languageFiles = new[]
+            {
+                Path.Combine("Languages", "English", "Keyed", "RimMind_Advisor.xml"),
+                Path.Combine("Languages", "ChineseSimplified", "Keyed", "RimMind_Advisor.xml")
+            };
+
+            var forbiddenPhrases = new[]
+            {
+                "fallback to JSON",
+                "JSON fallback",
+                "fallback JSON",
+                "legacy JSON fallback",
+                "text JSON advice",
+                "回退到 JSON",
+                "JSON回退",
+                "JSON 回退",
+                "旧版 JSON 回退",
+                "文本 JSON 建议"
+            };
+
+            foreach (var languageFile in languageFiles)
+            {
+                var xml = ReadAdvisorFile(languageFile);
+                var normalPromptValues = ExtractNormalPromptInstructionValues(xml);
+
+                foreach (var value in normalPromptValues)
+                {
+                    foreach (var phrase in forbiddenPhrases)
+                    {
+                        Assert.DoesNotContain(phrase, value, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<string> ExtractNormalPromptInstructionValues(string xml)
+        {
+            var matches = Regex.Matches(
+                xml,
+                @"<RimMind\.Advisor\.Prompt\.TaskInstruction\.[^>]+>(.*?)</RimMind\.Advisor\.Prompt\.TaskInstruction\.[^>]+>",
+                RegexOptions.Singleline);
+
+            foreach (Match match in matches)
+            {
+                yield return match.Groups[1].Value;
+            }
         }
     }
 }

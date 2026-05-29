@@ -89,7 +89,7 @@
 3. 对照性格评估候选动作
 4. 选择最符合角色的行动</RimMind.Advisor.Prompt.TaskInstruction.Process>
   <RimMind.Advisor.Prompt.TaskInstruction.Constraint>只推荐候选列表中可用的动作；考虑殖民者的当前状态和需求；优先处理紧急情况（低心情、健康问题等）</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。\n\n如果无法使用 Tool Calling，回退到 JSON 格式：{"advices":[{"action":"动作名","target":"目标名","param":"参数","reason":"理由"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。</RimMind.Advisor.Prompt.TaskInstruction.Output>
   <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling 规则：
 - 每个可用动作对应一个 tool/function，直接调用 function name 匹配动作 ID
 - param 参数：assign_work 填 WorkType defName（如 Mining）；move_to 填 "x,z" 坐标；其余动作留空
@@ -108,8 +108,7 @@
   <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>请求规则：
 - 如果殖民者有强烈需求（长期心情低落、社交孤立、技能闲置），可以设置 request_type="request"
 - request 类型的建议是殖民者自己无法完成的事（如建造建筑、安排社交、改变工作分配）
-- 正常风险动作使用 request_type="normal"（自动执行）
-- JSON回退时的格式：{"advices":[{"action":"动作名","target":"目标名","param":"参数","reason":"理由","request_type":"normal"}]}</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+- 正常风险动作使用 request_type="normal"（自动执行）</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>示例————
 状态：Jenni心情53%，健康良好，正在闲逛，食物储备为0，手工(5)
 可用动作（来自L3层）：
@@ -117,8 +116,6 @@
 - assign_work Crafting: 分配手工工作
 - social_relax: 社交放松
 
-Tool Calling输出：调用 assign_work function，param="Crafting"，reason="食物储备严重不足，手工制作物品可以换取食物"
-
-JSON回退输出：{"advices":[{"action":"assign_work","target":"","param":"Crafting","reason":"食物储备为零，优先安排符合技能的生产工作——手工(5)"}]}</RimMind.Advisor.Prompt.TaskInstruction.Example>
+Tool Calling输出：调用 assign_work function，param="Crafting"，reason="食物储备严重不足，手工制作物品可以换取食物"</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 </LanguageData>

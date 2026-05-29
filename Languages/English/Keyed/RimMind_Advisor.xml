@@ -89,7 +89,7 @@
 3. Evaluate candidate actions against personality
 4. Choose the most fitting action</RimMind.Advisor.Prompt.TaskInstruction.Process>
   <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.)</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.\n\nIf Tool Calling is unavailable, fallback to JSON: {"advices":[{"action":"action_name","target":"target_name","param":"params","reason":"reasoning"}]}</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.</RimMind.Advisor.Prompt.TaskInstruction.Output>
   <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling rules:
 - Each available action is a tool/function; call by matching function name to action ID
 - param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z" coordinates; leave empty for others
@@ -108,8 +108,7 @@
   <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>Request rules:
 - If the colonist has strong needs (chronic low mood, social isolation, idle skills), set request_type="request"
 - request_type actions are things the colonist cannot do alone (build rooms, arrange social events, change work assignments)
-- Normal risk actions use request_type="normal" (auto-execute)
-- JSON fallback format: {"advices":[{"action":"action_name","target":"target_name","param":"params","reason":"reasoning","request_type":"normal"}]}</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+- Normal risk actions use request_type="normal" (auto-execute)</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>Example ----
 State: Jenni mood 53%, healthy, wandering idle, food reserves 0, Crafting(5)
 Available actions (from L3 layer):
@@ -117,8 +116,6 @@ Available actions (from L3 layer):
 - assign_work Crafting: Assign crafting work
 - social_relax: Social relax
 
-Tool Calling output: call assign_work function, param="Crafting", reason="Zero food — her Crafting(5) can produce goods to trade for food"
-
-JSON fallback output: {"advices":[{"action":"assign_work","target":"","param":"Crafting","reason":"Food reserves zero — assign production work matching her Crafting(5) skill"}]}</RimMind.Advisor.Prompt.TaskInstruction.Example>
+Tool Calling output: call assign_work function, param="Crafting", reason="Zero food — her Crafting(5) can produce goods to trade for food"</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 </LanguageData>
