@@ -222,7 +222,10 @@ namespace RimMind.Advisor.Advisor
 
         public bool ShouldRequestFeedback()
         {
-            return _toolCallDepth < MaxToolCallDepth && _lastMessages != null && _lastSchema != null;
+            return _toolCallDepth < MaxToolCallDepth
+                && _lastMessages != null
+                && _lastTools != null
+                && _lastTools.Count > 0;
         }
 
         public void RequestToolFeedback(List<ClientStructuredToolCall> toolCalls, List<ActionResult> results, Action<Result<LlmResponse, RimMindError>> onComplete)

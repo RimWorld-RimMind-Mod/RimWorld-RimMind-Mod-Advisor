@@ -40,6 +40,15 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_Feedback_Does_Not_Require_ResponseSchema()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorTaskDriver.cs"));
+            Assert.DoesNotContain("_lastSchema != null", source);
+            Assert.Contains("_lastMessages != null", source);
+            Assert.Contains("_lastTools != null", source);
+        }
+
+        [Fact]
         public void Advisor_TextFallback_Is_Gated_By_Setting()
         {
             var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorTaskDriver.cs"));
