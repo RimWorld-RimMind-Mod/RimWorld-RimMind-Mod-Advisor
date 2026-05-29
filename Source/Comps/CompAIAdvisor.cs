@@ -150,7 +150,7 @@ namespace RimMind.Advisor.Comps
             else if (!string.IsNullOrEmpty(response.Content))
             {
                 _taskDriver.SetReasoningContent(response.ReasoningContent);
-                toolCalls = _taskDriver.TryParseContentAsToolCalls(response.Content);
+                toolCalls = _taskDriver.TryParseContentAsToolCallsIfEnabled(response.Content);
                 if (toolCalls != null)
                 {
                     Log.Message($"[RimMind-Advisor] Parsed {toolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
