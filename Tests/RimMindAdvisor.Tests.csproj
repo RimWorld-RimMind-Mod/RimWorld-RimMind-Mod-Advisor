@@ -8,6 +8,7 @@
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>$(DefineConstants);RIMMIND_ADVISOR_TESTS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +29,9 @@
     <Compile Include="AdvisorTaskDriver_TryParseToolCallsTests.cs" />
     <Compile Include="AdvisorTaskDriver_ContentFallbackTests.cs" />
     <Compile Include="AdvisorToolCallArchitectureTests.cs" />
+    <Compile Include="AdvisorToolCallExecutorTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
+    <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
@@ -37,6 +40,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../RimMind-Core/Source/Domain/RimMindCore.Domain.csproj" />
+    <ProjectReference Include="../../RimMind-Core/Source/Application/RimMindCore.Application.csproj" />
   </ItemGroup>
 
 </Project>

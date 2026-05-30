@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using RimMind.Application.Common.Interfaces.Tools;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.Llm;
 using RimMind.Presentation;
@@ -9,6 +11,22 @@ namespace RimMind.Advisor.Advisor
 {
     internal sealed class AdvisorToolCallExecutor
     {
+        private readonly Func<string, IToolHandler?> _findTool;
+
+        public AdvisorToolCallExecutor()
+#if RIMMIND_ADVISOR_TESTS
+            : this(_ => null)
+#else
+            : this(RimMindAPI.Tools.FindById)
+#endif
+        {
+        }
+
+        internal AdvisorToolCallExecutor(Func<string, IToolHandler?> findTool)
+        {
+            _findTool = findTool ?? throw new ArgumentNullException(nameof(findTool));
+        }
+
         public async Task<List<ToolResult>> ExecuteAsync(
             IReadOnlyList<StructuredToolCall> calls,
             string? npcId,
@@ -19,7 +37,7 @@ namespace RimMind.Advisor.Advisor
 
             foreach (var call in calls)
             {
-                var handler = RimMindAPI.Tools.FindById(call.Name);
+                var handler = _findTool(call.Name);
                 if (handler == null)
                 {
                     results.Add(ToolResult.Fail($"Unknown tool: {call.Name}", call.Id, call.Name));
