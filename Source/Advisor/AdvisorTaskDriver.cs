@@ -7,7 +7,6 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
-using RimMind.Actions;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Presentation;
@@ -188,14 +187,13 @@ namespace RimMind.Advisor.Advisor
                 var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(advicesJson);
                 if (advices == null || advices.Count == 0) return null;
 
-                var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
                 var toolCalls = new List<ClientStructuredToolCall>();
                 int idx = 0;
 
                 foreach (var adv in advices)
                 {
                     if (!adv.TryGetValue("action", out var actionName) || actionName.NullOrEmpty()) continue;
-                    if (!supported.Contains(actionName)) continue;
+                    if (RimMindAPI.Tools.FindById(actionName) == null) continue;
 
                     var args = new Dictionary<string, string>();
                     if (adv.TryGetValue("target", out var target) && !target.NullOrEmpty()) args["target"] = target;
@@ -228,7 +226,10 @@ namespace RimMind.Advisor.Advisor
                 && _lastTools.Count > 0;
         }
 
-        public void RequestToolFeedback(List<ClientStructuredToolCall> toolCalls, List<ActionResult> results, Action<Result<LlmResponse, RimMindError>> onComplete)
+        public void RequestToolFeedback(
+            List<ClientStructuredToolCall> toolCalls,
+            IReadOnlyList<ToolResult> results,
+            Action<Result<LlmResponse, RimMindError>> onComplete)
         {
             _toolCallDepth++;
 
@@ -249,12 +250,11 @@ namespace RimMind.Advisor.Advisor
 
             foreach (var result in results)
             {
-                var matchingTc = toolCalls.FirstOrDefault(tc => tc.Name == result.ActionName);
                 messages.Add(new ChatMessage
                 {
                     Role = "tool",
-                    Content = result.ToString(),
-                    ToolCallId = matchingTc?.Id ?? result.ActionName,
+                    Content = result.Content,
+                    ToolCallId = result.ToolCallId ?? result.ToolName ?? "tool_result",
                 });
             }
 

@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Newtonsoft.Json;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Client;
-using RimMind.Domain.Llm;
+using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.ValueObjects;
-using RimMind.Actions;
-using RimMind.Application.Common.Models.Client;
+using RimMind.Domain.Llm;
 using RimMind.Domain.Enums;
 using RimMind.Presentation;
 using RimWorld;
@@ -30,6 +30,7 @@ namespace RimMind.Advisor.Comps
 
         private AdvisorTaskDriver? _taskDriver;
         private ApprovalManager? _approvalManager;
+        private readonly AdvisorToolCallExecutor _toolExecutor = new AdvisorToolCallExecutor();
 
         public bool HasPendingRequest => _hasPendingRequest;
         public int LastRequestTick => _lastRequestTick;
@@ -164,165 +165,65 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            var supported = new HashSet<string>(RimMindActionsAPI.GetSupportedIntents());
-            var intents = new List<BatchActionIntent>();
+            var approvedCalls = new List<ClientStructuredToolCall>();
+            var approvedReasons = new Dictionary<string, string?>();
+            bool deferredForApproval = false;
 
             foreach (var tc in toolCalls)
             {
-                if (tc.Name.NullOrEmpty() || !supported.Contains(tc.Name)) continue;
-                if (!RimMindActionsAPI.IsAllowed(tc.Name)) continue;
+                if (tc.Name.NullOrEmpty()) continue;
 
-                string? targetName = null;
-                string? param = tc.Arguments;
-                string? reason = tc.Name;
-
-                if (!tc.Arguments.NullOrEmpty())
+                if (RimMindAPI.Tools.FindById(tc.Name) == null)
                 {
-                    try
-                    {
-                        var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(tc.Arguments);
-                        if (args != null)
-                        {
-                            if (args.TryGetValue("target", out var t)) targetName = t;
-                            if (args.TryGetValue("param", out var p)) param = p;
-                            if (args.TryGetValue("reason", out var r)) reason = r;
-                            args.TryGetValue("request_type", out var rt);
-                        }
-                    }
-                    catch (System.Exception ex)
-                    {
-                        RimMindErrors.Warn($"[RimMind-Advisor] Failed to parse tool call arguments for {tc.Name}: {ex.Message}");
-                    }
+                    RimMindErrors.Warn($"[RimMind-Advisor] Unknown tool call '{tc.Name}' for {Pawn.Name.ToStringShort}, skipping.");
+                    continue;
                 }
 
-                Pawn? targetPawn = null;
-                if (!targetName.NullOrEmpty())
-                    targetPawn = FindPawnByName(targetName!);
-
-                var riskLevelObj = RimMindActionsAPI.GetRiskLevel(tc.Name);
-                RiskLevel? riskLevel = riskLevelObj is RiskLevel rl ? rl : null;
+                var riskLevel = AdvisorToolRiskResolver.Resolve(tc.Name);
                 bool systemBlocked = Settings.enableRiskApproval
-                    && riskLevel.HasValue
-                    && riskLevel.GetValueOrDefault() >= Settings.autoBlockRiskLevel;
-
-                bool isRequest = false;
-                if (!tc.Arguments.NullOrEmpty())
-                {
-                    try
-                    {
-                        var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(tc.Arguments);
-                        if (args != null && args.TryGetValue("request_type", out var rt) && rt == "request")
-                            isRequest = true;
-                    }
-                    catch { }
-                }
+                    && riskLevel >= Settings.autoBlockRiskLevel;
+                bool isRequest = IsToolCallRequest(tc.Arguments);
 
                 if (systemBlocked || isRequest)
                 {
-                    if (!Settings.enableRequestSystem)
-                    {
-                        Log.Message($"[RimMind-Advisor] Action '{tc.Name}' blocked by risk level {riskLevel.GetValueOrDefault()} (approval system disabled)");
-                        continue;
-                    }
-
-                    if (_approvalManager == null)
-                        _approvalManager = new ApprovalManager(Settings);
-
-                    var capturedTc = tc;
-                    var capturedTarget = targetPawn;
-                    var capturedReason = reason;
-                    var capturedParam = param;
-
-                    var adviceItem = new AdviceItem
-                    {
-                        Action = capturedTc.Name,
-                        Target = capturedTarget?.Name?.ToStringShort,
-                        Param = capturedParam,
-                        Reason = capturedReason,
-                        RiskLevel = riskLevel.GetValueOrDefault(),
-                    };
-
-                    _approvalManager.SubmitForApproval(adviceItem, Pawn,
-                        onApproved: () =>
-                        {
-                            var singleIntent = new List<BatchActionIntent>
-                            {
-                                new BatchActionIntent
-                                {
-                                    IntentId = capturedTc.Name,
-                                    Actor = Pawn,
-                                    Target = capturedTarget,
-                                    Param = capturedParam,
-                                    Reason = capturedReason,
-                                }
-                            };
-                            var results = RimMindActionsAPI.ExecuteBatchWithResults(singleIntent);
-                            _taskDriver?.BroadcastDecisionExecuted(capturedTc.Name, capturedReason);
-
-                            var historyStore = AdvisorHistoryStore.Instance;
-                            if (historyStore != null)
-                            {
-                                foreach (var r in results)
-                                {
-                                    historyStore.AddRecord(Pawn, new AdvisorRequestRecord
-                                    {
-                                        action = r.ActionName,
-                                        reason = capturedReason ?? "",
-                                        result = r.Success ? "approved" : r.Reason,
-                                        tick = Find.TickManager.TicksGame
-                                    });
-                                }
-                            }
-
-                            if (Settings.showThoughtBubble && Pawn.Map != null)
-                            {
-                                string moteText = $"[RimMind] {capturedReason ?? capturedTc.Name}";
-                                MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
-                                    new Color(0.6f, 0.9f, 1f), 5f);
-                            }
-                        },
-                        onRejected: () =>
-                        {
-                            var historyStore = AdvisorHistoryStore.Instance;
-                            if (historyStore != null)
-                            {
-                                historyStore.AddRecord(Pawn, new AdvisorRequestRecord
-                                {
-                                    action = capturedTc.Name,
-                                    reason = capturedReason ?? "",
-                                    result = "rejected",
-                                    tick = Find.TickManager.TicksGame
-                                });
-                            }
-                        });
+                    deferredForApproval = true;
+                    SubmitToolCallForApproval(tc, riskLevel);
                 }
                 else
                 {
-                    intents.Add(new BatchActionIntent
-                    {
-                        IntentId = tc.Name,
-                        Actor = Pawn,
-                        Target = targetPawn,
-                        Param = param,
-                        Reason = reason,
-                    });
+                    approvedCalls.Add(tc);
+                    approvedReasons[tc.Id ?? tc.Name] = ExtractToolCallReason(tc) ?? tc.Name;
                 }
             }
 
-            if (intents.Count == 0)
+            if (deferredForApproval && approvedCalls.Count == 0)
             {
                 CompleteRequestCycle();
                 return;
             }
 
-            var results = RimMindActionsAPI.ExecuteBatchWithResults(intents);
-            int succeeded = results.Count(r => r.Success);
-            Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{intents.Count} actions for {Pawn.Name.ToStringShort}");
-
-            // Broadcast decision events
-            foreach (var intent in intents)
+            if (approvedCalls.Count == 0)
             {
-                _taskDriver?.BroadcastDecisionExecuted(intent.IntentId, intent.Reason);
+                CompleteRequestCycle();
+                return;
+            }
+
+            var results = _toolExecutor.ExecuteAsync(
+                approvedCalls,
+                $"NPC-{Pawn.thingIDNumber}",
+                response.RequestId,
+                CancellationToken.None).GetAwaiter().GetResult();
+            int succeeded = results.Count(r => !r.IsError);
+            Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{approvedCalls.Count} tools for {Pawn.Name.ToStringShort}");
+
+            foreach (var resultItem in results.Where(r => r.IsError))
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Tool '{resultItem.ToolName ?? "unknown"}' failed for {Pawn.Name.ToStringShort}: {resultItem.Content}");
+            }
+
+            foreach (var call in approvedCalls)
+            {
+                _taskDriver?.BroadcastDecisionExecuted(call.Name, ExtractToolCallReason(call) ?? call.Name);
             }
 
             var historyStoreForBatch = AdvisorHistoryStore.Instance;
@@ -330,11 +231,13 @@ namespace RimMind.Advisor.Comps
             {
                 foreach (var r in results)
                 {
+                    var resultKey = r.ToolCallId ?? r.ToolName ?? "";
+                    approvedReasons.TryGetValue(resultKey, out var reason);
                     historyStoreForBatch.AddRecord(Pawn, new AdvisorRequestRecord
                     {
-                        action = r.ActionName,
-                        reason = intents.FirstOrDefault(i => i.IntentId == r.ActionName)?.Reason ?? "",
-                        result = r.Success ? "approved" : r.Reason,
+                        action = r.ToolName ?? "tool",
+                        reason = reason ?? "",
+                        result = r.IsError ? r.Content : "approved",
                         tick = Find.TickManager.TicksGame
                     });
                 }
@@ -343,8 +246,11 @@ namespace RimMind.Advisor.Comps
             if (Settings.showThoughtBubble && Pawn.Map != null)
             {
                 var reasons = new List<string>();
-                foreach (var intent in intents)
-                    if (!intent.Reason.NullOrEmpty()) reasons.Add(intent.Reason!);
+                foreach (var call in approvedCalls)
+                {
+                    var reason = ExtractToolCallReason(call) ?? call.Name;
+                    if (!reason.NullOrEmpty()) reasons.Add(reason);
+                }
 
                 if (reasons.Count > 0)
                 {
@@ -358,7 +264,7 @@ namespace RimMind.Advisor.Comps
 
             if (_taskDriver.ShouldRequestFeedback())
             {
-                _taskDriver.RequestToolFeedback(toolCalls, results, OnAdviceReceived);
+                _taskDriver.RequestToolFeedback(approvedCalls, results, OnAdviceReceived);
             }
             else
             {
@@ -425,6 +331,142 @@ namespace RimMind.Advisor.Comps
         {
             base.PostExposeData();
             Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
+        }
+
+        private static bool IsToolCallRequest(string? arguments)
+        {
+            if (string.IsNullOrWhiteSpace(arguments)) return false;
+
+            try
+            {
+                var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(arguments);
+                return args != null
+                    && args.TryGetValue("request_type", out var requestType)
+                    && requestType == "request";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void SubmitToolCallForApproval(ClientStructuredToolCall toolCall, RiskLevel riskLevel)
+        {
+            var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
+            var args = ParseToolCallArguments(toolCall.Arguments);
+            args.TryGetValue("target", out var targetName);
+            args.TryGetValue("param", out var param);
+
+            if (!Settings.enableRequestSystem)
+            {
+                Log.Message($"[RimMind-Advisor] Tool '{toolCall.Name}' blocked by risk level {riskLevel} (approval system disabled)");
+                RecordToolHistory(toolCall.Name, reason, "blocked");
+                return;
+            }
+
+            if (_approvalManager == null)
+                _approvalManager = new ApprovalManager(Settings);
+
+            var adviceItem = new AdviceItem
+            {
+                Action = toolCall.Name,
+                Target = targetName,
+                Param = param,
+                Reason = reason,
+                RiskLevel = riskLevel,
+                request_type = IsToolCallRequest(toolCall.Arguments) ? "request" : "normal",
+            };
+
+            _approvalManager.SubmitForApproval(adviceItem, Pawn,
+                onApproved: () =>
+                {
+                    var results = _toolExecutor.ExecuteAsync(
+                        new List<ClientStructuredToolCall> { toolCall },
+                        $"NPC-{Pawn.thingIDNumber}",
+                        toolCall.Id,
+                        CancellationToken.None).GetAwaiter().GetResult();
+
+                    BroadcastDecisionExecuted(toolCall.Name, reason);
+                    foreach (var result in results)
+                    {
+                        RecordToolHistory(
+                            result.ToolName ?? toolCall.Name,
+                            reason,
+                            result.IsError ? result.Content : "approved");
+
+                        if (result.IsError)
+                        {
+                            RimMindErrors.Warn($"[RimMind-Advisor] Approved tool '{result.ToolName ?? toolCall.Name}' failed for {Pawn.Name.ToStringShort}: {result.Content}");
+                        }
+                    }
+
+                    ShowToolThoughtBubble(reason);
+                },
+                onRejected: () =>
+                {
+                    RecordToolHistory(toolCall.Name, reason, "rejected");
+                });
+        }
+
+        private static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)
+        {
+            var args = ParseToolCallArguments(toolCall.Arguments);
+            return args.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()
+                ? reason
+                : null;
+        }
+
+        private static Dictionary<string, string> ParseToolCallArguments(string? arguments)
+        {
+            if (string.IsNullOrWhiteSpace(arguments)) return new Dictionary<string, string>();
+
+            try
+            {
+                return JsonConvert.DeserializeObject<Dictionary<string, string>>(arguments)
+                    ?? new Dictionary<string, string>();
+            }
+            catch (System.Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to parse tool call arguments: {ex.Message}");
+                return new Dictionary<string, string>();
+            }
+        }
+
+        private void RecordToolHistory(string action, string? reason, string result)
+        {
+            var historyStore = AdvisorHistoryStore.Instance;
+            if (historyStore == null) return;
+
+            historyStore.AddRecord(Pawn, new AdvisorRequestRecord
+            {
+                action = action,
+                reason = reason ?? "",
+                result = result,
+                tick = Find.TickManager.TicksGame
+            });
+        }
+
+        private void BroadcastDecisionExecuted(string actionName, string? reason)
+        {
+            try
+            {
+                var summary = $"action={actionName}";
+                if (!string.IsNullOrEmpty(reason)) summary += $",reason={reason}";
+                RimMindAPI.PublishPerception(Pawn.thingIDNumber, "advisor_decision", summary, 0.5f);
+            }
+            catch (System.Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to publish approved decision perception: {ex.Message}");
+            }
+        }
+
+        private void ShowToolThoughtBubble(string? reason)
+        {
+            if (!Settings.showThoughtBubble || Pawn.Map == null || reason.NullOrEmpty()) return;
+
+            string moteText = $"[RimMind] {reason}";
+            MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
+                new Color(0.6f, 0.9f, 1f), 5f);
         }
 
         private static Pawn? FindPawnByName(string name)

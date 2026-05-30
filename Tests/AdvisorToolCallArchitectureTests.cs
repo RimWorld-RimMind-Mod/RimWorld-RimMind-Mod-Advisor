@@ -75,6 +75,36 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_Component_Does_Not_Use_Deprecated_ActionsApi()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+            Assert.DoesNotContain("RimMindActionsAPI.GetSupportedIntents", source);
+            Assert.DoesNotContain("RimMindActionsAPI.ExecuteBatchWithResults", source);
+            Assert.DoesNotContain("BatchActionIntent", source);
+        }
+
+        [Fact]
+        public void Advisor_Source_Does_Not_Use_Deprecated_ActionsApi()
+        {
+            var sourceRoot = Path.Combine(RepoRoot, "RimMind-Advisor", "Source");
+            var forbiddenNames = new[]
+            {
+                "RimMindActionsAPI.GetSupportedIntents",
+                "RimMindActionsAPI.ExecuteBatchWithResults",
+                "BatchActionIntent"
+            };
+
+            foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+            {
+                var source = File.ReadAllText(file);
+                foreach (var forbiddenName in forbiddenNames)
+                {
+                    Assert.DoesNotContain(forbiddenName, source);
+                }
+            }
+        }
+
+        [Fact]
         public void Advisor_NormalPromptKeys_Do_Not_Advertise_LegacyJsonFallback()
         {
             var languageFiles = new[]
