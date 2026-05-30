@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using HarmonyLib;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
-using RimMind.Actions;
+using RimMind.Advisor.Advisor;
 using RimMind.Application.Common.Interfaces.Context;
 using RimMind.Application.Common.Interfaces.Extension;
 using RimMind.Domain.Enums;
@@ -69,7 +69,7 @@ namespace RimMind.Advisor
                     if (ctx.PawnId <= 0) return null;
                     var pawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId)
                         ?? Find.CurrentMap?.mapPawns?.FreeColonists.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId);
-                    var text = RimMindActionsAPI.GetActionListText(pawn);
+                    var text = BuildToolListText();
                     return string.IsNullOrEmpty(text) ? null : text;
                 }, "RimMind.Advisor", stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
 
@@ -245,5 +245,43 @@ namespace RimMind.Advisor
                 h += 24f + 32f;
             return h + 40f;
         }
+
+        private static string BuildToolListText()
+        {
+            try
+            {
+                var defs = RimMindAPI.Tools.GetAllDefinitions();
+                if (defs.Count == 0) return string.Empty;
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("RimMind.Advisor.Prompt.InstantSectionHeader".Translate());
+                foreach (var def in defs)
+                {
+                    if (string.IsNullOrWhiteSpace(def.Id)) continue;
+                    if (RimMindAPI.ShouldSkipAction(def.Id)) continue;
+
+                    var riskTag = RiskTag(AdvisorToolRiskResolver.Resolve(def.Id));
+                    var category = string.IsNullOrWhiteSpace(def.Category) ? "general" : def.Category;
+                    var description = string.IsNullOrWhiteSpace(def.Description) ? "" : $" | {def.Description}";
+                    sb.AppendLine($"- {def.Id} [{category}]{riskTag}{description}");
+                }
+
+                return sb.ToString().TrimEnd();
+            }
+            catch (System.Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] BuildToolListText failed: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private static string RiskTag(RiskLevel risk) => risk switch
+        {
+            RiskLevel.Low => "RimMind.Advisor.Prompt.Risk.Low".Translate(),
+            RiskLevel.Medium => "RimMind.Advisor.Prompt.Risk.Medium".Translate(),
+            RiskLevel.High => "RimMind.Advisor.Prompt.Risk.High".Translate(),
+            RiskLevel.Critical => "RimMind.Advisor.Prompt.Risk.Critical".Translate(),
+            _ => "",
+        };
     }
 }

@@ -78,30 +78,48 @@ namespace RimMind.Advisor.Tests
         public void Advisor_Component_Does_Not_Use_Deprecated_ActionsApi()
         {
             var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
-            Assert.DoesNotContain("RimMindActionsAPI.GetSupportedIntents", source);
-            Assert.DoesNotContain("RimMindActionsAPI.ExecuteBatchWithResults", source);
-            Assert.DoesNotContain("BatchActionIntent", source);
+            Assert.DoesNotContain(Forbidden("RimMind", "ActionsAPI"), source);
+            Assert.DoesNotContain(Forbidden("Batch", "ActionIntent"), source);
+            Assert.Contains("ExecuteToolCallsSafely", source);
+            Assert.Contains("ToolResult.Fail", source);
         }
 
         [Fact]
-        public void Advisor_Source_Does_Not_Use_Deprecated_ActionsApi()
+        public void Advisor_Source_And_Project_Do_Not_Use_Actions_Dependency()
         {
             var sourceRoot = Path.Combine(RepoRoot, "RimMind-Advisor", "Source");
             var forbiddenNames = new[]
             {
-                "RimMindActionsAPI.GetSupportedIntents",
-                "RimMindActionsAPI.ExecuteBatchWithResults",
-                "BatchActionIntent"
+                Forbidden("RimMind", ".Actions"),
+                Forbidden("RimMind", "ActionsAPI"),
+                Forbidden("Batch", "ActionIntent"),
+                Forbidden("RimMind", "Actions")
             };
 
             foreach (var file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
             {
-                var source = File.ReadAllText(file);
+                var source = StripComments(File.ReadAllText(file));
                 foreach (var forbiddenName in forbiddenNames)
                 {
                     Assert.DoesNotContain(forbiddenName, source);
                 }
             }
+
+            var project = ReadAdvisorSource("RimMindAdvisor.csproj");
+            foreach (var forbiddenName in forbiddenNames)
+            {
+                Assert.DoesNotContain(forbiddenName, project);
+            }
+        }
+
+        [Fact]
+        public void Advisor_Candidate_Context_Uses_Core_ToolRegistry()
+        {
+            var modSource = ReadAdvisorSource("RimMindAdvisorMod.cs");
+            var candidateSource = ReadAdvisorSource(Path.Combine("Advisor", "JobCandidateBuilder.cs"));
+
+            Assert.Contains("RimMindAPI.Tools.GetAllDefinitions", modSource);
+            Assert.Contains("RimMindAPI.Tools.GetAllDefinitions", candidateSource);
         }
 
         [Fact]
@@ -153,6 +171,14 @@ namespace RimMind.Advisor.Tests
             {
                 yield return match.Groups[1].Value;
             }
+        }
+
+        private static string Forbidden(string left, string right) => left + right;
+
+        private static string StripComments(string source)
+        {
+            source = Regex.Replace(source, @"/\*.*?\*/", "", RegexOptions.Singleline);
+            return Regex.Replace(source, @"//.*?$", "", RegexOptions.Multiline);
         }
     }
 }

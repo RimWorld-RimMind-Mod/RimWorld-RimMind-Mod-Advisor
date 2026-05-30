@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -208,11 +209,7 @@ namespace RimMind.Advisor.Comps
                 return;
             }
 
-            var results = _toolExecutor.ExecuteAsync(
-                approvedCalls,
-                $"NPC-{Pawn.thingIDNumber}",
-                response.RequestId,
-                CancellationToken.None).GetAwaiter().GetResult();
+            var results = ExecuteToolCallsSafely(approvedCalls, response.RequestId);
             int succeeded = results.Count(r => !r.IsError);
             Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{approvedCalls.Count} tools for {Pawn.Name.ToStringShort}");
 
@@ -380,11 +377,9 @@ namespace RimMind.Advisor.Comps
             _approvalManager.SubmitForApproval(adviceItem, Pawn,
                 onApproved: () =>
                 {
-                    var results = _toolExecutor.ExecuteAsync(
+                    var results = ExecuteToolCallsSafely(
                         new List<ClientStructuredToolCall> { toolCall },
-                        $"NPC-{Pawn.thingIDNumber}",
-                        toolCall.Id,
-                        CancellationToken.None).GetAwaiter().GetResult();
+                        toolCall.Id);
 
                     BroadcastDecisionExecuted(toolCall.Name, reason);
                     foreach (var result in results)
@@ -414,6 +409,30 @@ namespace RimMind.Advisor.Comps
             return args.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()
                 ? reason
                 : null;
+        }
+
+        private List<ToolResult> ExecuteToolCallsSafely(
+            IReadOnlyList<ClientStructuredToolCall> calls,
+            string? traceId)
+        {
+            try
+            {
+                return _toolExecutor.ExecuteAsync(
+                    calls,
+                    $"NPC-{Pawn.thingIDNumber}",
+                    traceId,
+                    CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Tool execution failed for {Pawn.Name.ToStringShort}: {ex.Message}");
+                return calls
+                    .Select(call => ToolResult.Fail(
+                        $"Tool execution failed: {ex.Message}",
+                        call.Id,
+                        call.Name))
+                    .ToList();
+            }
         }
 
         private static Dictionary<string, string> ParseToolCallArguments(string? arguments)

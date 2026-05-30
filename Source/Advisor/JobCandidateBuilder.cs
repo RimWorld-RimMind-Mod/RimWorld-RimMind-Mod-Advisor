@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using RimMind.Actions;
+using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.Enums;
 using RimMind.Presentation;
 using RimWorld;
@@ -56,12 +56,11 @@ namespace RimMind.Advisor.Advisor
             sb.AppendLine("RimMind.Advisor.Prompt.InstantSectionHeader".Translate());
             var instantCandidates = BuildInstantCandidates(pawn);
             int idxB = workCandidates.Count + 1;
-            foreach (var (display, intentId, risk, hint) in instantCandidates)
+            foreach (var (display, intentId, risk, hint, description) in instantCandidates)
             {
                 string riskTag = RiskTag(risk);
-                string desc = GetActionDesc(intentId);
                 string line = $"{idxB++}. {display}({intentId}){riskTag}";
-                if (!string.IsNullOrEmpty(desc)) line += $" | {desc}";
+                if (!string.IsNullOrEmpty(description)) line += $" | {description}";
                 if (!string.IsNullOrEmpty(hint)) line += $" — {hint}";
                 sb.AppendLine(line);
             }
@@ -82,18 +81,11 @@ namespace RimMind.Advisor.Advisor
                 string? hint = null;
                 try
                 {
-                    var targets = RimMindActionsAPI.GetWorkTargets(pawn, workType.defName, 3);
-                    if (targets.Count == 0) continue;
-
-                    var nearest = targets[0];
-                    string distStr = $"{nearest.Distance:F0}";
-                    hint = targets.Count == 1
-                        ? "RimMind.Advisor.Prompt.TargetCountSingle".Translate(targets.Count, distStr)
-                        : "RimMind.Advisor.Prompt.TargetCountMulti".Translate(targets.Count, distStr, nearest.Label);
+                    hint = null;
                 }
                 catch (Exception ex)
                 {
-                    RimMindErrors.Warn($"[RimMind-Advisor] GetWorkTargets failed for {workType.defName}: {ex.Message}");
+                    RimMindErrors.Warn($"[RimMind-Advisor] BuildWorkCandidates failed for {workType.defName}: {ex.Message}");
                     continue;
                 }
 
@@ -103,23 +95,32 @@ namespace RimMind.Advisor.Advisor
             return result;
         }
 
-        private static List<(string display, string intentId, RiskLevel risk, string? hint)> BuildInstantCandidates(Pawn pawn)
+        private static List<(string display, string intentId, RiskLevel risk, string? hint, string description)> BuildInstantCandidates(Pawn pawn)
         {
-            var result = new List<(string, string, RiskLevel, string?)>();
+            var result = new List<(string, string, RiskLevel, string?, string)>();
 
-            var allActions = RimMindActionsAPI.GetActionDescriptions();
-
-            foreach (var (intentId, displayName, riskLevelStr) in allActions)
+            IReadOnlyList<ToolDefinition> allTools;
+            try
             {
-                if (!AdvisorInstantActions.Contains(intentId)) continue;
-                if (!RimMindActionsAPI.IsAllowed(intentId)) continue;
+                allTools = RimMindAPI.Tools.GetAllDefinitions();
+            }
+            catch (Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] GetAllDefinitions failed: {ex.Message}");
+                return result;
+            }
+
+            foreach (var tool in allTools)
+            {
+                var intentId = tool.Id;
+                if (string.IsNullOrWhiteSpace(intentId)) continue;
                 if (RimMindAPI.ShouldSkipAction(intentId)) continue;
 
                 string? hint = BuildInstantHint(pawn, intentId);
-                if (hint == null) continue;
+                if (hint == null && AdvisorInstantActions.Contains(intentId)) continue;
 
-                var riskLevel = Enum.TryParse<RiskLevel>(riskLevelStr, out var rl) ? rl : RiskLevel.Low;
-                result.Add((displayName, intentId, riskLevel, hint));
+                var riskLevel = AdvisorToolRiskResolver.Resolve(intentId);
+                result.Add((intentId, intentId, riskLevel, hint, tool.Description ?? ""));
             }
 
             return result;
@@ -150,9 +151,7 @@ namespace RimMind.Advisor.Advisor
                 case "eat_food":
                     {
                         if (pawn.Map == null) return null;
-                        var foodList = RimMindActionsAPI.GetActionHintData(pawn, "eat_food");
-                        if (string.IsNullOrEmpty(foodList)) return null;
-                        return "RimMind.Advisor.Prompt.EatFoodHint".Translate(foodList);
+                        return "RimMind.Advisor.Prompt.EatFoodHint".Translate("");
                     }
 
                 case "tend_pawn":
@@ -211,11 +210,5 @@ namespace RimMind.Advisor.Advisor
             _ => "",
         };
 
-        private static string GetActionDesc(string intentId)
-        {
-            string key = $"RimMind.Actions.Desc.{intentId}";
-            string translated = key.Translate();
-            return translated != key ? translated : "";
-        }
     }
 }

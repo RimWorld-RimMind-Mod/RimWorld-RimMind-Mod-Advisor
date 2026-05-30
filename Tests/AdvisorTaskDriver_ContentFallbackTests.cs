@@ -11,7 +11,7 @@ namespace RimMind.Advisor.Tests
     public class AdvisorTaskDriverContentFallbackTests
     {
         /// <summary>
-        /// 支持的意图集合，与 VerseStubs 中 RimMindActionsAPI.GetSupportedIntents 一致
+        /// 支持的意图集合，与 Core tool registry stub 保持一致
         /// </summary>
         private static readonly HashSet<string> SupportedIntents = new HashSet<string>
         {

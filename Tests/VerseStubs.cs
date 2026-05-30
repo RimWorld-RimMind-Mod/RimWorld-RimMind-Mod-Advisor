@@ -81,22 +81,6 @@ namespace RimWorld.Planet
     }
 }
 
-namespace RimMind.Actions
-{
-    public static class RimMindActionsAPI
-    {
-        public static IReadOnlyList<string> GetSupportedIntents()
-        {
-            return new List<string> { "assign_job", "forbid_area", "social_relax", "add_thought" };
-        }
-
-        public static List<RimMind.Application.Common.Models.Client.StructuredTool> GetStructuredTools()
-        {
-            return new List<RimMind.Application.Common.Models.Client.StructuredTool>();
-        }
-    }
-}
-
 namespace RimMind.Application.Common.Models.Client
 {
     public class StructuredTool

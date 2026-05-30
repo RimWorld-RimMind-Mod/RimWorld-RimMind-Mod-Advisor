@@ -37,10 +37,6 @@
       <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/2_RimMindCore.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="RimMindActions">
-      <HintPath>../../RimMind-Actions/$(GameVersion)/Assemblies/RimMindActions.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 
   <!-- Deploy to game mods folder after build (set RIMWORLD_DIR env var) -->
