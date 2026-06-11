@@ -151,7 +151,7 @@ namespace RimMind.Application.Common.Interfaces.Context
     }
 }
 
-namespace RimMind.Presentation
+namespace RimMind.Application.Api
 {
     public static class RimMindAPI
     {
@@ -168,7 +168,10 @@ namespace RimMind.Presentation
 
         public static void ClearPendingRequests() => PendingRequests.Clear();
     }
+}
 
+namespace RimMind.Presentation
+{
     public static class RimMindCoreMod
     {
         public static object? Settings;

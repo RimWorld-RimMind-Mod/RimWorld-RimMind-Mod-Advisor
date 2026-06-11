@@ -9,7 +9,7 @@ using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Tools;
-using RimMind.Presentation;
+using RimMind.Application.Api;
 using RimWorld;
 using Verse;
 

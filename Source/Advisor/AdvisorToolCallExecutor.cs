@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using RimMind.Application.Common.Interfaces.Tools;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.Llm;
-using RimMind.Presentation;
+using RimMind.Application.Api;
 
 namespace RimMind.Advisor.Advisor
 {

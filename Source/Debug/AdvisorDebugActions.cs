@@ -10,7 +10,7 @@ using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
 using RimMind.Application.Common.Interfaces.Client;
 using RimMind.Application.Common.Models.Context;
-using RimMind.Presentation;
+using RimMind.Application.Api;
 using RimMind.Application.Common.Interfaces.Context;
 using Verse;
 using RimMind.Domain.ValueObjects;

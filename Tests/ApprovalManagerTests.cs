@@ -2,7 +2,7 @@ using System;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Settings;
 using RimMind.Domain.Enums;
-using RimMind.Presentation;
+using RimMind.Application.Api;
 using Verse;
 using Xunit;
 

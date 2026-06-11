@@ -12,7 +12,7 @@ using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.ValueObjects;
 using RimMind.Domain.Llm;
 using RimMind.Domain.Enums;
-using RimMind.Presentation;
+using RimMind.Application.Api;
 using RimWorld;
 using UnityEngine;
 using Verse;
