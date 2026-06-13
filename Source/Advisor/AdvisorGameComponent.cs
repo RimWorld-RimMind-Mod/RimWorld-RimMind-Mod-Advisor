@@ -1,7 +1,7 @@
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Settings;
-using RimMind.Application.Api;
+using RimMind.Presentation.Api;
 using Verse;
 
 namespace RimMind.Advisor.Advisor

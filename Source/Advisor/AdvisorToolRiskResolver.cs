@@ -1,6 +1,6 @@
 using System;
 using RimMind.Domain.Enums;
-using RimMind.Application.Api;
+using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Advisor
 {

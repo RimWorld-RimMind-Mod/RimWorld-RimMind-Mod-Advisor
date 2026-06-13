@@ -5,11 +5,12 @@ using System.Text;
 using Newtonsoft.Json;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Application.Features.Llm;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
 using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Tools;
-using RimMind.Application.Api;
+using RimMind.Presentation.Api;
 using RimWorld;
 using Verse;
 

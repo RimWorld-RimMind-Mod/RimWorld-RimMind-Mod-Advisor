@@ -4,7 +4,7 @@ using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.UI;
 using RimMind.Application.Common.Models.UI;
 using RimMind.Domain.Enums;
-using RimMind.Application.Api;
+using RimMind.Presentation.Api;
 using Verse;
 
 namespace RimMind.Advisor.Advisor
