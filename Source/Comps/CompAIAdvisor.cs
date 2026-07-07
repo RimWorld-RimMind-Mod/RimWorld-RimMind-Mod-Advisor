@@ -282,12 +282,6 @@ namespace RimMind.Advisor.Comps
             _taskDriver = null;
         }
 
-        private void DebugSkip(string reason)
-        {
-            if (DebugLogging)
-                Log.Message($"[RimMind-Advisor][Skip] {Pawn.Name.ToStringShort}: {reason}");
-        }
-
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
             string label = IsEnabled ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate() : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
