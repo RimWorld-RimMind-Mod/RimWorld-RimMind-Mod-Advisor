@@ -85,6 +85,46 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_Component_Has_No_Duplicate_BroadcastDecisionExecuted()
+        {
+            // Task 8: the private duplicate BroadcastDecisionExecuted must be removed;
+            // only the public AdvisorTaskDriver.BroadcastDecisionExecuted should be called via _taskDriver.
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+            Assert.DoesNotContain("private void BroadcastDecisionExecuted", source);
+            Assert.Contains("_taskDriver?.BroadcastDecisionExecuted(toolCall.Name, reason);", source);
+            Assert.Contains("_taskDriver?.BroadcastDecisionExecuted(call.Name,", source);
+        }
+
+        [Fact]
+        public void Advisor_Component_Centralizes_Approval_Deferral()
+        {
+            // Task 9: approval deferral check must be centralized in ShouldDeferForApproval,
+            // replacing the inlined systemBlocked / isRequest logic at the call site.
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+            Assert.Contains("private bool ShouldDeferForApproval(RiskLevel riskLevel, string? arguments)", source);
+            Assert.Contains("if (ShouldDeferForApproval(riskLevel, tc.Arguments))", source);
+            // The inlined call-site patterns must be gone. The centralized method uses the
+            // `arguments` parameter, so the `tc.Arguments` variant and the inlined if-check
+            // must no longer appear (the method returns systemBlocked || isRequest instead).
+            Assert.DoesNotContain("IsToolCallRequest(tc.Arguments)", source);
+            Assert.DoesNotContain("if (systemBlocked || isRequest)", source);
+        }
+
+        [Fact]
+        public void Advisor_Component_Approval_Path_Invokes_Feedback_Loop()
+        {
+            // Task 10: the onApproved callback must call ShouldRequestFeedback / RequestToolFeedback
+            // so approved ToolCalls can form multi-round decision chains like the direct path.
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+            // Both execution paths must reference ShouldRequestFeedback.
+            int feedbackChecks = Regex.Matches(source, @"ShouldRequestFeedback\(\)").Count;
+            Assert.True(feedbackChecks >= 2, $"Expected >=2 ShouldRequestFeedback() call sites (direct + approval), found {feedbackChecks}");
+            // Both execution paths must reference RequestToolFeedback.
+            int feedbackRequests = Regex.Matches(source, @"RequestToolFeedback\(").Count;
+            Assert.True(feedbackRequests >= 2, $"Expected >=2 RequestToolFeedback( call sites (direct + approval), found {feedbackRequests}");
+        }
+
+        [Fact]
         public void Advisor_Source_And_Project_Do_Not_Use_Actions_Dependency()
         {
             var sourceRoot = Path.Combine(RepoRoot, "RimMind-Advisor", "Source");
