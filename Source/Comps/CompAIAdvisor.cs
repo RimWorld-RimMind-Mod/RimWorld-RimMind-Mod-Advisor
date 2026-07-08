@@ -481,29 +481,5 @@ namespace RimMind.Advisor.Comps
             MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
                 new Color(0.6f, 0.9f, 1f), 5f);
         }
-
-        private static Pawn? FindPawnByName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return null;
-
-            if (int.TryParse(name, out int thingId))
-            {
-                foreach (var map in Find.Maps)
-                {
-                    var pawn = map.mapPawns.AllPawns.FirstOrDefault(p => p.thingIDNumber == thingId);
-                    if (pawn != null) return pawn;
-                }
-            }
-
-            var matches = Find.Maps.SelectMany(m => m.mapPawns.AllPawns)
-                .Where(p => p.Name?.ToStringShort == name)
-                .ToList();
-
-            if (matches.Count == 1) return matches[0];
-            if (matches.Count > 1)
-                RimMindErrors.Warn($"[RimMind-Advisor] FindPawnByName: '{name}' matches {matches.Count} pawns, using first. Consider using ThingID for disambiguation.");
-
-            return matches.FirstOrDefault();
-        }
     }
 }
