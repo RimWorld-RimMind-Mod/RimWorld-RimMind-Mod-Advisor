@@ -36,6 +36,8 @@
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
     <Compile Include="../Source/Data/AdvisorRequestRecord.cs" />
+    <Compile Include="../Source/Extensions/AdvisorPromptHelper.cs" />
+    <Compile Include="AdvisorPromptHelperTests.cs" />
   </ItemGroup>
 
   <ItemGroup>

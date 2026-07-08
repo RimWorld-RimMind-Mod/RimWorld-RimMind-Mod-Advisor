@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using RimMind.Advisor;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
@@ -58,7 +59,7 @@ namespace RimMind.Advisor.Advisor
             int idxB = workCandidates.Count + 1;
             foreach (var (display, intentId, risk, hint, description) in instantCandidates)
             {
-                string riskTag = RiskTag(risk);
+                string riskTag = AdvisorPromptHelper.RiskTag(risk);
                 string line = $"{idxB++}. {display}({intentId}){riskTag}";
                 if (!string.IsNullOrEmpty(description)) line += $" | {description}";
                 if (!string.IsNullOrEmpty(hint)) line += $" — {hint}";
@@ -189,15 +190,6 @@ namespace RimMind.Advisor.Advisor
                     return "";
             }
         }
-
-        private static string RiskTag(RiskLevel risk) => risk switch
-        {
-            RiskLevel.Low => "RimMind.Advisor.Prompt.Risk.Low".Translate(),
-            RiskLevel.Medium => "RimMind.Advisor.Prompt.Risk.Medium".Translate(),
-            RiskLevel.High => "RimMind.Advisor.Prompt.Risk.High".Translate(),
-            RiskLevel.Critical => "RimMind.Advisor.Prompt.Risk.Critical".Translate(),
-            _ => "",
-        };
 
     }
 }

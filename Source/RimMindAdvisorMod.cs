@@ -260,7 +260,7 @@ namespace RimMind.Advisor
                     if (string.IsNullOrWhiteSpace(def.Id)) continue;
                     if (RimMindAPI.ShouldSkipAction(def.Id)) continue;
 
-                    var riskTag = RiskTag(AdvisorToolRiskResolver.Resolve(def.Id));
+                    var riskTag = AdvisorPromptHelper.RiskTag(AdvisorToolRiskResolver.Resolve(def.Id));
                     var category = string.IsNullOrWhiteSpace(def.Category) ? "general" : def.Category;
                     var description = string.IsNullOrWhiteSpace(def.Description) ? "" : $" | {def.Description}";
                     sb.AppendLine($"- {def.Id} [{category}]{riskTag}{description}");
@@ -275,13 +275,5 @@ namespace RimMind.Advisor
             }
         }
 
-        private static string RiskTag(RiskLevel risk) => risk switch
-        {
-            RiskLevel.Low => "RimMind.Advisor.Prompt.Risk.Low".Translate(),
-            RiskLevel.Medium => "RimMind.Advisor.Prompt.Risk.Medium".Translate(),
-            RiskLevel.High => "RimMind.Advisor.Prompt.Risk.High".Translate(),
-            RiskLevel.Critical => "RimMind.Advisor.Prompt.Risk.Critical".Translate(),
-            _ => "",
-        };
     }
 }

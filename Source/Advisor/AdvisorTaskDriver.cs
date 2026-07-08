@@ -54,11 +54,7 @@ namespace RimMind.Advisor.Advisor
 
             if (_settings.enableLegacyJsonFallback)
             {
-                int lastSysIdx = -1;
-                for (int i = messages.Count - 1; i >= 0; i--)
-                {
-                    if (messages[i].Role == "system") { lastSysIdx = i; break; }
-                }
+                int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
                 messages.Insert(lastSysIdx + 1, new ChatMessage
                 {
                     Role = "system",
@@ -68,11 +64,7 @@ namespace RimMind.Advisor.Advisor
 
             if (!_settings.advisorCustomPrompt.NullOrEmpty())
             {
-                int lastSysIdx = -1;
-                for (int i = messages.Count - 1; i >= 0; i--)
-                {
-                    if (messages[i].Role == "system") { lastSysIdx = i; break; }
-                }
+                int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
                 messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = _settings.advisorCustomPrompt });
 
                 string reactionsText = GetRecentRejectedAdvisorDecisions(20);
@@ -84,11 +76,7 @@ namespace RimMind.Advisor.Advisor
                 string reactionsText = GetRecentRejectedAdvisorDecisions(20);
                 if (!string.IsNullOrEmpty(reactionsText))
                 {
-                    int lastSysIdx = -1;
-                    for (int i = messages.Count - 1; i >= 0; i--)
-                    {
-                        if (messages[i].Role == "system") { lastSysIdx = i; break; }
-                    }
+                    int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
                     messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = reactionsText });
                 }
             }
