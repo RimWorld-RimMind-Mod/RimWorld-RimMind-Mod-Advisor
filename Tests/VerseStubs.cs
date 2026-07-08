@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RimMind.Application.Common.Interfaces.Mechanisms;
 
 namespace Verse
 {
@@ -25,6 +26,14 @@ namespace Verse
         public string ThingID = "TestPawn_0";
         public bool Dead;
         public bool Destroyed() => Dead;
+        // Name 桩，供 AdvisorApprovalGateAdapter.FindTargetPawn 按 Name.ToStringFull 匹配
+        public Name? Name;
+    }
+
+    // Name 桩，供 AdvisorApprovalGateAdapter.FindTargetPawn 使用 pawn.Name?.ToStringFull
+    public class Name
+    {
+        public string ToStringFull = "";
     }
 
     // IExposable 接口桩，供 AdvisorRequestRecord 实现
@@ -60,11 +69,26 @@ namespace Verse
     public static class Find
     {
         public static TickManager TickManager { get; set; } = new TickManager();
+        public static List<Map> Maps { get; } = new List<Map>();
     }
 
     public class TickManager
     {
         public int TicksGame { get; set; } = 0;
+    }
+
+    // Map 桩，供 AdvisorApprovalGateAdapter 查找 Pawn
+    public class Map
+    {
+        public MapPawns mapPawns = new MapPawns();
+    }
+
+    // MapPawns 桩，供 AdvisorApprovalGateAdapter 遍历 AllPawns / FreeColonists
+    public class MapPawns
+    {
+        public List<Pawn> AllPawns = new List<Pawn>();
+        // FreeColonists 桩，供 AdvisorApprovalGateAdapter.RequestApproval 回退到第一个殖民者
+        public List<Pawn> FreeColonists = new List<Pawn>();
     }
 }
 
@@ -167,6 +191,9 @@ namespace RimMind.Presentation.Api
         }
 
         public static void ClearPendingRequests() => PendingRequests.Clear();
+
+        // Mechanisms 桩，供 AdvisorToolRiskResolver 编译使用（测试时返回 null -> Resolve 返回 Low）
+        public static IGameMechanismRegistry? Mechanisms => null;
     }
 }
 

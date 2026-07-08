@@ -32,15 +32,19 @@
     <Compile Include="AdvisorToolCallExecutorTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
+    <Compile Include="../Source/Advisor/AdvisorToolRiskResolver.cs" />
     <Compile Include="../Source/Advisor/IAdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
+    <Compile Include="../Source/Advisor/AdvisorApprovalGateAdapter.cs" />
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
     <Compile Include="../Source/Data/AdvisorRequestRecord.cs" />
     <Compile Include="../Source/Extensions/AdvisorPromptHelper.cs" />
     <Compile Include="../Source/Extensions/InstantHintRegistry.cs" />
     <Compile Include="AdvisorPromptHelperTests.cs" />
     <Compile Include="InstantHintRegistryTests.cs" />
+    <Compile Include="AdvisorApprovalGateAdapterTests.cs" />
+    <Compile Include="AdvisorToolRiskResolverTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
