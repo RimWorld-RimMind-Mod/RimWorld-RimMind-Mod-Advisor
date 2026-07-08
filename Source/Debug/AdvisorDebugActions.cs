@@ -50,9 +50,9 @@ namespace RimMind.Advisor.Debug
                 ? $"Cooling down ({advisorLeft} ticks ~ {advisorLeft / 2500f:F2} game hours)"
                 : "Ready";
 
-            int coreLeft = 0;
+            int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
             string coreCooldown = coreLeft > 0
-                ? $"Cooling down ({coreLeft} ticks)"
+                ? $"Cooling down ({coreLeft} ticks ~ {coreLeft / 2500f:F2} game hours)"
                 : "Ready";
 
             var sb = new StringBuilder();
@@ -154,7 +154,7 @@ namespace RimMind.Advisor.Debug
                 if (comp == null) continue;
 
                 int advisorLeft = comp.AdvisorCooldownTicksLeft;
-                int coreLeft = 0;
+                int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
                 string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
                 string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
