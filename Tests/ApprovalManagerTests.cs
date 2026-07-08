@@ -48,58 +48,6 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
-        public void RequiresApproval_RiskApprovalDisabled_ReturnsFalse()
-        {
-            // 当 enableRiskApproval=false 时，任何风险等级都不需要审批
-            var manager = CreateManager(enableRiskApproval: false);
-
-            Assert.False(manager.RequiresApproval(RiskLevel.Low));
-            Assert.False(manager.RequiresApproval(RiskLevel.Medium));
-            Assert.False(manager.RequiresApproval(RiskLevel.High));
-            Assert.False(manager.RequiresApproval(RiskLevel.Critical));
-        }
-
-        [Fact]
-        public void RequiresApproval_LowRiskHighThreshold_ReturnsFalse()
-        {
-            // Low < High，不需要审批
-            var manager = CreateManager(autoBlockRiskLevel: RiskLevel.High);
-            Assert.False(manager.RequiresApproval(RiskLevel.Low));
-        }
-
-        [Fact]
-        public void RequiresApproval_HighRiskHighThreshold_ReturnsTrue()
-        {
-            // High >= High，需要审批
-            var manager = CreateManager(autoBlockRiskLevel: RiskLevel.High);
-            Assert.True(manager.RequiresApproval(RiskLevel.High));
-        }
-
-        [Fact]
-        public void RequiresApproval_CriticalRiskHighThreshold_ReturnsTrue()
-        {
-            // Critical >= High，需要审批
-            var manager = CreateManager(autoBlockRiskLevel: RiskLevel.High);
-            Assert.True(manager.RequiresApproval(RiskLevel.Critical));
-        }
-
-        [Fact]
-        public void RequiresApproval_MediumRiskMediumThreshold_ReturnsTrue()
-        {
-            // Medium >= Medium，需要审批
-            var manager = CreateManager(autoBlockRiskLevel: RiskLevel.Medium);
-            Assert.True(manager.RequiresApproval(RiskLevel.Medium));
-        }
-
-        [Fact]
-        public void RequiresApproval_LowRiskLowThreshold_ReturnsTrue()
-        {
-            // Low >= Low，需要审批
-            var manager = CreateManager(autoBlockRiskLevel: RiskLevel.Low);
-            Assert.True(manager.RequiresApproval(RiskLevel.Low));
-        }
-
-        [Fact]
         public void SubmitForApproval_ApproveCallback_AddsApprovedRecord()
         {
             // 审批通过时记录 Approved=true
@@ -123,10 +71,7 @@ namespace RimMind.Advisor.Tests
             Assert.True(approvedCalled);
             Assert.False(rejectedCalled);
 
-            // 验证审批记录
-            var context = manager.GetRecentApprovalContext(10);
-            Assert.Contains("APPROVED", context);
-            Assert.Contains("assign_job", context);
+            // GetRecentApprovalContext 已移除,approvedCalled 已验证
         }
 
         [Fact]
@@ -152,43 +97,8 @@ namespace RimMind.Advisor.Tests
             Assert.False(approvedCalled);
             Assert.True(rejectedCalled);
 
-            // 验证审批记录
-            var context = manager.GetRecentApprovalContext(10);
-            Assert.Contains("REJECTED", context);
-            Assert.Contains("forbid_area", context);
+            // GetRecentApprovalContext 已移除,rejectedCalled 已验证
         }
 
-        [Fact]
-        public void GetRecentApprovalContext_NoRecords_ReturnsEmpty()
-        {
-            // 无记录时返回空字符串
-            var manager = CreateManager();
-            var context = manager.GetRecentApprovalContext();
-            Assert.Equal(string.Empty, context);
-        }
-
-        [Fact]
-        public void GetRecentApprovalContext_MultipleRecords_ReturnsMostRecent()
-        {
-            // 多条记录时返回最近的记录（按倒序）
-            var manager = CreateManager();
-            var pawn = new Pawn { thingIDNumber = 3 };
-            RimMindAPI.ClearPendingRequests();
-
-            // 提交两条审批
-            var item1 = CreateAdviceItem("action_a", RiskLevel.High, "reason_a");
-            manager.SubmitForApproval(item1, pawn, () => { }, () => { });
-            RimMindAPI.PendingRequests[0].callback!("RimMind.Advisor.Request.Approve");
-
-            var item2 = CreateAdviceItem("action_b", RiskLevel.Critical, "reason_b");
-            manager.SubmitForApproval(item2, pawn, () => { }, () => { });
-            RimMindAPI.PendingRequests[1].callback!("RimMind.Advisor.Request.Reject");
-
-            // 获取最近1条记录
-            var context = manager.GetRecentApprovalContext(1);
-            Assert.Contains("action_b", context);
-            Assert.Contains("REJECTED", context);
-            Assert.DoesNotContain("action_a", context);
-        }
     }
 }

@@ -19,12 +19,6 @@ namespace RimMind.Advisor.Advisor
             _settings = settings;
         }
 
-        public bool RequiresApproval(RiskLevel riskLevel)
-        {
-            if (!_settings.enableRiskApproval) return false;
-            return riskLevel >= _settings.autoBlockRiskLevel;
-        }
-
         public void SubmitForApproval(AdviceItem item, Pawn pawn, Action onApproved, Action onRejected)
         {
             string approveLabel = "RimMind.Advisor.Request.Approve".Translate();
@@ -54,19 +48,6 @@ namespace RimMind.Advisor.Advisor
                 }
             };
             RimMindAPI.RegisterPendingRequest(entry);
-        }
-
-        public string GetRecentApprovalContext(int maxRecords = 5)
-        {
-            if (_records.Count == 0) return string.Empty;
-            var sb = new System.Text.StringBuilder("[Recent approvals/rejections]\n");
-            int count = 0;
-            for (int i = _records.Count - 1; i >= 0 && count < maxRecords; i--, count++)
-            {
-                var r = _records[i];
-                sb.AppendLine($"- {r.Action}: {(r.Approved ? "APPROVED" : "REJECTED")} ({r.Reason})");
-            }
-            return sb.ToString().TrimEnd();
         }
 
         public class ApprovalRecord
