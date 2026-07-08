@@ -38,7 +38,9 @@
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
     <Compile Include="../Source/Data/AdvisorRequestRecord.cs" />
     <Compile Include="../Source/Extensions/AdvisorPromptHelper.cs" />
+    <Compile Include="../Source/Extensions/InstantHintRegistry.cs" />
     <Compile Include="AdvisorPromptHelperTests.cs" />
+    <Compile Include="InstantHintRegistryTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
