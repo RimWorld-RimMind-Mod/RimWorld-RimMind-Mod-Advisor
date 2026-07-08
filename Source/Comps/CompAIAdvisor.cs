@@ -181,11 +181,8 @@ namespace RimMind.Advisor.Comps
                 }
 
                 var riskLevel = AdvisorToolRiskResolver.Resolve(tc.Name);
-                bool systemBlocked = Settings.enableRiskApproval
-                    && riskLevel >= Settings.autoBlockRiskLevel;
-                bool isRequest = IsToolCallRequest(tc.Arguments);
 
-                if (systemBlocked || isRequest)
+                if (ShouldDeferForApproval(riskLevel, tc.Arguments))
                 {
                     deferredForApproval = true;
                     SubmitToolCallForApproval(tc, riskLevel);
@@ -341,6 +338,18 @@ namespace RimMind.Advisor.Comps
             }
         }
 
+        /// <summary>
+        /// Centralized check: should this ToolCall be deferred for human approval?
+        /// Combines risk-level check and request-type check.
+        /// </summary>
+        private bool ShouldDeferForApproval(RiskLevel riskLevel, string? arguments)
+        {
+            bool systemBlocked = Settings.enableRiskApproval
+                && riskLevel >= Settings.autoBlockRiskLevel;
+            bool isRequest = IsToolCallRequest(arguments);
+            return systemBlocked || isRequest;
+        }
+
         private void SubmitToolCallForApproval(ClientStructuredToolCall toolCall, RiskLevel riskLevel)
         {
             var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
@@ -375,7 +384,7 @@ namespace RimMind.Advisor.Comps
                         new List<ClientStructuredToolCall> { toolCall },
                         toolCall.Id);
 
-                    BroadcastDecisionExecuted(toolCall.Name, reason);
+                    _taskDriver?.BroadcastDecisionExecuted(toolCall.Name, reason);
                     foreach (var result in results)
                     {
                         RecordToolHistory(
@@ -390,6 +399,19 @@ namespace RimMind.Advisor.Comps
                     }
 
                     ShowToolThoughtBubble(reason);
+
+                    // Unified: approval path also checks feedback loop (same as direct execution path)
+                    if (_taskDriver != null && _taskDriver.ShouldRequestFeedback())
+                    {
+                        _taskDriver.RequestToolFeedback(
+                            new List<ClientStructuredToolCall> { toolCall },
+                            results,
+                            OnAdviceReceived);
+                    }
+                    else
+                    {
+                        CompleteRequestCycle();
+                    }
                 },
                 onRejected: () =>
                 {
@@ -457,20 +479,6 @@ namespace RimMind.Advisor.Comps
                 result = result,
                 tick = Find.TickManager.TicksGame
             });
-        }
-
-        private void BroadcastDecisionExecuted(string actionName, string? reason)
-        {
-            try
-            {
-                var summary = $"action={actionName}";
-                if (!string.IsNullOrEmpty(reason)) summary += $",reason={reason}";
-                RimMindAPI.PublishPerception(Pawn.thingIDNumber, "advisor_decision", summary, 0.5f);
-            }
-            catch (System.Exception ex)
-            {
-                RimMindErrors.Warn($"[RimMind-Advisor] Failed to publish approved decision perception: {ex.Message}");
-            }
         }
 
         private void ShowToolThoughtBubble(string? reason)
