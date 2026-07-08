@@ -6,7 +6,7 @@ AI决策层，空闲/心情低落时LLM角色扮演选择最优行动，Tool Cal
 
 AdvisorGameComponent 每隔 pawnScanIntervalTicks 扫描殖民者 → CompAIAdvisor 检查触发条件 → AdvisorTaskDriver 构建 ContextEngine Prompt + Tool Calling 请求 → 解析 StructuredToolCall → 审批高风险(ApprovalManager) → ExecuteBatchWithResults → 反馈循环(最多3层)。含双层冷却(Advisor层+Core层)、并发控制(Interlocked)、决策历史持久化、决策事件广播(PublishPerception)。
 
-依赖: Core + Actions(编译期)，被其他模块消费(上下文Provider + Perception事件)。
+依赖: Core(编译期)，被其他模块消费(上下文Provider + Perception事件)。Actions 依赖已在架构优化中移除，现通过 Core 的 ToolRegistry 直接调用 ToolHandler。
 
 ## 构建
 
@@ -15,14 +15,14 @@ AdvisorGameComponent 每隔 pawnScanIntervalTicks 扫描殖民者 → CompAIAdvi
 | Target | net48, C#9.0, Nullable enable |
 | Output | `../1.6/Assemblies/` |
 | Assembly | RimMindAdvisor |
-| 依赖 | RimMindCore.dll, RimMindActions.dll, Krafs.Rimworld.Ref, Lib.Harmony.Ref, Newtonsoft.Json |
+| 依赖 | 0_RimMindDomain.dll, 1_RimMindApplication.dll, 2_RimMindCore.dll, Krafs.Rimworld.Ref, Lib.Harmony.Ref, Newtonsoft.Json |
 
 ## 源码结构
 
 ```
 Source/
 ├── RimMindAdvisorMod.cs                Mod入口: Harmony + SettingsTab + Cooldown + ContextKey + PawnContextProvider
-├── Settings/RimMindAdvisorSettings.cs  13项设置(全部有XML文档注释)
+├── Settings/RimMindAdvisorSettings.cs  14项设置(全部有XML文档注释)
 ├── Comps/
 │   ├── CompAIAdvisor.cs                核心ThingComp(状态判断/AI请求/ToolCall处理/审批/反馈循环/Gizmo)
 │   └── CompProperties_AIAdvisor.cs     CompProperties(仅设compClass)
@@ -31,7 +31,13 @@ Source/
 │   ├── AdvisorGameComponent.cs         GameComponent Tick循环: 扫描→触发→并发控制
 │   ├── ApprovalManager.cs             审批管理(SubmitForApproval/GetRecentApprovalContext)
 │   ├── AdvisorResponse.cs             AdviceItem DTO(审批用数据结构)
+│   ├── AdvisorToolCallExecutor.cs      ToolCall批量执行器(通过Core的ToolRegistry查找ToolHandler)
+│   ├── AdvisorToolRiskResolver.cs      从Mechanism注册表解析ToolCall风险等级
+│   ├── IAdvisorToolCallExecutor.cs     ToolCall批量执行器接口(供Advisor及未来子模块使用)
 │   └── JobCandidateBuilder.cs          候选任务列表(工作+9个即时动作)
+├── Extensions/
+│   ├── AdvisorPromptHelper.cs          Prompt构建共享助手(RiskTag/FindLastSystemIndex)
+│   └── InstantHintRegistry.cs          即时动作intent ID注册表(替代JobCandidateBuilder硬编码HashSet)
 ├── Data/
 │   ├── AdvisorRequestRecord.cs         单条决策记录(IExposable)
 │   └── AdvisorHistoryStore.cs          WorldComponent按Pawn存储(每Pawn限50/全局限200)
@@ -72,7 +78,6 @@ AIResponse.ToolCallsJson → TryParseToolCalls → List<StructuredToolCall>
   ├── (无ToolCalls) → Content Fallback: TryParseContentAsToolCalls({"advices":[...]})
   ├── 过滤: Name未supported / !IsAllowed → 跳过
   ├── 解析 Arguments → target/param/reason
-  ├── FindPawnByName: 先按ThingID搜索Find.Maps, 再按Name搜索Find.Maps
   ├── 审批: enableRiskApproval && riskLevel >= autoBlockRiskLevel
   │   ├── 需审批 && enableRequestSystem → ApprovalManager.SubmitForApproval
   │   │   ├── onApproved: ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 气泡
@@ -121,11 +126,12 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 
 ⚠️ 已知问题：审批回调中 `_taskDriver` 可能为 null（竞态），导致 `BroadcastDecisionExecuted` 静默失败。见问题文档 #1。
 
-## 设置项 (13项，全部有XML文档注释+序列化+UI+重置)
+## 设置项 (14项，全部有XML文档注释+序列化+UI+重置)
 
 | 字段 | 类型 | 默认 | UI控件 |
 |------|------|------|--------|
 | enableAdvisor | bool | true | Checkbox |
+| enableLegacyJsonFallback | bool | false | Checkbox |
 | enableIdleTrigger | bool | true | Checkbox |
 | pawnScanIntervalTicks | int | 3600 | Slider(600~6000, 步进100) |
 | enableMoodTrigger | bool | true | Checkbox |

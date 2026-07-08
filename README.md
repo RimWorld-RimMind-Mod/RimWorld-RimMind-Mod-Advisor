@@ -117,6 +117,7 @@ AdvisorGameComponent (Tick扫描)
 | 设置 | 默认值 | 说明 |
 |------|--------|------|
 | 启用 AI 顾问系统 | 开启 | 总开关 |
+| 启用旧版 JSON 回退 | 关闭 | 允许旧版文本 JSON 建议解析为 ToolCall(兼容旧模型) |
 | 小人空闲时触发 | 开启 | 空闲时自动触发 |
 | 小人扫描间隔 | 3600 ticks（~60s） | 检测空闲小人的频率 |
 | 心情低时触发 | 开启 | 心情低于阈值额外触发 |
@@ -278,6 +279,7 @@ AdvisorGameComponent (Tick scanning)
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Enable AI Advisor System | On | Master switch |
+| Enable Legacy JSON Fallback | Off | Allow text JSON advice parsing for old models |
 | Trigger on Idle | On | Auto-trigger when idle |
 | Pawn Scan Interval | 3600 ticks (~60s) | Frequency of idle check |
 | Trigger on Low Mood | On | Extra trigger when mood is low |
