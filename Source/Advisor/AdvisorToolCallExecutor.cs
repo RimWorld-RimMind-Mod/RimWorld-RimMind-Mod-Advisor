@@ -9,7 +9,7 @@ using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Advisor
 {
-    internal sealed class AdvisorToolCallExecutor
+    internal sealed class AdvisorToolCallExecutor : IAdvisorToolCallExecutor
     {
         private readonly Func<string, IToolHandler?> _findTool;
 

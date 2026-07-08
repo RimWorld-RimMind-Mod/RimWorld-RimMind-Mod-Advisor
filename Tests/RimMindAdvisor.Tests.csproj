@@ -32,6 +32,7 @@
     <Compile Include="AdvisorToolCallExecutorTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
+    <Compile Include="../Source/Advisor/IAdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />

@@ -17,19 +17,6 @@ namespace RimMind.Advisor.Advisor
     {
         private const int MaxWorkCandidates = 10;
 
-        private static readonly HashSet<string> AdvisorInstantActions = new HashSet<string>
-        {
-            "force_rest",
-            "social_relax",
-            "eat_food",
-            "tend_pawn",
-            "rescue_pawn",
-            "inspire_work",
-            "inspire_shoot",
-            "inspire_trade",
-            "move_to",
-        };
-
         public static string Build(Pawn pawn)
         {
             var sb = new StringBuilder();
@@ -107,7 +94,7 @@ namespace RimMind.Advisor.Advisor
                 if (RimMindAPI.ShouldSkipAction(intentId)) continue;
 
                 string? hint = BuildInstantHint(pawn, intentId);
-                if (hint == null && AdvisorInstantActions.Contains(intentId)) continue;
+                if (hint == null && InstantHintRegistry.IsKnownAction(intentId)) continue;
 
                 var riskLevel = AdvisorToolRiskResolver.Resolve(intentId);
                 result.Add((intentId, intentId, riskLevel, hint, tool.Description ?? ""));

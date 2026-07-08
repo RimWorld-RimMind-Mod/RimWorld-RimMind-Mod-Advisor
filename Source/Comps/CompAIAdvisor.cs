@@ -31,7 +31,7 @@ namespace RimMind.Advisor.Comps
 
         private AdvisorTaskDriver? _taskDriver;
         private ApprovalManager? _approvalManager;
-        private readonly AdvisorToolCallExecutor _toolExecutor = new AdvisorToolCallExecutor();
+        private readonly IAdvisorToolCallExecutor _toolExecutor = new AdvisorToolCallExecutor();
 
         public bool HasPendingRequest => _hasPendingRequest;
         public int LastRequestTick => _lastRequestTick;
