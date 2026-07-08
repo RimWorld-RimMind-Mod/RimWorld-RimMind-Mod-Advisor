@@ -66,9 +66,9 @@ enableAdvisor → IsConfigured → 每pawnScanIntervalTicks扫描 → EvaluateAl
 ContextRequest(Scenario=Decision, Budget=ContextBudget) → BuildContextSnapshot
   → advisorCustomPrompt: 插入到最后一个system消息之后(Insert(lastSysIdx+1))
   → GetRecentRejectedAdvisorDecisions: 注入玩家拒绝历史(从AdvisorHistoryStore读取)
-  → BuildActionTools → RimMindActionsAPI.GetStructuredTools
-  → AIRequest(ModId="Advisor", UseJsonMode=true, Schema=AdviceOutput, SystemPrompt=string.Empty)
-  → RimMindAPI.RequestStructuredAsync(request, schema, callback, tools)
+  → BuildActionTools → RimMindAPI.Tools.GetAllDefinitions
+  → LlmRequestEnvelopeBuilder.ForScenario("Advisor").WithModId/WithMessages/WithTools/WithSchema.Build()
+  → RimMindAPI.Request.Send(envelope, callback)
 ```
 
 ### 3. 响应处理 (CompAIAdvisor.OnAdviceReceived)
@@ -159,18 +159,19 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 ### ✅ 必须做
 - 修改触发条件后更新本文件核心流程清单
 - 修改审批逻辑后验证风险分级正确
-- 新即时动作在 `BuildInstantHint` 添加case(返回null=过滤)
+- 新即时动作需在 `InstantHintRegistry` 注册,并在 `BuildInstantHint` 添加case(返回null=过滤)
 - 修改 AdvisorTaskDriver 后验证反馈循环深度逻辑
 - 审批回调中必须检查 Pawn 有效性（null/dead/map）
 
 ### ⚠️ 先询问
 - 修改 `MaxToolCallDepth`(当前3)
 - 修改 `maxConcurrentRequests` 默认值
-- 删除 `ApprovalManager.GetRecentApprovalContext` 死方法
+- ~~删除 `ApprovalManager.GetRecentApprovalContext` 死方法~~ (已删除于 2026-07-07)
+- ~~删除 `ApprovalManager.RequiresApproval` 死方法~~ (已删除于 2026-07-07)
 - 迁移 `RegisterPawnContextProvider` 到 `ContextKeyRegistry.RegisterPawnContext`
 
 ### 🚫 绝对禁止
-- 后台线程调用 `RimMindActionsAPI.ExecuteBatchWithResults`
+- 后台线程调用 `AdvisorToolCallExecutor.ExecuteAsync`（必须在主线程 GetAwaiter().GetResult()）
 - 绕过 `RimMindAPI` 直接调用 `AIRequestQueue.Instance.ClearCooldown`
-- 审批回调中不捕获 `_taskDriver` 引用（必须避免竞态导致 BroadcastDecisionExecuted 失败）
-- 审批路径与直接执行路径行为不一致（广播/气泡/历史记录必须一致）
+- 审批回调中不捕获 `_taskDriver` 引用（必须避免竞态导致 `BroadcastDecisionExecuted` 失败）
+- ~~审批路径与直接执行路径行为不一致（广播/气泡/历史记录必须一致）~~ (已统一于 2026-07-07: 两路径均检查 `ShouldRequestFeedback`)
