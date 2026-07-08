@@ -78,18 +78,7 @@ namespace RimMind.Advisor.Advisor
                 if (result.Count >= MaxWorkCandidates) break;
                 if (!pawn.workSettings.WorkIsActive(workType)) continue;
 
-                string? hint = null;
-                try
-                {
-                    hint = null;
-                }
-                catch (Exception ex)
-                {
-                    RimMindErrors.Warn($"[RimMind-Advisor] BuildWorkCandidates failed for {workType.defName}: {ex.Message}");
-                    continue;
-                }
-
-                result.Add((workType.labelShort, workType.defName, hint));
+                result.Add((workType.labelShort, workType.defName, null));
             }
 
             return result;
