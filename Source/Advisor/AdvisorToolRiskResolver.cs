@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
 
@@ -61,29 +62,29 @@ namespace RimMind.Advisor.Advisor
             return operation.HasValue;
         }
 
-        private static MechanismOperationType? ResolveOperation(string suffix)
-        {
-            switch (suffix.ToLowerInvariant())
+        private static readonly Dictionary<string, MechanismOperationType> OperationSuffixMap
+            = new Dictionary<string, MechanismOperationType>(StringComparer.OrdinalIgnoreCase)
             {
-                case "query":
-                    return MechanismOperationType.Query;
-                case "list":
-                    return MechanismOperationType.List;
-                case "watch":
-                    return MechanismOperationType.Watch;
-                case "set":
-                    return MechanismOperationType.Set;
-                case "add":
-                    return MechanismOperationType.Add;
-                case "remove":
-                    return MechanismOperationType.Remove;
-                case "toggle":
-                    return MechanismOperationType.Toggle;
-                case "trigger":
-                    return MechanismOperationType.Trigger;
-                default:
-                    return null;
+                { "query", MechanismOperationType.Query },
+                { "list", MechanismOperationType.List },
+                { "watch", MechanismOperationType.Watch },
+                { "set", MechanismOperationType.Set },
+                { "add", MechanismOperationType.Add },
+                { "remove", MechanismOperationType.Remove },
+                { "toggle", MechanismOperationType.Toggle },
+                { "trigger", MechanismOperationType.Trigger },
+            };
+
+        internal static MechanismOperationType? ResolveOperation(string suffix)
+        {
+            if (string.IsNullOrEmpty(suffix))
+            {
+                return null;
             }
+
+            return OperationSuffixMap.TryGetValue(suffix, out var operation)
+                ? operation
+                : (MechanismOperationType?)null;
         }
     }
 }

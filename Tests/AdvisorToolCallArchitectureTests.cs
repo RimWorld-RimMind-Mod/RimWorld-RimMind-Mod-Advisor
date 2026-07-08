@@ -66,6 +66,17 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_RiskResolver_Uses_Dictionary_For_Operation_Suffix_Mapping()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorToolRiskResolver.cs"));
+            Assert.Contains("OperationSuffixMap", source);
+            Assert.Contains("Dictionary<string, MechanismOperationType>", source);
+            Assert.Contains("StringComparer.OrdinalIgnoreCase", source);
+            Assert.Contains("TryGetValue", source);
+            Assert.DoesNotContain("switch (suffix", source);
+        }
+
+        [Fact]
         public void Advisor_ToolCallExecutor_Uses_Core_ToolRegistry()
         {
             var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorToolCallExecutor.cs"));
