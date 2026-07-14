@@ -42,69 +42,34 @@ namespace RimMind.Advisor.Advisor
         public void BuildAndSendRequest(Action<Result<LlmResponse, RimMindError>> onComplete)
         {
             var npcId = $"NPC-{_pawn.thingIDNumber}";
-            var engine = RimMindAPI.Settings.GetContextEngine();
-            var snapshot = engine?.BuildSnapshotFromEnvelope(
-                npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
-
             var schema = (string?)null;
             var tools = BuildActionTools();
-            var messages = snapshot != null
-                ? new List<ChatMessage>(snapshot.Messages)
-                : new List<ChatMessage>();
-
-            if (_settings.enableLegacyJsonFallback)
-            {
-                int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
-                messages.Insert(lastSysIdx + 1, new ChatMessage
-                {
-                    Role = "system",
-                    Content = "[Legacy compatibility] Native ToolCall is preferred. If your model cannot emit tool_calls, respond with JSON object {\"advices\":[{\"action\":\"tool.id\",\"param\":\"{}\",\"reason\":\"short reason\"}]}."
-                });
-            }
-
-            if (!_settings.advisorCustomPrompt.NullOrEmpty())
-            {
-                int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
-                messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = _settings.advisorCustomPrompt });
-
-                string reactionsText = GetRecentRejectedAdvisorDecisions(20);
-                if (!string.IsNullOrEmpty(reactionsText))
-                    messages.Insert(lastSysIdx + 2, new ChatMessage { Role = "system", Content = reactionsText });
-            }
-            else
-            {
-                string reactionsText = GetRecentRejectedAdvisorDecisions(20);
-                if (!string.IsNullOrEmpty(reactionsText))
-                {
-                    int lastSysIdx = AdvisorPromptHelper.FindLastSystemIndex(messages);
-                    messages.Insert(lastSysIdx + 1, new ChatMessage { Role = "system", Content = reactionsText });
-                }
-            }
-
-            _lastMessages = new List<ChatMessage>(messages);
+            var reactionsText = GetRecentRejectedAdvisorDecisions(20);
             _lastTools = tools;
             _lastSchema = schema;
             _toolCallDepth = 0;
             _lastReasoningContent = null;
 
-            var maxTokens = snapshot?.MaxTokens ?? 400;
-            var temperature = snapshot?.Temperature ?? 0.7f;
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
-            var envelope = LlmRequestEnvelopeBuilder
-                .ForScenario("Advisor")
-                .WithModId("RimMind.Advisor")
-                .WithNpcId(npcId)
-                .WithSchema(schema)
-                .WithMessages(messages)
-                .WithTools(tools)
-                .WithToolDispatchMode(ToolCallDispatchMode.Manual)
-                .WithMaxTokens(maxTokens)
-                .WithTemperature(temperature)
-                .WithExpireAtTicks(expireAtTicks)
-                .Build();
+            var envelope = AdvisorRequestAugmentationFactory.Create(
+                npcId,
+                schema,
+                _settings.enableLegacyJsonFallback,
+                _settings.advisorCustomPrompt,
+                reactionsText,
+                tools,
+                400,
+                0.7f,
+                expireAtTicks);
 
-            RimMindAPI.Request.Send(envelope, onComplete);
+            RimMindAPI.Request.Send(envelope, (result, context) =>
+            {
+                _lastMessages = AdvisorRequestAugmentationFactory.CaptureFeedbackMessages(
+                    context,
+                    envelope.Messages);
+                onComplete(result);
+            });
         }
 
         public List<StructuredTool>? BuildActionTools()

@@ -33,6 +33,7 @@
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolRiskResolver.cs" />
+    <Compile Include="../Source/Advisor/AdvisorRequestAugmentationFactory.cs" />
     <Compile Include="../Source/Advisor/IAdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
@@ -45,6 +46,7 @@
     <Compile Include="InstantHintRegistryTests.cs" />
     <Compile Include="AdvisorApprovalGateAdapterTests.cs" />
     <Compile Include="AdvisorToolRiskResolverTests.cs" />
+    <Compile Include="AdvisorRequestAugmentationFactoryTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
