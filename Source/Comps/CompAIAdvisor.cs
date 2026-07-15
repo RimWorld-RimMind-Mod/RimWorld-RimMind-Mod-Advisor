@@ -433,11 +433,26 @@ namespace RimMind.Advisor.Comps
         {
             try
             {
-                return _toolExecutor.ExecuteAsync(
+                // OnAdviceReceived is invoked by Core's main-thread queue tick. Tool handlers may
+                // ultimately mutate Verse state through MainOnly mechanism interfaces, so moving this
+                // await to Task.Run or an unconstrained continuation would be unsafe. Keep the result
+                // available for the feedback request, but make any future truly-asynchronous handler
+                // visible instead of silently turning a main-thread stall into an unexplained freeze.
+                var executionTask = _toolExecutor.ExecuteAsync(
                     calls,
                     $"NPC-{Pawn.thingIDNumber}",
                     traceId,
-                    CancellationToken.None).GetAwaiter().GetResult();
+                    CancellationToken.None);
+
+                if (!executionTask.IsCompleted)
+                {
+                    RimMindErrors.Warn(
+                        $"[RimMind-Advisor][ToolCall][MainThreadWait] " +
+                        $"Tool execution is asynchronous; preserving main-thread completion for {Pawn.Name.ToStringShort} " +
+                        $"(trace={traceId ?? "unknown"}, tools={calls.Count}).");
+                }
+
+                return executionTask.GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {

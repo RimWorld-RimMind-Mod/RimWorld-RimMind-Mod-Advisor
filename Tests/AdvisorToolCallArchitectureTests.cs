@@ -107,6 +107,16 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
+        public void Advisor_Component_Reports_When_MainThread_Tool_Execution_Is_Asynchronous()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+
+            Assert.Contains("executionTask.IsCompleted", source);
+            Assert.Contains("[ToolCall][MainThreadWait]", source);
+            Assert.DoesNotContain("Task.Run(() => _toolExecutor.ExecuteAsync", source);
+        }
+
+        [Fact]
         public void Advisor_Component_Centralizes_Approval_Deferral()
         {
             // Task 9: approval deferral check must be centralized in ShouldDeferForApproval,
