@@ -20,13 +20,13 @@ namespace RimMind.Advisor.Advisor
                 return RiskLevel.Low;
             }
 
-            var mechanism = RimMindAPI.Mechanisms.FindById(mechanismId);
+            var mechanism = mechanismRegistry.FindById(mechanismId);
             if (mechanism == null)
             {
                 return RiskLevel.Low;
             }
 
-            var mechanismRisk = mechanism.GetRiskForOperation(operation.Value);
+            var mechanismRisk = mechanism.GetRiskForOperation(operation);
             return mechanismRisk switch
             {
                 MechanismRisk.Safe => RiskLevel.Low,
@@ -39,10 +39,10 @@ namespace RimMind.Advisor.Advisor
         private static bool TryParseToolName(
             string toolName,
             out string mechanismId,
-            out MechanismOperationType? operation)
+            out MechanismOperationType operation)
         {
             mechanismId = string.Empty;
-            operation = null;
+            operation = default;
 
             if (string.IsNullOrWhiteSpace(toolName))
             {
@@ -57,9 +57,14 @@ namespace RimMind.Advisor.Advisor
 
             mechanismId = toolName.Substring(0, lastDotIndex);
             var suffix = toolName.Substring(lastDotIndex + 1);
-            operation = ResolveOperation(suffix);
+            var resolvedOperation = ResolveOperation(suffix);
+            if (!resolvedOperation.HasValue)
+            {
+                return false;
+            }
 
-            return operation.HasValue;
+            operation = resolvedOperation.Value;
+            return true;
         }
 
         private static readonly Dictionary<string, MechanismOperationType> OperationSuffixMap

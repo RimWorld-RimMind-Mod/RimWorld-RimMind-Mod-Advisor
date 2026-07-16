@@ -60,7 +60,8 @@ namespace RimMind.Advisor.Tests
         public void Advisor_RiskResolver_Uses_Core_Mechanism_Metadata()
         {
             var source = ReadAdvisorSource(Path.Combine("Advisor", "AdvisorToolRiskResolver.cs"));
-            Assert.Contains("RimMindAPI.Mechanisms.FindById", source);
+            Assert.Contains("var mechanismRegistry = RimMindAPI.Mechanisms", source);
+            Assert.Contains("mechanismRegistry.FindById", source);
             Assert.Contains("GetRiskForOperation", source);
             Assert.Contains("MechanismRisk.Dangerous", source);
         }

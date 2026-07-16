@@ -132,7 +132,8 @@ namespace RimMind.Advisor.Comps
 
             var response = result.Value;
 
-            if (_taskDriver == null)
+            var taskDriver = _taskDriver;
+            if (taskDriver == null)
             {
                 CompleteRequestCycle();
                 return;
@@ -142,8 +143,8 @@ namespace RimMind.Advisor.Comps
 
             if (!string.IsNullOrEmpty(response.ToolCallsJson))
             {
-                _taskDriver.SetReasoningContent(response.ReasoningContent);
-                if (!_taskDriver.TryParseToolCalls(response.ToolCallsJson ?? string.Empty, out toolCalls))
+                taskDriver.SetReasoningContent(response.ReasoningContent);
+                if (!taskDriver.TryParseToolCalls(response.ToolCallsJson ?? string.Empty, out toolCalls))
                 {
                     CompleteRequestCycle();
                     return;
@@ -151,8 +152,8 @@ namespace RimMind.Advisor.Comps
             }
             else if (!string.IsNullOrEmpty(response.Content))
             {
-                _taskDriver.SetReasoningContent(response.ReasoningContent);
-                toolCalls = _taskDriver.TryParseContentAsToolCallsIfEnabled(response.Content);
+                taskDriver.SetReasoningContent(response.ReasoningContent);
+                toolCalls = taskDriver.TryParseContentAsToolCallsIfEnabled(response.Content);
                 if (toolCalls != null)
                 {
                     Log.Message($"[RimMind-Advisor] Parsed {toolCalls.Count} action(s) from content fallback for {Pawn.Name.ToStringShort}");
@@ -256,9 +257,9 @@ namespace RimMind.Advisor.Comps
                 }
             }
 
-            if (_taskDriver.ShouldRequestFeedback())
+            if (taskDriver.ShouldRequestFeedback())
             {
-                _taskDriver.RequestToolFeedback(approvedCalls, results, OnAdviceReceived);
+                taskDriver.RequestToolFeedback(approvedCalls, results, OnAdviceReceived);
             }
             else
             {
@@ -323,7 +324,7 @@ namespace RimMind.Advisor.Comps
 
         private static bool IsToolCallRequest(string? arguments)
         {
-            if (string.IsNullOrWhiteSpace(arguments)) return false;
+            if (arguments is null || arguments.Trim().Length == 0) return false;
 
             try
             {
@@ -468,7 +469,7 @@ namespace RimMind.Advisor.Comps
 
         private static Dictionary<string, string> ParseToolCallArguments(string? arguments)
         {
-            if (string.IsNullOrWhiteSpace(arguments)) return new Dictionary<string, string>();
+            if (arguments is null || arguments.Trim().Length == 0) return new Dictionary<string, string>();
 
             try
             {

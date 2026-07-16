@@ -51,9 +51,6 @@
   <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（action 固定填 assign_work，param 填括号内的 WorkType defName；可加 @x,z 指定坐标）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
   <RimMind.Advisor.Prompt.NoWorkTargets>  （暂无可执行工作目标）</RimMind.Advisor.Prompt.NoWorkTargets>
   <RimMind.Advisor.Prompt.InstantSectionHeader>[即时动作]（action 直接填括号内的 intentId；括号外是说明）</RimMind.Advisor.Prompt.InstantSectionHeader>
-  <!-- Prompt - Work Hints -->
-  <RimMind.Advisor.Prompt.TargetCountSingle>{0} 个目标，最近 {1} 格</RimMind.Advisor.Prompt.TargetCountSingle>
-  <RimMind.Advisor.Prompt.TargetCountMulti>{0} 个目标，最近 {1} 格（{2}）</RimMind.Advisor.Prompt.TargetCountMulti>
   <!-- Prompt - Instant Action Hints -->
   <RimMind.Advisor.Prompt.RestLow>体力 {0}%</RimMind.Advisor.Prompt.RestLow>
   <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>

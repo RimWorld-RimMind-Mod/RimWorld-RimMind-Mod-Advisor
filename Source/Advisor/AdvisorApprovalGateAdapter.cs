@@ -50,9 +50,9 @@ namespace RimMind.Advisor.Advisor
 
             // Resolve target pawn if specified
             Pawn? targetPawn = null;
-            if (!string.IsNullOrEmpty(decision.TargetPawnId))
+            if (decision.TargetPawnId is { Length: > 0 } targetPawnId)
             {
-                targetPawn = FindTargetPawn(decision.TargetPawnId);
+                targetPawn = FindTargetPawn(targetPawnId);
             }
 
             // Fall back to first colonist if no target specified
@@ -90,7 +90,7 @@ namespace RimMind.Advisor.Advisor
 
         private static bool IsToolCallRequest(string? arguments)
         {
-            if (string.IsNullOrEmpty(arguments)) return false;
+            if (arguments is null || arguments.Length == 0) return false;
             return arguments.Contains("request_type", StringComparison.OrdinalIgnoreCase);
         }
 

@@ -46,10 +46,13 @@ namespace RimMind.Advisor.Data
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Collections.Look(ref _records, "advisorRecords", LookMode.Value, LookMode.Deep);
-            _records ??= new Dictionary<int, List<AdvisorRequestRecord>>();
-            Scribe_Collections.Look(ref _globalLog, "globalLog", LookMode.Deep);
-            _globalLog ??= new List<AdvisorRequestRecord>();
+            Dictionary<int, List<AdvisorRequestRecord>>? records = _records;
+            Scribe_Collections.Look(ref records, "advisorRecords", LookMode.Value, LookMode.Deep);
+            _records = records ?? new Dictionary<int, List<AdvisorRequestRecord>>();
+
+            List<AdvisorRequestRecord>? globalLog = _globalLog;
+            Scribe_Collections.Look(ref globalLog, "globalLog", LookMode.Deep);
+            _globalLog = globalLog ?? new List<AdvisorRequestRecord>();
         }
     }
 }

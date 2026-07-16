@@ -133,30 +133,6 @@ namespace RimMind.Application.Common.Models.Client
     public enum AIRequestPriority { Normal }
 }
 
-namespace RimMind.Application.Common.Models.UI
-{
-    // RequestEntry 桩，供 ApprovalManager.SubmitForApproval 使用
-    public class RequestEntry
-    {
-        public string title = "";
-        public string description = "";
-        public string[] options = Array.Empty<string>();
-        public string[]? optionTooltips;
-        public Action<string>? callback;
-        public object? pawn;
-        public string source = "";
-        public bool systemBlocked;
-        public int expireTicks;
-        public int tick;
-
-        public int ExpireAtTicks
-        {
-            get => expireTicks;
-            set => expireTicks = value;
-        }
-    }
-}
-
 namespace RimMind.Application.Common.Interfaces.UI
 {
     // 占位接口，ApprovalManager 源码引用此命名空间
