@@ -160,13 +160,29 @@ namespace RimMind.Presentation.Api
 
         // RegisterPendingRequest 桩，存储提交的审批请求以供测试验证
         public static List<RimMind.Application.Common.Models.UI.RequestEntry> PendingRequests { get; } = new();
+        public static Action<RimMind.Application.Common.Models.UI.RequestEntry>? RegisterPendingRequestBehavior { get; set; }
 
         public static void RegisterPendingRequest(RimMind.Application.Common.Models.UI.RequestEntry entry)
         {
             PendingRequests.Add(entry);
+            RegisterPendingRequestBehavior?.Invoke(entry);
         }
 
-        public static void ClearPendingRequests() => PendingRequests.Clear();
+        public static bool DismissPendingRequest(RimMind.Application.Common.Models.UI.RequestEntry entry)
+        {
+            if (!PendingRequests.Remove(entry))
+                return false;
+
+            return entry.TryComplete(
+                null,
+                RimMind.Application.Common.Models.UI.RequestCompletionReason.Dismissed);
+        }
+
+        public static void ClearPendingRequests()
+        {
+            PendingRequests.Clear();
+            RegisterPendingRequestBehavior = null;
+        }
 
         // Mechanisms 桩，供 AdvisorToolRiskResolver 编译使用（测试时返回 null -> Resolve 返回 Low）
         public static IGameMechanismRegistry? Mechanisms => null;

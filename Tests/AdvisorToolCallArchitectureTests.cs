@@ -100,11 +100,12 @@ namespace RimMind.Advisor.Tests
         public void Advisor_Component_Has_No_Duplicate_BroadcastDecisionExecuted()
         {
             // Task 8: the private duplicate BroadcastDecisionExecuted must be removed;
-            // only the public AdvisorTaskDriver.BroadcastDecisionExecuted should be called via _taskDriver.
+            // only the public AdvisorTaskDriver.BroadcastDecisionExecuted should be called via the captured driver.
             var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
             Assert.DoesNotContain("private void BroadcastDecisionExecuted", source);
-            Assert.Contains("_taskDriver?.BroadcastDecisionExecuted(toolCall.Name, reason);", source);
-            Assert.Contains("_taskDriver?.BroadcastDecisionExecuted(call.Name,", source);
+            Assert.Contains("taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);", source);
+            Assert.Contains("taskDriver.BroadcastDecisionExecuted(call.Name,", source);
+            Assert.DoesNotContain("_taskDriver?.BroadcastDecisionExecuted", source);
         }
 
         [Fact]
@@ -133,17 +134,41 @@ namespace RimMind.Advisor.Tests
         }
 
         [Fact]
-        public void Advisor_Component_Approval_Path_Invokes_Feedback_Loop()
+        public void Advisor_Component_AllExecutionPaths_UseOneCentralizedFeedback_Loop()
         {
-            // Task 10: the onApproved callback must call ShouldRequestFeedback / RequestToolFeedback
-            // so approved ToolCalls can form multi-round decision chains like the direct path.
             var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
-            // Both execution paths must reference ShouldRequestFeedback.
+
             int feedbackChecks = Regex.Matches(source, @"ShouldRequestFeedback\(\)").Count;
-            Assert.True(feedbackChecks >= 2, $"Expected >=2 ShouldRequestFeedback() call sites (direct + approval), found {feedbackChecks}");
-            // Both execution paths must reference RequestToolFeedback.
             int feedbackRequests = Regex.Matches(source, @"RequestToolFeedback\(").Count;
-            Assert.True(feedbackRequests >= 2, $"Expected >=2 RequestToolFeedback( call sites (direct + approval), found {feedbackRequests}");
+            Assert.Equal(1, feedbackChecks);
+            Assert.Equal(1, feedbackRequests);
+            Assert.Contains("QueueFeedbackBatch(requestCycle, approvedCalls, results);", source);
+            Assert.Contains("QueueFeedbackBatch(requestCycle, calls, results);", source);
+        }
+
+        [Fact]
+        public void Advisor_Component_Approval_Callbacks_Keep_Their_Originating_Driver()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+
+            Assert.Contains("SubmitToolCallForApproval(tc, riskLevel, taskDriver, requestCycle)", source);
+            Assert.Contains("AdvisorTaskDriver taskDriver,", source);
+            Assert.Contains("AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)", source);
+            Assert.Contains("taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);", source);
+            Assert.DoesNotContain("_taskDriver?.BroadcastDecisionExecuted(toolCall.Name, reason);", source);
+        }
+
+        [Fact]
+        public void Advisor_Component_Tracks_Approval_Lifecycle_Before_Completing_Request()
+        {
+            var source = ReadAdvisorSource(Path.Combine("Comps", "CompAIAdvisor.cs"));
+
+            Assert.Contains("AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult>? _requestCycle", source);
+            Assert.Contains("requestCycle.TrackPendingApproval(", source);
+            Assert.Contains("requestCycle.TryFinishApproval(approvalEntry)", source);
+            Assert.Contains("completedCycle?.CancelPendingApprovals();", source);
+            Assert.Contains("TryAdvanceRequestCycle(taskDriver, requestCycle);", source);
+            Assert.DoesNotContain("_pendingApprovalCount", source);
         }
 
         [Fact]

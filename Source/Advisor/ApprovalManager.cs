@@ -19,7 +19,13 @@ namespace RimMind.Advisor.Advisor
             _settings = settings;
         }
 
-        public void SubmitForApproval(AdviceItem item, Pawn pawn, Action onApproved, Action onRejected)
+        public RequestEntry SubmitForApproval(
+            AdviceItem item,
+            Pawn pawn,
+            Action onApproved,
+            Action onRejected,
+            Action? onDismissed = null,
+            Action<RequestEntry>? beforeRegister = null)
         {
             string approveLabel = "RimMind.Advisor.Request.Approve".Translate();
             string rejectLabel = "RimMind.Advisor.Request.Reject".Translate();
@@ -45,9 +51,55 @@ namespace RimMind.Advisor.Advisor
                         _records.Add(new ApprovalRecord { Action = item.Action, Reason = item.Reason, Approved = false, Tick = Find.TickManager.TicksGame });
                         onRejected();
                     }
-                }
+                },
+                completionCallback = completionReason =>
+                {
+                    if (completionReason == RequestCompletionReason.Selected)
+                        return;
+
+                    if (completionReason == RequestCompletionReason.Dismissed)
+                    {
+                        onDismissed?.Invoke();
+                        return;
+                    }
+
+                    _records.Add(new ApprovalRecord
+                    {
+                        Action = item.Action,
+                        Reason = item.Reason,
+                        Approved = false,
+                        Tick = Find.TickManager.TicksGame
+                    });
+                    onRejected();
+                },
             };
-            RimMindAPI.RegisterPendingRequest(entry);
+            beforeRegister?.Invoke(entry);
+            try
+            {
+                RimMindAPI.RegisterPendingRequest(entry);
+                return entry;
+            }
+            catch
+            {
+                try
+                {
+                    if (!RimMindAPI.DismissPendingRequest(entry))
+                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
+                }
+                catch
+                {
+                    try
+                    {
+                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
+                    }
+                    catch
+                    {
+                        // Preserve the registration exception; RequestEntry remains idempotently terminal.
+                    }
+                }
+
+                throw;
+            }
         }
 
         public class ApprovalRecord

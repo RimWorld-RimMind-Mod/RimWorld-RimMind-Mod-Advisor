@@ -29,7 +29,8 @@ Source/
 ├── Advisor/
 │   ├── AdvisorTaskDriver.cs            请求构建/ToolCall解析/反馈循环/决策广播
 │   ├── AdvisorGameComponent.cs         GameComponent Tick循环: 扫描→触发→并发控制
-│   ├── ApprovalManager.cs             审批管理(SubmitForApproval/GetRecentApprovalContext)
+│   ├── ApprovalManager.cs             审批管理（选择、过期、淘汰、清空均产生终态）
+│   ├── AdvisorRequestCycleState.cs    单周期审批计数、结果聚合与 feedback 在途状态机
 │   ├── AdvisorResponse.cs             AdviceItem DTO(审批用数据结构)
 │   ├── AdvisorToolCallExecutor.cs      ToolCall批量执行器(通过Core的ToolRegistry查找ToolHandler)
 │   ├── AdvisorToolRiskResolver.cs      从Mechanism注册表解析ToolCall风险等级
@@ -80,17 +81,17 @@ AIResponse.ToolCallsJson → TryParseToolCalls → List<StructuredToolCall>
   ├── 解析 Arguments → target/param/reason
   ├── 审批: enableRiskApproval && riskLevel >= autoBlockRiskLevel
   │   ├── 需审批 && enableRequestSystem → ApprovalManager.SubmitForApproval
-  │   │   ├── onApproved: ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 气泡
-  │   │   └── onRejected: AddRecord(result="rejected")
+  │   │   ├── onApproved: 校验原 driver/cycle/Pawn → ExecuteBatchWithResults → 聚合结果
+  │   │   └── rejected/expired/evicted/dismissed: 记录拒绝 → 结束该审批
   │   └── 需审批 && !enableRequestSystem → 跳过
-  └── 直接执行 → ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 气泡
-       └── ShouldRequestFeedback → RequestToolFeedback(最多3层反馈循环)
+  └── 直接执行 → ExecuteBatchWithResults → BroadcastDecisionExecuted → AddRecord → 聚合结果
+      └── 同批全部审批终结 → 单次 RequestToolFeedback（最多3层反馈循环）
 ```
 
 ### 4. 反馈循环 (AdvisorTaskDriver.RequestToolFeedback)
 
 ```
-_toolCallDepth++ → 构建assistant+tool消息 → RequestStructuredAsync → OnAdviceReceived
+_toolCallDepth++ → 构建assistant+tool消息 → RequestStructuredAsync → 捕获原 driver/cycle 的 OnAdviceReceived
   → 深度检查: _toolCallDepth < MaxToolCallDepth(3)
   → 超过深度 → CompleteRequestCycle
 ```
@@ -98,7 +99,9 @@ _toolCallDepth++ → 构建assistant+tool消息 → RequestStructuredAsync → O
 ### 5. 完成周期 (CompAIAdvisor.CompleteRequestCycle)
 
 ```
-_hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.ClearState → _taskDriver=null
+无 pending approval / queued feedback / in-flight feedback
+  → _hasPendingRequest=false → _lastRequestTick=now → Decrement
+  → 清空 cycle 与 driver 状态
 ```
 
 ## 即时动作白名单 (9个)
@@ -124,7 +127,7 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 
 `AdvisorTaskDriver.BroadcastDecisionExecuted` → `RimMindAPI.PublishPerception(pawnId, "advisor_decision", summary, 0.5f)`
 
-⚠️ 已知问题：审批回调中 `_taskDriver` 可能为 null（竞态），导致 `BroadcastDecisionExecuted` 静默失败。见问题文档 #1。
+所有初始请求、feedback 和审批回调都捕获提交时的 `AdvisorTaskDriver` 与 `AdvisorRequestCycleState`。回调入口必须验证两者仍属于当前周期；同一响应批次的直接执行与审批结果必须聚合，并在全部审批终结后最多发送一次 feedback。
 
 ## 设置项 (14项，全部有XML文档注释+序列化+UI+重置)
 
@@ -173,5 +176,5 @@ _hasPendingRequest=false → _lastRequestTick=now → Decrement → _taskDriver.
 ### 🚫 绝对禁止
 - 后台线程调用 `AdvisorToolCallExecutor.ExecuteAsync`（必须在主线程 GetAwaiter().GetResult()）
 - 绕过 `RimMindAPI` 直接调用 `AIRequestQueue.Instance.ClearCooldown`
-- 审批回调中不捕获 `_taskDriver` 引用（必须避免竞态导致 `BroadcastDecisionExecuted` 失败）
-- ~~审批路径与直接执行路径行为不一致（广播/气泡/历史记录必须一致）~~ (已统一于 2026-07-07: 两路径均检查 `ShouldRequestFeedback`)
+- 审批、初始请求或 feedback 回调不捕获原 driver/cycle（必须避免旧周期污染新请求）
+- 审批路径自行并行发送 feedback（必须由周期状态机聚合后统一发送）

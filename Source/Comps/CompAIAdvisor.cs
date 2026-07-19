@@ -9,6 +9,7 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Client;
 using RimMind.Application.Common.Models.Tools;
+using RimMind.Application.Common.Models.UI;
 using RimMind.Domain.ValueObjects;
 using RimMind.Domain.Llm;
 using RimMind.Domain.Enums;
@@ -30,6 +31,7 @@ namespace RimMind.Advisor.Comps
         private int _pendingRequestTick;
 
         private AdvisorTaskDriver? _taskDriver;
+        private AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult>? _requestCycle;
         private ApprovalManager? _approvalManager;
         private readonly IAdvisorToolCallExecutor _toolExecutor = new AdvisorToolCallExecutor();
 
@@ -86,8 +88,21 @@ namespace RimMind.Advisor.Comps
             _pendingRequestTick = Find.TickManager.TicksGame;
             AdvisorConcurrencyTracker.Increment();
 
-            _taskDriver = new AdvisorTaskDriver(Pawn, settings);
-            _taskDriver.BuildAndSendRequest(OnAdviceReceived);
+            var taskDriver = new AdvisorTaskDriver(Pawn, settings);
+            var requestCycle = new AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult>();
+            _taskDriver = taskDriver;
+            _requestCycle = requestCycle;
+
+            try
+            {
+                taskDriver.BuildAndSendRequest(result =>
+                    OnAdviceReceived(taskDriver, requestCycle, isFeedbackResponse: false, result));
+            }
+            catch (Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit request for {Pawn.Name.ToStringShort}: {ex.Message}");
+                CompleteRequestCycle(taskDriver, requestCycle);
+            }
         }
 
         public void ForceRequestAdvice()
@@ -115,29 +130,36 @@ namespace RimMind.Advisor.Comps
             RequestAdvice(Settings);
         }
 
-        private void OnAdviceReceived(Result<LlmResponse, RimMindError> result)
+        private void OnAdviceReceived(
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle,
+            bool isFeedbackResponse,
+            Result<LlmResponse, RimMindError> result)
         {
+            if (!IsCurrentCycle(taskDriver, requestCycle))
+                return;
+
+            if (isFeedbackResponse)
+            {
+                if (!requestCycle.FeedbackInFlight)
+                    return;
+                requestCycle.FinishFeedback();
+            }
+
             if (Pawn == null || Pawn.Dead || Pawn.Map == null)
             {
-                CompleteRequestCycle();
+                CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
 
             if (result.IsErr)
             {
                 RimMindErrors.Warn($"[RimMind-Advisor] Request failed for {Pawn.Name.ToStringShort}: {result.Error}");
-                CompleteRequestCycle();
+                CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
 
             var response = result.Value;
-
-            var taskDriver = _taskDriver;
-            if (taskDriver == null)
-            {
-                CompleteRequestCycle();
-                return;
-            }
 
             List<ClientStructuredToolCall>? toolCalls = null;
 
@@ -146,7 +168,7 @@ namespace RimMind.Advisor.Comps
                 taskDriver.SetReasoningContent(response.ReasoningContent);
                 if (!taskDriver.TryParseToolCalls(response.ToolCallsJson ?? string.Empty, out toolCalls))
                 {
-                    CompleteRequestCycle();
+                    CompleteRequestCycle(taskDriver, requestCycle);
                     return;
                 }
             }
@@ -163,109 +185,163 @@ namespace RimMind.Advisor.Comps
             if (toolCalls == null || toolCalls.Count == 0)
             {
                 RimMindErrors.Warn($"[RimMind-Advisor] No actionable response for {Pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
-                CompleteRequestCycle();
+                CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
 
             var approvedCalls = new List<ClientStructuredToolCall>();
             var approvedReasons = new Dictionary<string, string?>();
-            bool deferredForApproval = false;
-
-            foreach (var tc in toolCalls)
+            requestCycle.BeginResponseBatch();
+            try
             {
-                if (tc.Name.NullOrEmpty()) continue;
-
-                if (RimMindAPI.Tools.FindById(tc.Name) == null)
+                foreach (var tc in toolCalls)
                 {
-                    RimMindErrors.Warn($"[RimMind-Advisor] Unknown tool call '{tc.Name}' for {Pawn.Name.ToStringShort}, skipping.");
-                    continue;
-                }
+                    if (tc.Name.NullOrEmpty()) continue;
 
-                var riskLevel = AdvisorToolRiskResolver.Resolve(tc.Name);
-
-                if (ShouldDeferForApproval(riskLevel, tc.Arguments))
-                {
-                    deferredForApproval = true;
-                    SubmitToolCallForApproval(tc, riskLevel);
-                }
-                else
-                {
-                    approvedCalls.Add(tc);
-                    approvedReasons[tc.Id ?? tc.Name] = ExtractToolCallReason(tc) ?? tc.Name;
-                }
-            }
-
-            if (deferredForApproval && approvedCalls.Count == 0)
-            {
-                CompleteRequestCycle();
-                return;
-            }
-
-            if (approvedCalls.Count == 0)
-            {
-                CompleteRequestCycle();
-                return;
-            }
-
-            var results = ExecuteToolCallsSafely(approvedCalls, response.RequestId);
-            int succeeded = results.Count(r => !r.IsError);
-            Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{approvedCalls.Count} tools for {Pawn.Name.ToStringShort}");
-
-            foreach (var resultItem in results.Where(r => r.IsError))
-            {
-                RimMindErrors.Warn($"[RimMind-Advisor] Tool '{resultItem.ToolName ?? "unknown"}' failed for {Pawn.Name.ToStringShort}: {resultItem.Content}");
-            }
-
-            foreach (var call in approvedCalls)
-            {
-                _taskDriver?.BroadcastDecisionExecuted(call.Name, ExtractToolCallReason(call) ?? call.Name);
-            }
-
-            var historyStoreForBatch = AdvisorHistoryStore.Instance;
-            if (historyStoreForBatch != null)
-            {
-                foreach (var r in results)
-                {
-                    var resultKey = r.ToolCallId ?? r.ToolName ?? "";
-                    approvedReasons.TryGetValue(resultKey, out var reason);
-                    historyStoreForBatch.AddRecord(Pawn, new AdvisorRequestRecord
+                    if (RimMindAPI.Tools.FindById(tc.Name) == null)
                     {
-                        action = r.ToolName ?? "tool",
-                        reason = reason ?? "",
-                        result = r.IsError ? r.Content : "approved",
-                        tick = Find.TickManager.TicksGame
-                    });
-                }
-            }
+                        RimMindErrors.Warn($"[RimMind-Advisor] Unknown tool call '{tc.Name}' for {Pawn.Name.ToStringShort}, skipping.");
+                        continue;
+                    }
 
-            if (Settings.showThoughtBubble && Pawn.Map != null)
-            {
-                var reasons = new List<string>();
-                foreach (var call in approvedCalls)
+                    var riskLevel = AdvisorToolRiskResolver.Resolve(tc.Name);
+
+                    if (ShouldDeferForApproval(riskLevel, tc.Arguments))
+                    {
+                        SubmitToolCallForApproval(tc, riskLevel, taskDriver, requestCycle);
+                    }
+                    else
+                    {
+                        approvedCalls.Add(tc);
+                        approvedReasons[tc.Id ?? tc.Name] = ExtractToolCallReason(tc) ?? tc.Name;
+                    }
+                }
+
+                if (approvedCalls.Count > 0)
                 {
-                    var reason = ExtractToolCallReason(call) ?? call.Name;
-                    if (!reason.NullOrEmpty()) reasons.Add(reason);
-                }
+                    var results = ExecuteToolCallsSafely(approvedCalls, response.RequestId);
+                    int succeeded = results.Count(r => !r.IsError);
+                    Log.Message($"[RimMind-Advisor] ToolCalls: executed {succeeded}/{approvedCalls.Count} tools for {Pawn.Name.ToStringShort}");
 
-                if (reasons.Count > 0)
+                    foreach (var resultItem in results.Where(r => r.IsError))
+                    {
+                        RimMindErrors.Warn($"[RimMind-Advisor] Tool '{resultItem.ToolName ?? "unknown"}' failed for {Pawn.Name.ToStringShort}: {resultItem.Content}");
+                    }
+
+                    foreach (var call in approvedCalls)
+                    {
+                        taskDriver.BroadcastDecisionExecuted(call.Name, ExtractToolCallReason(call) ?? call.Name);
+                    }
+
+                    var historyStoreForBatch = AdvisorHistoryStore.Instance;
+                    if (historyStoreForBatch != null)
+                    {
+                        foreach (var r in results)
+                        {
+                            var resultKey = r.ToolCallId ?? r.ToolName ?? "";
+                            approvedReasons.TryGetValue(resultKey, out var reason);
+                            historyStoreForBatch.AddRecord(Pawn, new AdvisorRequestRecord
+                            {
+                                action = r.ToolName ?? "tool",
+                                reason = reason ?? "",
+                                result = r.IsError ? r.Content : "approved",
+                                tick = Find.TickManager.TicksGame
+                            });
+                        }
+                    }
+
+                    if (Settings.showThoughtBubble && Pawn.Map != null)
+                    {
+                        var reasons = new List<string>();
+                        foreach (var call in approvedCalls)
+                        {
+                            var reason = ExtractToolCallReason(call) ?? call.Name;
+                            if (!reason.NullOrEmpty()) reasons.Add(reason);
+                        }
+
+                        if (reasons.Count > 0)
+                        {
+                            string moteText = reasons.Count == 1
+                                ? $"[RimMind] {reasons[0]}"
+                                : $"[RimMind] {reasons[0]} / {reasons[1]}";
+                            MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
+                                new Color(0.6f, 0.9f, 1f), 5f);
+                        }
+                    }
+
+                    QueueFeedbackBatch(requestCycle, approvedCalls, results);
+                }
+            }
+            catch (Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to process response for {Pawn.Name.ToStringShort}: {ex.Message}");
+            }
+            finally
+            {
+                if (IsCurrentCycle(taskDriver, requestCycle) && requestCycle.ResponseBatchOpen)
+                    requestCycle.EndResponseBatch();
+            }
+
+            TryAdvanceRequestCycle(taskDriver, requestCycle);
+        }
+
+        private bool IsCurrentCycle(
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+        {
+            return ReferenceEquals(_taskDriver, taskDriver)
+                && ReferenceEquals(_requestCycle, requestCycle);
+        }
+
+        private void TryAdvanceRequestCycle(
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+        {
+            if (!IsCurrentCycle(taskDriver, requestCycle)
+                || requestCycle.ResponseBatchOpen
+                || requestCycle.PendingApprovals > 0
+                || requestCycle.FeedbackInFlight)
+                return;
+
+            if (requestCycle.HasQueuedFeedback)
+            {
+                if (!taskDriver.ShouldRequestFeedback())
                 {
-                    string moteText = reasons.Count == 1
-                        ? $"[RimMind] {reasons[0]}"
-                        : $"[RimMind] {reasons[0]} / {reasons[1]}";
-                    MoteMaker.ThrowText(Pawn.DrawPos, Pawn.Map, moteText,
-                        new Color(0.6f, 0.9f, 1f), 5f);
+                    requestCycle.DiscardQueuedFeedback();
+                    Log.Message($"[RimMind-Advisor] Max tool call depth ({AdvisorTaskDriver.MaxToolCallDepth}) reached for {Pawn.Name.ToStringShort}");
+                    CompleteRequestCycle(taskDriver, requestCycle);
+                    return;
                 }
+
+                if (!requestCycle.TryStartFeedback(out var calls, out var results))
+                    return;
+
+                try
+                {
+                    taskDriver.RequestToolFeedback(
+                        calls,
+                        results,
+                        result => OnAdviceReceived(taskDriver, requestCycle, isFeedbackResponse: true, result));
+                }
+                catch (Exception ex)
+                {
+                    requestCycle.FinishFeedback();
+                    RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit feedback request for {Pawn.Name.ToStringShort}: {ex.Message}");
+                    CompleteRequestCycle(taskDriver, requestCycle);
+                }
+                return;
             }
 
-            if (taskDriver.ShouldRequestFeedback())
-            {
-                taskDriver.RequestToolFeedback(approvedCalls, results, OnAdviceReceived);
-            }
-            else
-            {
-                Log.Message($"[RimMind-Advisor] Max tool call depth ({AdvisorTaskDriver.MaxToolCallDepth}) reached for {Pawn.Name.ToStringShort}");
+            if (requestCycle.CanComplete)
+                CompleteRequestCycle(taskDriver, requestCycle);
+        }
+
+        private void CompleteRequestCycle(
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+        {
+            if (IsCurrentCycle(taskDriver, requestCycle))
                 CompleteRequestCycle();
-            }
         }
 
         private void CompleteRequestCycle()
@@ -276,8 +352,20 @@ namespace RimMind.Advisor.Comps
                 _lastRequestTick = Find.TickManager.TicksGame;
                 AdvisorConcurrencyTracker.Decrement();
             }
-            _taskDriver?.ClearState();
+            var completedDriver = _taskDriver;
+            var completedCycle = _requestCycle;
             _taskDriver = null;
+            _requestCycle = null;
+            var cancellationErrors = completedCycle?.CancelPendingApprovals();
+            completedDriver?.ClearState();
+            if (cancellationErrors != null)
+            {
+                foreach (var error in cancellationErrors)
+                {
+                    RimMindErrors.Warn(
+                        $"[RimMind-Advisor] Failed to cancel a pending approval for {Pawn.Name.ToStringShort}: {error.Message}");
+                }
+            }
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
@@ -351,7 +439,11 @@ namespace RimMind.Advisor.Comps
             return systemBlocked || isRequest;
         }
 
-        private void SubmitToolCallForApproval(ClientStructuredToolCall toolCall, RiskLevel riskLevel)
+        private bool SubmitToolCallForApproval(
+            ClientStructuredToolCall toolCall,
+            RiskLevel riskLevel,
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
         {
             var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
             var args = ParseToolCallArguments(toolCall.Arguments);
@@ -362,7 +454,7 @@ namespace RimMind.Advisor.Comps
             {
                 Log.Message($"[RimMind-Advisor] Tool '{toolCall.Name}' blocked by risk level {riskLevel} (approval system disabled)");
                 RecordToolHistory(toolCall.Name, reason, "blocked");
-                return;
+                return false;
             }
 
             if (_approvalManager == null)
@@ -378,46 +470,111 @@ namespace RimMind.Advisor.Comps
                 request_type = IsToolCallRequest(toolCall.Arguments) ? "request" : "normal",
             };
 
-            _approvalManager.SubmitForApproval(adviceItem, Pawn,
-                onApproved: () =>
-                {
-                    var results = ExecuteToolCallsSafely(
-                        new List<ClientStructuredToolCall> { toolCall },
-                        toolCall.Id);
-
-                    _taskDriver?.BroadcastDecisionExecuted(toolCall.Name, reason);
-                    foreach (var result in results)
+            RequestEntry? approvalEntry = null;
+            try
+            {
+                approvalEntry = _approvalManager.SubmitForApproval(adviceItem, Pawn,
+                    onApproved: () =>
                     {
-                        RecordToolHistory(
-                            result.ToolName ?? toolCall.Name,
-                            reason,
-                            result.IsError ? result.Content : "approved");
+                        if (!IsCurrentCycle(taskDriver, requestCycle))
+                            return;
 
-                        if (result.IsError)
+                        try
                         {
-                            RimMindErrors.Warn($"[RimMind-Advisor] Approved tool '{result.ToolName ?? toolCall.Name}' failed for {Pawn.Name.ToStringShort}: {result.Content}");
+                            if (Pawn == null || Pawn.Dead || Pawn.Map == null)
+                                return;
+
+                            var calls = new List<ClientStructuredToolCall> { toolCall };
+                            var results = ExecuteToolCallsSafely(calls, toolCall.Id);
+
+                            taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);
+                            foreach (var result in results)
+                            {
+                                RecordToolHistory(
+                                    result.ToolName ?? toolCall.Name,
+                                    reason,
+                                    result.IsError ? result.Content : "approved");
+
+                                if (result.IsError)
+                                {
+                                    RimMindErrors.Warn($"[RimMind-Advisor] Approved tool '{result.ToolName ?? toolCall.Name}' failed for {Pawn.Name.ToStringShort}: {result.Content}");
+                                }
+                            }
+
+                            ShowToolThoughtBubble(reason);
+                            QueueFeedbackBatch(requestCycle, calls, results);
                         }
-                    }
-
-                    ShowToolThoughtBubble(reason);
-
-                    // Unified: approval path also checks feedback loop (same as direct execution path)
-                    if (_taskDriver != null && _taskDriver.ShouldRequestFeedback())
+                        finally
+                        {
+                            FinishTrackedApproval(taskDriver, requestCycle, approvalEntry);
+                        }
+                    },
+                    onRejected: () =>
                     {
-                        _taskDriver.RequestToolFeedback(
-                            new List<ClientStructuredToolCall> { toolCall },
-                            results,
-                            OnAdviceReceived);
-                    }
-                    else
+                        if (!IsCurrentCycle(taskDriver, requestCycle))
+                            return;
+
+                        try
+                        {
+                            RecordToolHistory(toolCall.Name, reason, "rejected");
+                        }
+                        finally
+                        {
+                            FinishTrackedApproval(taskDriver, requestCycle, approvalEntry);
+                        }
+                    },
+                    onDismissed: () =>
+                        FinishTrackedApproval(taskDriver, requestCycle, approvalEntry),
+                    beforeRegister: entry =>
                     {
-                        CompleteRequestCycle();
-                    }
-                },
-                onRejected: () =>
+                        approvalEntry = entry;
+                        requestCycle.TrackPendingApproval(
+                            entry,
+                            () => RimMindAPI.DismissPendingRequest(entry));
+                    });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (approvalEntry != null)
                 {
-                    RecordToolHistory(toolCall.Name, reason, "rejected");
-                });
+                    requestCycle.TryFinishApproval(approvalEntry);
+                    RimMindAPI.DismissPendingRequest(approvalEntry);
+                }
+
+                RecordToolHistory(toolCall.Name, reason, "approval_error");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to register approval for '{toolCall.Name}': {ex.Message}");
+                return false;
+            }
+        }
+
+        private void FinishTrackedApproval(
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle,
+            RequestEntry? approvalEntry)
+        {
+            if (approvalEntry == null
+                || !IsCurrentCycle(taskDriver, requestCycle)
+                || !requestCycle.TryFinishApproval(approvalEntry))
+                return;
+
+            TryAdvanceRequestCycle(taskDriver, requestCycle);
+        }
+
+        private void QueueFeedbackBatch(
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle,
+            IReadOnlyList<ClientStructuredToolCall> calls,
+            IReadOnlyList<ToolResult> results)
+        {
+            if (calls.Count != results.Count)
+            {
+                RimMindErrors.Warn(
+                    $"[RimMind-Advisor] Skipping malformed feedback batch for {Pawn.Name.ToStringShort}: " +
+                    $"{calls.Count} calls but {results.Count} results.");
+                return;
+            }
+
+            requestCycle.QueueFeedback(calls, results);
         }
 
         private static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)

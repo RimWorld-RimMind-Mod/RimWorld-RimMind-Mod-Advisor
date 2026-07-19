@@ -29,11 +29,13 @@
     <Compile Include="AdvisorTaskDriver_TryParseToolCallsTests.cs" />
     <Compile Include="AdvisorTaskDriver_ContentFallbackTests.cs" />
     <Compile Include="AdvisorToolCallArchitectureTests.cs" />
+    <Compile Include="AdvisorRequestCycleStateTests.cs" />
     <Compile Include="AdvisorToolCallExecutorTests.cs" />
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolRiskResolver.cs" />
     <Compile Include="../Source/Advisor/AdvisorRequestAugmentationFactory.cs" />
+    <Compile Include="../Source/Advisor/AdvisorRequestCycleState.cs" />
     <Compile Include="../Source/Advisor/IAdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
