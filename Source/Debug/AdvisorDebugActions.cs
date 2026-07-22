@@ -235,7 +235,7 @@ namespace RimMind.Advisor.Debug
             {
                 var entry = pending[i];
                 string pawnName = (entry.pawn is Verse.Pawn p) ? p.Name?.ToStringShort ?? "null" : "null";
-                sb.AppendLine($"  [{i + 1}] source={entry.source}  pawn={pawnName}  title={entry.title}  desc={entry.description ?? "null"}  systemBlocked={entry.systemBlocked}  tick={entry.tick}  expire={entry.expireTicks}");
+                sb.AppendLine($"  [{i + 1}] source={entry.source}  pawn={pawnName}  title={entry.title}  desc={entry.description ?? "null"}  systemBlocked={entry.systemBlocked}  registeredAt={entry.tick}  lifetime={entry.expireTicks}  expireAt={entry.ExpireAtTicks}");
             }
             Log.Message(sb.ToString());
         }
