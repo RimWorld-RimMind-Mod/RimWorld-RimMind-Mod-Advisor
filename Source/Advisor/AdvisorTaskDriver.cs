@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Newtonsoft.Json;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Features.Llm;
@@ -25,19 +24,18 @@ namespace RimMind.Advisor.Advisor
         private readonly Pawn _pawn;
         private readonly RimMindAdvisorSettings _settings;
 
-        private List<ChatMessage>? _lastMessages;
-        private List<StructuredTool>? _lastTools;
-        private string? _lastSchema;
-        private int _toolCallDepth;
-        private string? _lastReasoningContent;
+        private readonly AdvisorFeedbackSession _feedbackSession = new AdvisorFeedbackSession();
+        private readonly AdvisorRecommendationParser _recommendationParser;
 
         public AdvisorTaskDriver(Pawn pawn, RimMindAdvisorSettings settings)
         {
             _pawn = pawn;
             _settings = settings;
+            _recommendationParser = new AdvisorRecommendationParser(
+                toolId => RimMindAPI.Tools.FindById(toolId) != null);
         }
 
-        public bool HasPendingState => _lastMessages != null;
+        public bool HasPendingState => _feedbackSession.HasPendingState;
 
         public void BuildAndSendRequest(Action<Result<LlmResponse, RimMindError>> onComplete)
         {
@@ -45,10 +43,7 @@ namespace RimMind.Advisor.Advisor
             var schema = (string?)null;
             var tools = BuildActionTools();
             var reactionsText = GetRecentRejectedAdvisorDecisions(20);
-            _lastTools = tools;
-            _lastSchema = schema;
-            _toolCallDepth = 0;
-            _lastReasoningContent = null;
+            _feedbackSession.Begin(tools, schema);
 
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
@@ -65,9 +60,10 @@ namespace RimMind.Advisor.Advisor
 
             RimMindAPI.Request.Send(envelope, (result, context) =>
             {
-                _lastMessages = AdvisorRequestAugmentationFactory.CaptureFeedbackMessages(
-                    context,
-                    envelope.Messages);
+                _feedbackSession.CaptureMessages(
+                    AdvisorRequestAugmentationFactory.CaptureFeedbackMessages(
+                        context,
+                        envelope.Messages));
                 onComplete(result);
             });
         }
@@ -94,90 +90,35 @@ namespace RimMind.Advisor.Advisor
 
         public void SetReasoningContent(string? content)
         {
-            _lastReasoningContent = content;
+            _feedbackSession.SetReasoningContent(content);
         }
 
-        public string? LastReasoningContent => _lastReasoningContent;
+        public string? LastReasoningContent => _feedbackSession.ReasoningContent;
 
         public bool TryParseToolCalls(string toolCallsJson, out List<ClientStructuredToolCall> toolCalls)
         {
-            toolCalls = new List<ClientStructuredToolCall>();
-            try
+            if (!_recommendationParser.TryParseNative(toolCallsJson, out toolCalls))
             {
-                var parsed = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(toolCallsJson);
-                if (parsed != null) toolCalls = parsed;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}.");
                 return false;
             }
+
+            return true;
         }
 
         public List<ClientStructuredToolCall>? TryParseContentAsToolCallsIfEnabled(string content)
         {
-            return _settings.enableLegacyJsonFallback ? TryParseContentAsToolCalls(content) : null;
+            return _recommendationParser.ParseLegacyIfEnabled(
+                content,
+                _settings.enableLegacyJsonFallback);
         }
 
         public List<ClientStructuredToolCall>? TryParseContentAsToolCalls(string content)
-        {
-            try
-            {
-                string trimmed = content.Trim();
-                if (trimmed.StartsWith("```"))
-                {
-                    int firstBrace = trimmed.IndexOf('{');
-                    int lastBrace = trimmed.LastIndexOf('}');
-                    if (firstBrace >= 0 && lastBrace > firstBrace)
-                        trimmed = trimmed.Substring(firstBrace, lastBrace - firstBrace + 1);
-                }
-
-                var parsed = JsonConvert.DeserializeObject<Dictionary<string, object>>(trimmed);
-                if (parsed == null || !parsed.ContainsKey("advices")) return null;
-
-                var advicesToken = parsed["advices"];
-                string advicesJson = JsonConvert.SerializeObject(advicesToken);
-                var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(advicesJson);
-                if (advices == null || advices.Count == 0) return null;
-
-                var toolCalls = new List<ClientStructuredToolCall>();
-                int idx = 0;
-
-                foreach (var adv in advices)
-                {
-                    if (!adv.TryGetValue("action", out var actionName) || actionName.NullOrEmpty()) continue;
-                    if (RimMindAPI.Tools.FindById(actionName) == null) continue;
-
-                    var args = new Dictionary<string, string>();
-                    if (adv.TryGetValue("target", out var target) && !target.NullOrEmpty()) args["target"] = target;
-                    if (adv.TryGetValue("param", out var param) && !param.NullOrEmpty()) args["param"] = param;
-                    if (adv.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()) args["reason"] = reason;
-
-                    toolCalls.Add(new ClientStructuredToolCall
-                    {
-                        Id = $"fallback_{idx}",
-                        Name = actionName,
-                        Arguments = JsonConvert.SerializeObject(args),
-                    });
-                    idx++;
-                }
-
-                return toolCalls.Count > 0 ? toolCalls : null;
-            }
-            catch (Exception ex)
-            {
-                RimMindErrors.Warn($"[RimMind-Advisor] Content fallback parse failed: {ex.Message}");
-                return null;
-            }
-        }
+            => _recommendationParser.ParseLegacy(content);
 
         public bool ShouldRequestFeedback()
         {
-            return _toolCallDepth < MaxToolCallDepth
-                && _lastMessages != null
-                && _lastTools != null
-                && _lastTools.Count > 0;
+            return _feedbackSession.CanRequestFeedback(MaxToolCallDepth);
         }
 
         public void RequestToolFeedback(
@@ -185,15 +126,14 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<ToolResult> results,
             Action<Result<LlmResponse, RimMindError>> onComplete)
         {
-            _toolCallDepth++;
-
-            var messages = new List<ChatMessage>(_lastMessages ?? new List<ChatMessage>());
+            var messages = new List<ChatMessage>(
+                _feedbackSession.Messages ?? new List<ChatMessage>());
 
             messages.Add(new ChatMessage
             {
                 Role = "assistant",
                 Content = "",
-                ReasoningContent = _lastReasoningContent,
+                ReasoningContent = _feedbackSession.ReasoningContent,
                 ToolCalls = toolCalls.Select(tc => new ChatToolCall
                 {
                     Id = tc.Id,
@@ -212,7 +152,7 @@ namespace RimMind.Advisor.Advisor
                 });
             }
 
-            _lastMessages = messages;
+            _feedbackSession.BeginFeedback(messages);
 
             var npcId = $"NPC-{_pawn.thingIDNumber}";
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
@@ -221,9 +161,9 @@ namespace RimMind.Advisor.Advisor
                 .ForScenario("Advisor")
                 .WithModId("RimMind.Advisor")
                 .WithNpcId(npcId)
-                .WithSchema(_lastSchema)
+                .WithSchema(_feedbackSession.Schema)
                 .WithMessages(messages)
-                .WithTools(_lastTools)
+                .WithTools(_feedbackSession.Tools)
                 .WithToolDispatchMode(ToolCallDispatchMode.Manual)
                 .WithMaxTokens(400)
                 .WithTemperature(0.7f)
@@ -249,11 +189,7 @@ namespace RimMind.Advisor.Advisor
 
         public void ClearState()
         {
-            _lastMessages = null;
-            _lastTools = null;
-            _lastSchema = null;
-            _toolCallDepth = 0;
-            _lastReasoningContent = null;
+            _feedbackSession.Clear();
         }
 
         private static string GetRecentRejectedAdvisorDecisions(int maxCount)

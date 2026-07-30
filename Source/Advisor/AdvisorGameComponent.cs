@@ -41,14 +41,15 @@ namespace RimMind.Advisor.Advisor
 
         private void EvaluateAllPawns(RimMindAdvisorSettings settings)
         {
-            var activeCount = AdvisorConcurrencyTracker.ActiveCount;
-            int maxConcurrent = settings.maxConcurrentRequests;
+            var capacity = new AdvisorRequestCapacity(
+                AdvisorConcurrencyTracker.ActiveCount,
+                settings.maxConcurrentRequests);
 
             foreach (var map in Find.Maps)
             {
                 foreach (var pawn in map.mapPawns.FreeColonists)
                 {
-                    if (activeCount >= maxConcurrent) return;
+                    if (capacity.Remaining == 0) return;
 
                     var comp = pawn.GetComp<CompAIAdvisor>();
                     if (comp == null || !comp.IsEligible() || comp.HasPendingRequest || !comp.IsEnabled) continue;
@@ -61,7 +62,7 @@ namespace RimMind.Advisor.Advisor
                     int advisorCooldownLeft = settings.requestCooldownTicks - (ticksGame - comp.LastRequestTick);
                     if (advisorCooldownLeft > 0) continue;
 
-                    activeCount++;
+                    if (!capacity.TryReserve()) return;
                     comp.RequestAdvice(settings);
                 }
             }

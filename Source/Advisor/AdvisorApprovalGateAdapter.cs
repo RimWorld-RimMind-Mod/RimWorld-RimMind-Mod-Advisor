@@ -30,10 +30,11 @@ namespace RimMind.Advisor.Advisor
         {
             if (decision == null) return false;
 
-            bool systemBlocked = _settings.enableRiskApproval
-                && riskLevel >= _settings.autoBlockRiskLevel;
-            bool isRequest = IsToolCallRequest(decision.Param);
-            return systemBlocked || isRequest;
+            return AdvisorApprovalPolicy.RequiresApproval(
+                _settings.enableRiskApproval,
+                _settings.autoBlockRiskLevel,
+                riskLevel,
+                decision.Param);
         }
 
         /// <summary>
@@ -86,12 +87,6 @@ namespace RimMind.Advisor.Advisor
                 targetPawn,
                 onApproved: () => callback?.Invoke(true),
                 onRejected: () => callback?.Invoke(false));
-        }
-
-        private static bool IsToolCallRequest(string? arguments)
-        {
-            if (arguments is null || arguments.Length == 0) return false;
-            return arguments.Contains("request_type", StringComparison.OrdinalIgnoreCase);
         }
 
         private static Pawn? FindTargetPawn(string pawnId)

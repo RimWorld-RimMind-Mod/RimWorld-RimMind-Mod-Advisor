@@ -411,21 +411,7 @@ namespace RimMind.Advisor.Comps
         }
 
         private static bool IsToolCallRequest(string? arguments)
-        {
-            if (arguments is null || arguments.Trim().Length == 0) return false;
-
-            try
-            {
-                var args = JsonConvert.DeserializeObject<Dictionary<string, string>>(arguments);
-                return args != null
-                    && args.TryGetValue("request_type", out var requestType)
-                    && requestType == "request";
-            }
-            catch
-            {
-                return false;
-            }
-        }
+            => AdvisorApprovalPolicy.IsExplicitRequest(arguments);
 
         /// <summary>
         /// Centralized check: should this ToolCall be deferred for human approval?
@@ -433,10 +419,11 @@ namespace RimMind.Advisor.Comps
         /// </summary>
         private bool ShouldDeferForApproval(RiskLevel riskLevel, string? arguments)
         {
-            bool systemBlocked = Settings.enableRiskApproval
-                && riskLevel >= Settings.autoBlockRiskLevel;
-            bool isRequest = IsToolCallRequest(arguments);
-            return systemBlocked || isRequest;
+            return AdvisorApprovalPolicy.RequiresApproval(
+                Settings.enableRiskApproval,
+                Settings.autoBlockRiskLevel,
+                riskLevel,
+                arguments);
         }
 
         private bool SubmitToolCallForApproval(
