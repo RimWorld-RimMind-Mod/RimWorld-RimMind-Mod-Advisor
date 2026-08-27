@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using RimMind.Advisor;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
@@ -76,6 +77,17 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Equal(1, secondCancellationCount);
                     Assert.Equal(0, cycle.PendingApprovals);
                     Assert.True(cycle.CanComplete);
+                }),
+                ("Verse component delegates the complete request cycle", () =>
+                {
+                    var component = ReadSource("Comps/CompAIAdvisor.cs");
+                    var coordinator = ReadSource("Advisor/AdvisorCycleCoordinator.cs");
+                    Assert.Contains("AdvisorCycleCoordinator", component, StringComparison.Ordinal);
+                    Assert.DoesNotContain("OnAdviceReceived", component, StringComparison.Ordinal);
+                    Assert.DoesNotContain("SubmitToolCallForApproval", component, StringComparison.Ordinal);
+                    Assert.Contains("OnAdviceReceived", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("SubmitToolCallForApproval", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("TryAdvanceRequestCycle", coordinator, StringComparison.Ordinal);
                 }));
         }
 
@@ -170,6 +182,24 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Null(session.ReasoningContent);
                     Assert.Equal(0, session.ToolCallDepth);
                 }));
+        }
+
+        private static string ReadSource(string relativePath) =>
+            File.ReadAllText(Path.Combine(
+                SourceRoot(),
+                relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        private static string SourceRoot()
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory != null &&
+                   !Directory.Exists(Path.Combine(directory.FullName, "RimMind-Advisor", "Source")))
+                directory = directory.Parent;
+
+            return Path.Combine(
+                directory?.FullName ?? throw new InvalidOperationException("Repository root not found."),
+                "RimMind-Advisor",
+                "Source");
         }
     }
 }
