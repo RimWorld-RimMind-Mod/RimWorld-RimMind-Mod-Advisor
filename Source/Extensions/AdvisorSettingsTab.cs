@@ -1,16 +1,15 @@
+using RimMind.Advisor.Settings;
+using RimMind.Presentation.Settings;
 using UnityEngine;
 using Verse;
-using RimMind.Presentation.Settings;
 
 namespace RimMind.Advisor
 {
     internal sealed class AdvisorSettingsTab : ISettingsTab
     {
-        private readonly RimMindAdvisorMod _mod;
-        public AdvisorSettingsTab(RimMindAdvisorMod mod) { _mod = mod; }
         public string Id => "advisor";
         public string OwnerModId => "RimMindAdvisor";
         public string Label => "RimMind.Advisor.Settings.Tab".Translate();
-        public void Draw(Rect rect) => RimMindAdvisorMod.DrawSettingsContent(rect);
+        public void Draw(Rect rect) => AdvisorSettingsDrawer.Draw(rect);
     }
 }
