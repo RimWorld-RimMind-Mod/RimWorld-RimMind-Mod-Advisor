@@ -11,6 +11,9 @@ Advisor 在小人空闲或心情低落时请求角色化建议，通过 Core Too
 - `Source/Advisor/AdvisorCycleCoordinator.cs`：请求周期与唯一终态。
 - `Source/Advisor/AdvisorTaskDriver.cs`：请求和反馈消息构建。
 - `Source/Advisor/AdvisorRequestCycleState.cs`：纯审批/反馈状态机。
+- `Source/RimMindAdvisorMod.cs`：组合根与设置入口。
+- `Source/Advisor/AdvisorProviderRegistrar.cs`：Context Provider 注册与工具列表格式化。
+- `Source/Settings/AdvisorSettingsDrawer.cs`：原生/Core 设置页共享绘制实现。
 
 ## Main flow
 
@@ -37,6 +40,7 @@ Advisor 只通过 `RimMindAPI` 使用 Core 请求、ToolRegistry、ContextKey �
 - 每个开始的周期只释放一次并发槽，并清理审批和 driver 状态。
 - 保持序列化键 `aiAdvisorEnabled` 不变。
 - `MaxToolCallDepth` 当前为 3；修改前先获得批准。
+- Mod 入口只组合和转发；Provider 注册集中在 `AdvisorProviderRegistrar`，设置控件集中在 `AdvisorSettingsDrawer`。
 
 ## Smallest useful verification
 
