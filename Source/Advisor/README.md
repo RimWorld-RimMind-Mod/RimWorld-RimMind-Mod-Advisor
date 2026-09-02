@@ -18,6 +18,8 @@ Read the files in this order:
 6. `ApprovalManager.cs` — player approval registration.
 7. `AdvisorToolCallExecutor.cs` — main-thread tool execution boundary.
 
+`AdvisorProviderRegistrar` also publishes a bounded synchronous Advisor history brief for optional consumers; Verse data is read on the main thread.
+
 ## Invariants
 
 - Every callback captures and validates its original driver and cycle.

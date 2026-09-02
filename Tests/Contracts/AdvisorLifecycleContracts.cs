@@ -161,6 +161,15 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.True(expected.SetEquals(InstantHintRegistry.GetKnownActions()));
                     Assert.False(InstantHintRegistry.IsKnownAction("unknown-action"));
                 }),
+                ("Advisor publishes a bounded history brief without exposing its store", () =>
+                {
+                    string source = ReadSource("Advisor/AdvisorProviderRegistrar.cs");
+                    Assert.Contains("advisor.history_brief", source, StringComparison.Ordinal);
+                    Assert.Contains("RimMindAPI.Providers.RegisterPawnProvider", source, StringComparison.Ordinal);
+                    Assert.Contains("RimMind.Advisor", source, StringComparison.Ordinal);
+                    Assert.Contains("[RimMind Advisor]", source, StringComparison.Ordinal);
+                    Assert.Contains("Take(5)", source, StringComparison.Ordinal);
+                }),
                 ("driver reset clears feedback depth reasoning and request state", () =>
                 {
                     var session = new AdvisorFeedbackSession();

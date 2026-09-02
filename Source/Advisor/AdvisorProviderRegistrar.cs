@@ -12,6 +12,8 @@ namespace RimMind.Advisor.Advisor
 {
     internal static class AdvisorProviderRegistrar
     {
+        private const string PublicProviderOwner = "RimMind.Advisor";
+
         internal static void RegisterAll()
         {
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
@@ -65,6 +67,33 @@ namespace RimMind.Advisor.Advisor
                         .Where(t => !string.IsNullOrEmpty(t)));
                     return instruction;
                 }, "RimMind.Advisor", stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
+
+            RegisterPublicProviders();
+        }
+
+        private static void RegisterPublicProviders()
+        {
+            RimMindAPI.Providers.RegisterPawnProvider(
+                "advisor.history_brief",
+                PublicProviderOwner,
+                pawn =>
+                {
+                    var history = AdvisorHistoryStore.Instance?.GetRecords(pawn);
+                    if (history == null || history.Count == 0)
+                        return string.Empty;
+
+                    var text = new StringBuilder();
+                    text.AppendLine("[RimMind Advisor]");
+                    foreach (var record in history.Take(5))
+                    {
+                        text.AppendLine(
+                            $"- {record.action}: {record.reason} ({record.result})");
+                    }
+
+                    return text.ToString().TrimEnd();
+                },
+                priority: 100,
+                overrideExisting: true);
         }
 
         private static string BuildToolListText()
