@@ -163,12 +163,51 @@ namespace RimMind.Advisor.Tests.Contracts
                 }),
                 ("Advisor publishes a bounded history brief without exposing its store", () =>
                 {
-                    string source = ReadSource("Advisor/AdvisorProviderRegistrar.cs");
-                    Assert.Contains("advisor.history_brief", source, StringComparison.Ordinal);
-                    Assert.Contains("RimMindAPI.Providers.RegisterPawnProvider", source, StringComparison.Ordinal);
-                    Assert.Contains("RimMind.Advisor", source, StringComparison.Ordinal);
-                    Assert.Contains("[RimMind Advisor]", source, StringComparison.Ordinal);
-                    Assert.Contains("Take(5)", source, StringComparison.Ordinal);
+                    string source = ReadSource("Advisor/AdvisorProviderRegistrar.cs")
+                        .Replace("\r\n", "\n");
+                    Assert.Contains(
+                        "            RegisterPublicProviders();\n" +
+                        "        }\n\n" +
+                        "        private static void RegisterPublicProviders()",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "private const string PublicProviderOwner = \"RimMind.Advisor\";",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "            RimMindAPI.Providers.RegisterPawnProvider(\n" +
+                        "                \"advisor.history_brief\",\n" +
+                        "                PublicProviderOwner,\n" +
+                        "                pawn =>",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "                },\n" +
+                        "                priority: 100,\n" +
+                        "                overrideExisting: true);",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "var text = new StringBuilder(\"[RimMind Advisor]\");",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.DoesNotContain(
+                        "text.AppendLine(\"[RimMind Advisor]\");",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "foreach (var record in history.Take(5))",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "$\"- {record.action}: {record.reason} ({record.result})\");",
+                        source,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        "return text.ToString().TrimEnd();",
+                        source,
+                        StringComparison.Ordinal);
                 }),
                 ("driver reset clears feedback depth reasoning and request state", () =>
                 {

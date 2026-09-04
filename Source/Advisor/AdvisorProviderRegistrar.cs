@@ -82,8 +82,7 @@ namespace RimMind.Advisor.Advisor
                     if (history == null || history.Count == 0)
                         return string.Empty;
 
-                    var text = new StringBuilder();
-                    text.AppendLine("[RimMind Advisor]");
+                    var text = new StringBuilder("[RimMind Advisor]");
                     foreach (var record in history.Take(5))
                     {
                         text.AppendLine(
