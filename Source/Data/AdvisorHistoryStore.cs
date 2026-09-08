@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RimWorld.Planet;
 using Verse;
+using RimMind.Domain.ValueObjects;
 
 namespace RimMind.Advisor.Data
 {
@@ -14,6 +15,8 @@ namespace RimMind.Advisor.Data
 
         public AdvisorHistoryStore(World world) : base(world)
         {
+            if (_instance != null && _instance != this)
+                RimMindErrors.Warn($"[RimMind-Advisor] AdvisorHistoryStore: replacing stale instance");
             _instance = this;
         }
 
@@ -29,7 +32,10 @@ namespace RimMind.Advisor.Data
 
         public void AddRecord(Pawn pawn, AdvisorRequestRecord record)
         {
-            GetRecords(pawn).Add(record);
+            var list = GetRecords(pawn);
+            list.Add(record);
+            if (list.Count > 50)
+                list.RemoveRange(0, list.Count - 50);
             _globalLog.Add(record);
             if (_globalLog.Count > 200)
                 _globalLog.RemoveRange(0, _globalLog.Count - 200);
@@ -40,10 +46,13 @@ namespace RimMind.Advisor.Data
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Collections.Look(ref _records, "advisorRecords", LookMode.Value, LookMode.Deep);
-            _records ??= new Dictionary<int, List<AdvisorRequestRecord>>();
-            Scribe_Collections.Look(ref _globalLog, "globalLog", LookMode.Deep);
-            _globalLog ??= new List<AdvisorRequestRecord>();
+            Dictionary<int, List<AdvisorRequestRecord>>? records = _records;
+            Scribe_Collections.Look(ref records, "advisorRecords", LookMode.Value, LookMode.Deep);
+            _records = records ?? new Dictionary<int, List<AdvisorRequestRecord>>();
+
+            List<AdvisorRequestRecord>? globalLog = _globalLog;
+            Scribe_Collections.Look(ref globalLog, "globalLog", LookMode.Deep);
+            _globalLog = globalLog ?? new List<AdvisorRequestRecord>();
         }
     }
 }

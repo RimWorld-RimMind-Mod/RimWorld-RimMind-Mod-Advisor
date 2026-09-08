@@ -1,11 +1,22 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using LudeonTK;
+using Newtonsoft.Json;
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Advisor;
-using RimMind.Core;
-using RimMind.Core.Internal;
+using RimMind.Advisor.Data;
+using RimMind.Application.Common.Interfaces.Client;
+using RimMind.Application.Common.Models.Context;
+using RimMind.Presentation.Api;
+using RimMind.Application.Common.Interfaces.Context;
 using Verse;
+using RimMind.Domain.ValueObjects;
+using RimMind.Domain.Llm;
+
+using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
 
 namespace RimMind.Advisor.Debug
 {
@@ -19,20 +30,19 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
                 return;
             }
 
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                Log.Warning($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
-            var s       = RimMindAdvisorMod.Settings;
-            var coreS   = RimMindCoreMod.Settings;
-            int now     = Find.TickManager.TicksGame;
+            var s = RimMindAdvisorMod.Settings;
+            int now = Find.TickManager.TicksGame;
             string requestId = $"Advisor_{pawn.ThingID}";
 
             int advisorLeft = comp.AdvisorCooldownTicksLeft;
@@ -40,9 +50,9 @@ namespace RimMind.Advisor.Debug
                 ? $"Cooling down ({advisorLeft} ticks ~ {advisorLeft / 2500f:F2} game hours)"
                 : "Ready";
 
-            int coreLeft = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
+            int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
             string coreCooldown = coreLeft > 0
-                ? $"Cooling down ({coreLeft} ticks)"
+                ? $"Cooling down ({coreLeft} ticks ~ {coreLeft / 2500f:F2} game hours)"
                 : "Ready";
 
             var sb = new StringBuilder();
@@ -53,7 +63,7 @@ namespace RimMind.Advisor.Debug
             sb.AppendLine($"  [Advisor Cooldown] {advisorCooldown}  (requestCooldownTicks={s.requestCooldownTicks})");
             sb.AppendLine($"  [Core Cooldown]    {coreCooldown}  (mod cooldown for Advisor)");
             sb.AppendLine($"  Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{s.maxConcurrentRequests}");
-            sb.AppendLine($"  debugLogging: {coreS.debugLogging}");
+            sb.AppendLine($"  debugLogging: {RimMindAPI.Settings.DebugLogging}");
             Log.Message(sb.ToString());
         }
 
@@ -64,20 +74,20 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist on the map first before opening the Dev menu.");
                 return;
             }
 
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                Log.Warning($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
             if (!RimMindAPI.IsConfigured())
             {
-                Log.Warning("[RimMind-Advisor] API not configured. Please enter API Key in Mod settings.");
+                RimMindErrors.Warn("[RimMind-Advisor] API not configured. Please enter API Key in Mod settings.");
                 return;
             }
 
@@ -92,7 +102,7 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
                 return;
             }
 
@@ -107,13 +117,22 @@ namespace RimMind.Advisor.Debug
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
             {
-                Log.Warning("[RimMind-Advisor] Please select a colonist first.");
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
                 return;
             }
 
-            string sys  = AdvisorPromptBuilder.BuildSystemPrompt(pawn);
-            string user = AdvisorPromptBuilder.BuildUserPrompt(pawn);
-            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{sys}\n\n=== User Prompt ===\n{user}");
+            var npcId = $"NPC-{pawn.thingIDNumber}";
+            var engine = RimMindAPI.Settings.GetContextEngine();
+            var snapshot = engine?.BuildSnapshotFromEnvelope(
+                npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
+            if (snapshot == null)
+            {
+                RimMindErrors.Warn("[RimMind-Advisor] Failed to build context snapshot.");
+                return;
+            }
+            var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
+            var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
+            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
         }
 
         [DebugAction("RimMind Advisor", "List All Advisor States",
@@ -123,27 +142,26 @@ namespace RimMind.Advisor.Debug
             var map = Find.CurrentMap;
             if (map == null)
             {
-                Log.Warning("[RimMind-Advisor] No map available.");
+                RimMindErrors.Warn("[RimMind-Advisor] No map available.");
                 return;
             }
 
-            var coreS = RimMindCoreMod.Settings;
-            var advS  = RimMindAdvisorMod.Settings;
-            var sb    = new StringBuilder("=== All Advisor States ===\n");
+            var advS = RimMindAdvisorMod.Settings;
+            var sb = new StringBuilder("=== All Advisor States ===\n");
             foreach (var pawn in map.mapPawns.FreeColonists)
             {
                 var comp = pawn.GetComp<CompAIAdvisor>();
                 if (comp == null) continue;
 
-                int advisorLeft   = comp.AdvisorCooldownTicksLeft;
-                int coreLeft      = AIRequestQueue.Instance?.GetCooldownTicksLeft("Advisor") ?? 0;
-                string aState     = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
-                string cState     = coreLeft    > 0 ? $"CoreCD{coreLeft}t"      : "CoreReady";
+                int advisorLeft = comp.AdvisorCooldownTicksLeft;
+                int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
+                string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
+                string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
                 sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }
             sb.AppendLine($"Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{advS.maxConcurrentRequests}  " +
-                          $"API={RimMindAPI.IsConfigured()}  debugLogging={coreS.debugLogging}");
+                          $"API={RimMindAPI.IsConfigured()}  debugLogging={RimMindAPI.Settings.DebugLogging}");
             Log.Message(sb.ToString());
         }
 
@@ -151,8 +169,8 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ClearAllCooldowns()
         {
-            AIRequestQueue.Instance?.ClearAllCooldowns();
-            Log.Message("[RimMind-Advisor] All Core-layer cooldowns cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
+            RimMindAPI.ClearModCooldown("Advisor");
+            Log.Message("[RimMind-Advisor] Advisor Core-layer cooldown cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
         }
 
         [DebugAction("RimMind Advisor", "Reset Concurrency Count",
@@ -162,6 +180,96 @@ namespace RimMind.Advisor.Debug
             while (AdvisorConcurrencyTracker.ActiveCount > 0)
                 AdvisorConcurrencyTracker.Decrement();
             Log.Message("[RimMind-Advisor] Concurrency count reset to 0.");
+        }
+
+        [DebugAction("RimMind Advisor", "Show Decision History (selected)",
+            actionType = DebugActionType.Action)]
+        private static void ShowDecisionHistorySelected()
+        {
+            var pawn = Find.Selector.SingleSelectedThing as Pawn;
+            if (pawn == null)
+            {
+                RimMindErrors.Warn("[RimMind-Advisor] Please select a colonist first.");
+                return;
+            }
+
+            var store = AdvisorHistoryStore.Instance;
+            if (store == null)
+            {
+                RimMindErrors.Warn("[RimMind-Advisor] AdvisorHistoryStore not available (no world loaded?).");
+                return;
+            }
+
+            var records = store.GetRecords(pawn);
+            if (records.Count == 0)
+            {
+                Log.Message($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no decision history.");
+                return;
+            }
+
+            int skip = Math.Max(0, records.Count - 10);
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === {pawn.Name.ToStringShort} Decision History (last {records.Count - skip} of {records.Count}) ===");
+            for (int i = skip; i < records.Count; i++)
+            {
+                var r = records[i];
+                sb.AppendLine($"  [{i + 1}] action={r.action}  reason={r.reason}  result={r.result}  tick={r.tick}");
+            }
+            Log.Message(sb.ToString());
+        }
+
+        [DebugAction("RimMind Advisor", "Show Approval Queue",
+            actionType = DebugActionType.Action)]
+        private static void ShowApprovalQueue()
+        {
+            var pending = RimMindAPI.GetPendingRequests();
+            if (pending.Count == 0)
+            {
+                Log.Message("[RimMind-Advisor] Approval queue is empty.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === Approval Queue ({pending.Count} pending) ===");
+            for (int i = 0; i < pending.Count; i++)
+            {
+                var entry = pending[i];
+                string pawnName = (entry.pawn is Verse.Pawn p) ? p.Name?.ToStringShort ?? "null" : "null";
+                sb.AppendLine($"  [{i + 1}] source={entry.source}  pawn={pawnName}  title={entry.title}  desc={entry.description ?? "null"}  systemBlocked={entry.systemBlocked}  registeredAt={entry.tick}  lifetime={entry.expireTicks}  expireAt={entry.ExpireAtTicks}");
+            }
+            Log.Message(sb.ToString());
+        }
+
+        [DebugAction("RimMind Advisor", "Test Tool Call Parse",
+            actionType = DebugActionType.Action)]
+        private static void TestToolCallParse()
+        {
+            string json = "[{\"id\":\"call_001\",\"name\":\"social_relax\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":null,\\\"reason\\\":\\\"need relax\\\"}\"},{\"id\":\"call_002\",\"name\":\"assign_work\",\"arguments\":\"{\\\"target\\\":null,\\\"param\\\":\\\"Mining\\\",\\\"reason\\\":\\\"good at mining\\\"}\"}]";
+
+            List<ClientStructuredToolCall>? toolCalls;
+            try
+            {
+                toolCalls = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(json);
+            }
+            catch (System.Exception ex)
+            {
+                RimMindErrors.Warn($"[RimMind-Advisor] Tool call parse failed: {ex.Message}");
+                return;
+            }
+
+            if (toolCalls == null || toolCalls.Count == 0)
+            {
+                RimMindErrors.Warn("[RimMind-Advisor] Tool call parse returned null or empty.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"[RimMind-Advisor] === Tool Call Parse Result ({toolCalls.Count} calls) ===");
+            foreach (var tc in toolCalls)
+            {
+                sb.AppendLine($"  id={tc.Id}  name={tc.Name}  arguments={tc.Arguments}");
+            }
+            Log.Message(sb.ToString());
         }
     }
 }
