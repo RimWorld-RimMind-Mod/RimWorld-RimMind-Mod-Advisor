@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using LudeonTK;
 using Newtonsoft.Json;
 using RimMind.Advisor.Comps;
@@ -123,16 +124,41 @@ namespace RimMind.Advisor.Debug
 
             var npcId = $"NPC-{pawn.thingIDNumber}";
             var engine = RimMindAPI.Settings.GetContextEngine();
-            var snapshot = engine?.BuildSnapshotFromEnvelope(
-                npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
-            if (snapshot == null)
+            if (engine == null)
             {
-                RimMindErrors.Warn("[RimMind-Advisor] Failed to build context snapshot.");
+                RimMindErrors.Warn("[RimMind-Advisor] Context engine is not available.");
                 return;
             }
-            var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
-            var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
-            Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
+            _ = LogFullPromptAsync(engine, npcId, Current.Game);
+        }
+
+        private static async Task LogFullPromptAsync(IContextBuilder engine, string npcId, Game? game)
+        {
+            try
+            {
+                var snapshot = await engine.BuildSnapshotFromEnvelopeAsync(
+                    npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
+                LongEventHandler.ExecuteWhenFinished(() =>
+                {
+                    if (!ReferenceEquals(Current.Game, game)) return;
+                    if (snapshot == null)
+                    {
+                        RimMindErrors.Warn("[RimMind-Advisor] Failed to build context snapshot.");
+                        return;
+                    }
+                    var sysMsgs = snapshot.Messages.Where(m => m.Role == "system").Select(m => m.Content);
+                    var userMsgs = snapshot.Messages.Where(m => m.Role == "user").Select(m => m.Content);
+                    Log.Message($"[RimMind-Advisor] === System Prompt ===\n{string.Join("\n---\n", sysMsgs)}\n\n=== User Prompt ===\n{string.Join("\n", userMsgs)}");
+                });
+            }
+            catch (Exception ex)
+            {
+                LongEventHandler.ExecuteWhenFinished(() =>
+                {
+                    if (!ReferenceEquals(Current.Game, game)) return;
+                    RimMindErrors.Warn($"[RimMind-Advisor] Context preview failed: {ex.Message}");
+                });
+            }
         }
 
         [DebugAction("RimMind Advisor", "List All Advisor States",

@@ -158,7 +158,7 @@ namespace RimMind.Advisor.Advisor
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
             var envelope = LlmRequestEnvelopeBuilder
-                .ForScenario("Advisor")
+                .ForScenario(RimMindAPI.Context.ScenarioDecision)
                 .WithModId("RimMind.Advisor")
                 .WithNpcId(npcId)
                 .WithSchema(_feedbackSession.Schema)

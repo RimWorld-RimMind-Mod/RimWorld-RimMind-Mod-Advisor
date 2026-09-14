@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
 using RimMind.Advisor.Settings;
-using RimMind.Application.Common.Interfaces.UI;
 using RimMind.Application.Common.Models.UI;
-using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
 using Verse;
 
@@ -12,7 +9,6 @@ namespace RimMind.Advisor.Advisor
     public class ApprovalManager
     {
         private readonly RimMindAdvisorSettings _settings;
-        private readonly List<ApprovalRecord> _records = new List<ApprovalRecord>();
 
         public ApprovalManager(RimMindAdvisorSettings settings)
         {
@@ -43,12 +39,10 @@ namespace RimMind.Advisor.Advisor
                 {
                     if (choice == approveLabel)
                     {
-                        _records.Add(new ApprovalRecord { Action = item.Action, Reason = item.Reason, Approved = true, Tick = Find.TickManager.TicksGame });
                         onApproved();
                     }
                     else
                     {
-                        _records.Add(new ApprovalRecord { Action = item.Action, Reason = item.Reason, Approved = false, Tick = Find.TickManager.TicksGame });
                         onRejected();
                     }
                 },
@@ -63,13 +57,6 @@ namespace RimMind.Advisor.Advisor
                         return;
                     }
 
-                    _records.Add(new ApprovalRecord
-                    {
-                        Action = item.Action,
-                        Reason = item.Reason,
-                        Approved = false,
-                        Tick = Find.TickManager.TicksGame
-                    });
                     onRejected();
                 },
             };
@@ -102,12 +89,5 @@ namespace RimMind.Advisor.Advisor
             }
         }
 
-        public class ApprovalRecord
-        {
-            public string Action = null!;
-            public string? Reason;
-            public bool Approved;
-            public int Tick;
-        }
     }
 }

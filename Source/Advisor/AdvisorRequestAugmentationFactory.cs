@@ -3,6 +3,7 @@ using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Pipeline;
 using RimMind.Application.Features.Llm;
 using RimMind.Domain.Llm;
+using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Advisor
 {
@@ -38,7 +39,7 @@ namespace RimMind.Advisor.Advisor
                 augmentations.Add(new PromptAugmentation(RejectedDecisionsId, rejectedDecisions!, 30));
 
             return LlmRequestEnvelopeBuilder
-                .ForScenario("Advisor")
+                .ForScenario(RimMindAPI.Context.ScenarioDecision)
                 .WithModId("RimMind.Advisor")
                 .WithNpcId(npcId)
                 .WithSchema(schema)

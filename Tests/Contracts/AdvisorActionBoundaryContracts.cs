@@ -7,7 +7,6 @@ using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Tools;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Application.Common.Models.UI;
-using RimMind.Domain.Agent.Modes;
 using RimMind.Domain.Enums;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
@@ -18,6 +17,7 @@ using Xunit;
 
 namespace RimMind.Advisor.Tests.Contracts
 {
+    [Collection("Advisor runtime")]
     public sealed class AdvisorActionBoundaryContracts
     {
         [Fact]
@@ -26,44 +26,22 @@ namespace RimMind.Advisor.Tests.Contracts
             ContractCaseRunner.Run(
                 ("risk approval starts at the configured threshold", () =>
                 {
-                    var gate = CreateGate(enableRiskApproval: true, RiskLevel.High);
-                    var decision = new AgentDecision(ActionIntent: "test.action");
-
-                    Assert.False(gate.RequiresApproval(decision, RiskLevel.Medium));
-                    Assert.True(gate.RequiresApproval(decision, RiskLevel.High));
-                    Assert.True(gate.RequiresApproval(decision, RiskLevel.Critical));
+                    Assert.False(AdvisorApprovalPolicy.RequiresApproval(true, RiskLevel.High, RiskLevel.Medium, null));
+                    Assert.True(AdvisorApprovalPolicy.RequiresApproval(true, RiskLevel.High, RiskLevel.High, null));
+                    Assert.True(AdvisorApprovalPolicy.RequiresApproval(true, RiskLevel.High, RiskLevel.Critical, null));
+                    Assert.False(AdvisorApprovalPolicy.RequiresApproval(false, RiskLevel.High, RiskLevel.Critical, null));
                 }),
                 ("explicit request tools require approval even when risk gating is disabled", () =>
                 {
-                    var gate = CreateGate(enableRiskApproval: false, RiskLevel.Critical);
-                    var request = new AgentDecision(
-                        ActionIntent: "test.action",
-                        Param: "{\"request_type\":\"request\"}");
-
-                    Assert.True(gate.RequiresApproval(request, RiskLevel.Low));
-                    Assert.False(gate.RequiresApproval(
-                        new AgentDecision(
-                            ActionIntent: "test.action",
-                            Param: "{\"request_type\":\"system\"}"),
-                        RiskLevel.Low));
-                    Assert.False(gate.RequiresApproval(
-                        new AgentDecision(
-                            ActionIntent: "test.action",
-                            Param: "{\"request_type\":\"REQUEST\"}"),
-                        RiskLevel.Low));
-                    Assert.False(gate.RequiresApproval(
-                        new AgentDecision(
-                            ActionIntent: "test.action",
-                            Param: "{\"REQUEST_TYPE\":\"request\"}"),
-                        RiskLevel.Low));
-                    Assert.False(gate.RequiresApproval(
-                        new AgentDecision(
-                            ActionIntent: "test.action",
-                            Param: "{\"request_type\":1}"),
-                        RiskLevel.Low));
-                    Assert.False(gate.RequiresApproval(
-                        new AgentDecision(ActionIntent: "test.action", Param: "{\"other\":true}"),
-                        RiskLevel.Low));
+                    Assert.True(AdvisorApprovalPolicy.RequiresApproval(false, RiskLevel.Critical, RiskLevel.Low,
+                        "{\"request_type\":\"request\"}"));
+                    foreach (string arguments in new[]
+                    {
+                        "{\"request_type\":\"system\"}", "{\"request_type\":\"REQUEST\"}",
+                        "{\"REQUEST_TYPE\":\"request\"}", "{\"request_type\":1}",
+                        "{\"other\":true}", "{broken", ""
+                    })
+                        Assert.False(AdvisorApprovalPolicy.RequiresApproval(false, RiskLevel.Critical, RiskLevel.Low, arguments));
                 }),
                 ("selected and dismissed approvals have distinct terminal callbacks", () =>
                 {
@@ -201,16 +179,57 @@ namespace RimMind.Advisor.Tests.Contracts
                 }));
         }
 
-        private static AdvisorApprovalGateAdapter CreateGate(
-            bool enableRiskApproval,
-            RiskLevel threshold)
+        [Theory]
+        [InlineData("RimMind.Advisor.Request.Approve", RequestCompletionReason.Selected, "approved")]
+        [InlineData("RimMind.Advisor.Request.Reject", RequestCompletionReason.Selected, "rejected")]
+        [InlineData(null, RequestCompletionReason.Expired, "rejected")]
+        [InlineData(null, RequestCompletionReason.Evicted, "rejected")]
+        [InlineData(null, RequestCompletionReason.Dismissed, "dismissed")]
+        public void Approval_terminal_callbacks_do_not_require_a_live_world_clock(
+            string? choice, RequestCompletionReason reason, string expected)
         {
-            var settings = new RimMindAdvisorSettings
+            var manager = new ApprovalManager(new RimMindAdvisorSettings());
+            var outcomes = new List<string>();
+            var clock = Find.TickManager;
+            RimMindAPI.ClearPendingRequests();
+            try
             {
-                enableRiskApproval = enableRiskApproval,
-                autoBlockRiskLevel = threshold
-            };
-            return new AdvisorApprovalGateAdapter(settings, new ApprovalManager(settings));
+                var entry = manager.SubmitForApproval(new AdviceItem { Action = "test.action" }, new Pawn(),
+                    () => outcomes.Add("approved"), () => outcomes.Add("rejected"), () => outcomes.Add("dismissed"));
+                Find.TickManager = null!;
+
+                Assert.True(entry.TryComplete(choice, reason));
+                Assert.False(entry.TryComplete(choice, reason));
+                Assert.Equal(expected, Assert.Single(outcomes));
+            }
+            finally
+            {
+                Find.TickManager = clock;
+                RimMindAPI.ClearPendingRequests();
+            }
+        }
+
+        [Fact]
+        public void Failed_registration_dismisses_once_and_preserves_the_original_error()
+        {
+            var manager = new ApprovalManager(new RimMindAdvisorSettings());
+            var expected = new InvalidOperationException("registration failed");
+            var outcomes = new List<string>();
+            RequestEntry? tracked = null;
+            RimMindAPI.ClearPendingRequests();
+            RimMindAPI.RegisterPendingRequestBehavior = _ => throw expected;
+            try
+            {
+                Assert.Same(expected, Assert.Throws<InvalidOperationException>(() => manager.SubmitForApproval(
+                    new AdviceItem { Action = "test.action" }, new Pawn(),
+                    () => outcomes.Add("approved"), () => outcomes.Add("rejected"),
+                    () => outcomes.Add("dismissed"), entry => tracked = entry)));
+                Assert.Equal("dismissed", Assert.Single(outcomes));
+                Assert.Empty(RimMindAPI.PendingRequests);
+                Assert.NotNull(tracked);
+                Assert.False(tracked!.TryComplete(null, RequestCompletionReason.Dismissed));
+            }
+            finally { RimMindAPI.ClearPendingRequests(); }
         }
 
         private sealed class CapturingHandler : IToolHandler

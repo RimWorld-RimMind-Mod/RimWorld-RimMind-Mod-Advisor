@@ -12,7 +12,7 @@ RimMind 是一套 AI 驱动的 RimWorld 模组套件，通过接入大语言模�
 |------|------|------|--------|
 | RimMind-Core | API 客户端、请求调度、上下文打包 | Harmony | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core) |
 | RimMind-Actions | AI 控制小人的动作执行库 | Core | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions) |
-| **RimMind-Advisor** | **AI 扮演小人做出工作决策** | Core, Actions | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor) |
+| **RimMind-Advisor** | **AI 扮演小人做出工作决策** | Core（Actions 可选扩展） | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor) |
 | RimMind-Dialogue | AI 驱动的对话系统 | Core | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Dialogue) |
 | RimMind-Memory | 记忆采集与上下文注入 | Core | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Memory) |
 | RimMind-Personality | AI 生成人格与想法 | Core | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Personality) |
@@ -21,7 +21,8 @@ RimMind 是一套 AI 驱动的 RimWorld 模组套件，通过接入大语言模�
 | RimMind-Bridge-RimTalk | RimTalk 协调层 | Core | [链接](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimTalk) |
 
 ```
-Core ── Actions ── Advisor
+Core ── Actions
+  ├── Advisor
   ├── Dialogue
   ├── Memory
   ├── Personality
@@ -52,7 +53,7 @@ cd RimWorld-RimMind-Mod-Advisor
 
 1. 安装 [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077) 前置模组
 2. 安装 RimMind-Core
-3. 安装 RimMind-Actions
+3. 可选安装 RimMind-Actions，增加高级组合动作
 4. 安装 RimMind-Advisor
 5. 在模组管理器中确保加载顺序：Harmony → Core → Actions → Advisor
 
@@ -80,9 +81,9 @@ cd RimWorld-RimMind-Mod-Advisor
 殖民者空闲时，Advisor 自动触发：
 
 1. **状态分析** — 通过 ContextEngine 收集小人的人格、技能、心情、健康等上下文
-2. **候选生成** — JobCandidateBuilder 构建当前可行的任务列表（工作 + 即时动作）
+2. **工具发现** — 通过 Core 公共工具注册表构建 Tool Calling 定义和动作列表上下文
 3. **AI 决策** — AdvisorTaskDriver 向 LLM 发送 Tool Calling 请求，获取角色一致的行动建议
-4. **动作执行** — 通过 RimMind-Actions 执行决策，并广播决策事件（PublishPerception）
+4. **动作执行** — AdvisorToolCallExecutor 通过 Core 公共 ToolCall 边界执行决策，并广播决策事件（PublishPerception）
 5. **反馈循环** — 执行结果回传 LLM，AI 可根据结果调整决策（最多 3 轮）
 
 ### 角色扮演
@@ -91,7 +92,7 @@ AI 深度扮演殖民者本人，决策理由显示在头顶气泡中，体现�
 
 ### 审批系统
 
-基于风险等级的审批机制：高风险动作自动拦截需玩家批准。审批历史记录注入后续 AI 请求的上下文，让 AI 学习玩家偏好。可在设置中调整自动拦截的风险等级阈值。
+基于风险等级的审批机制：高风险动作自动拦截需玩家批准，显式请求也进入审批流程。`AdvisorHistoryStore` 中的决策结果注入后续 AI 请求；`ApprovalManager` 只管理审批入口和终态回调，不保存第二份历史。可在设置中调整自动拦截的风险等级阈值。
 
 ### 并发与冷却
 
@@ -105,12 +106,17 @@ AI 深度扮演殖民者本人，决策理由显示在头顶气泡中，体现�
 
 ```
 AdvisorGameComponent (Tick扫描)
-  → CompAIAdvisor (状态判断 + 审批)
-    → AdvisorTaskDriver (请求构建 + ToolCall解析 + 反馈循环 + 决策广播)
-      → RimMindAPI.RequestStructuredAsync (Core层异步请求)
-      → RimMindActionsAPI.ExecuteBatchWithResults (Actions层执行)
-    → ApprovalManager (高风险审批 → RegisterPendingRequest)
+  → CompAIAdvisor (状态判断)
+  → AdvisorCycleCoordinator (周期与唯一终态)
+    → AdvisorTaskDriver → RimMindAPI.Request.Send (ScenarioDecision)
+    → AdvisorApprovalPolicy → ApprovalManager (需要审批时)
+    → AdvisorToolCallExecutor (Core公共工具)
+    → 一次聚合feedback → 终态清理
 ```
+
+初始和 feedback 请求都使用 `RimMindAPI.Context.ScenarioDecision`，与 `advisor_task` / `actions_list` 的 provider 守卫一致。调试菜单的完整提示词预览通过异步 snapshot 构建后回主线程输出；切换游戏后丢弃旧结果。
+
+开发入口见 [请求周期地图](Source/Advisor/README.md) 与 [测试说明](Tests/README.md)。所有 Advisor 测试项目累计最多 999 个发现用例，参数化数据行逐行计数；测试聚焦真实行为、失败边界和模块协作，不用实现形状断言或合并无关场景压低数量。
 
 ## 设置项
 
@@ -184,7 +190,7 @@ RimMind is an AI-driven RimWorld mod suite that connects to Large Language Model
 |--------|------|------------|--------|
 | RimMind-Core | API client, request dispatch, context packaging | Harmony | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core) |
 | RimMind-Actions | AI-controlled pawn action execution | Core | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions) |
-| **RimMind-Advisor** | **AI role-plays colonists for work decisions** | Core, Actions | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor) |
+| **RimMind-Advisor** | **AI role-plays colonists for work decisions** | Core (Actions optional) | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor) |
 | RimMind-Dialogue | AI-driven dialogue system | Core | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Dialogue) |
 | RimMind-Memory | Memory collection & context injection | Core | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Memory) |
 | RimMind-Personality | AI-generated personality & thoughts | Core | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Personality) |
@@ -214,7 +220,7 @@ cd RimWorld-RimMind-Mod-Advisor
 
 1. Install [Harmony](https://steamcommunity.com/sharedfiles/filedetails/?id=2009463077)
 2. Install RimMind-Core
-3. Install RimMind-Actions
+3. Optionally install RimMind-Actions for higher-level combined actions
 4. Install RimMind-Advisor
 5. Ensure load order: Harmony → Core → Actions → Advisor
 
@@ -242,9 +248,9 @@ cd RimWorld-RimMind-Mod-Advisor
 When colonists are idle, Advisor automatically triggers:
 
 1. **State Analysis** — Collects personality, skills, mood, health via ContextEngine
-2. **Candidate Generation** — JobCandidateBuilder builds a list of feasible tasks (work + instant actions)
+2. **Tool Discovery** — Builds Tool Calling definitions and action-list context from Core's public tool registry
 3. **AI Decision** — AdvisorTaskDriver sends Tool Calling request to LLM for character-appropriate action suggestions
-4. **Action Execution** — Executes decisions via RimMind-Actions and broadcasts decision events (PublishPerception)
+4. **Action Execution** — AdvisorToolCallExecutor uses Core's public ToolCall boundary and broadcasts decision events (PublishPerception)
 5. **Feedback Loop** — Results are sent back to LLM, AI can adjust decisions based on outcomes (up to 3 rounds)
 
 ### Role-Playing
@@ -253,7 +259,7 @@ AI deeply role-plays as the colonist, with decision reasoning shown as thought b
 
 ### Approval System
 
-Risk-based approval: high-risk actions are automatically blocked and require player approval. Approval history feeds back into AI context, letting AI learn player preferences. Auto-block risk threshold is configurable.
+Risk-based approval: high-risk actions and explicit requests require player approval. Decision outcomes in `AdvisorHistoryStore` feed back into AI context; `ApprovalManager` owns registration and terminal callbacks without keeping duplicate history. Auto-block risk threshold is configurable.
 
 ### Concurrency & Cooldown
 
@@ -267,12 +273,17 @@ Each decision is broadcast via `PublishPerception`, allowing other RimMind modul
 
 ```
 AdvisorGameComponent (Tick scanning)
-  → CompAIAdvisor (State checks + Approval)
-    → AdvisorTaskDriver (Request building + ToolCall parsing + Feedback loop + Decision broadcast)
-      → RimMindAPI.RequestStructuredAsync (Core async request)
-      → RimMindActionsAPI.ExecuteBatchWithResults (Actions execution)
-    → ApprovalManager (High-risk approval → RegisterPendingRequest)
+  → CompAIAdvisor (State checks)
+  → AdvisorCycleCoordinator (Cycle and single terminal state)
+    → AdvisorTaskDriver → RimMindAPI.Request.Send (ScenarioDecision)
+    → AdvisorApprovalPolicy → ApprovalManager (When required)
+    → AdvisorToolCallExecutor (Core public tools)
+    → One aggregated feedback batch → Terminal cleanup
 ```
+
+Initial and feedback envelopes both use `RimMindAPI.Context.ScenarioDecision`, matching the registered `advisor_task` / `actions_list` providers. The debug prompt preview awaits the async snapshot builder, logs through the main-thread handoff, and discards results from an old game.
+
+Start development with the [request-cycle map](Source/Advisor/README.md) and [test guide](Tests/README.md). All Advisor test projects combined allow at most 999 discovered cases, counting each parameterized row. Test real behavior, failures, and collaboration; do not lock implementation shape or merge unrelated scenarios to reduce the count.
 
 ## Settings
 

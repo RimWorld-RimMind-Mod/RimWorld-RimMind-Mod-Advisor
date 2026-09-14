@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using RimMind.Application.Common.Interfaces.Mechanisms;
 
 namespace Verse
@@ -7,7 +9,8 @@ namespace Verse
     public static class Log
     {
         public static void Warning(string msg) { }
-        public static void Message(string msg) { }
+        public static List<string> Messages { get; } = new();
+        public static void Message(string msg) => Messages.Add(msg);
         public static void Error(string msg) { }
     }
 
@@ -26,14 +29,14 @@ namespace Verse
         public string ThingID = "TestPawn_0";
         public bool Dead;
         public bool Destroyed() => Dead;
-        // Name 桩，供 AdvisorApprovalGateAdapter.FindTargetPawn 按 Name.ToStringFull 匹配
-        public Name? Name;
+        public Name Name = new Name();
+        public T? GetComp<T>() where T : class => null;
     }
 
-    // Name 桩，供 AdvisorApprovalGateAdapter.FindTargetPawn 使用 pawn.Name?.ToStringFull
     public class Name
     {
         public string ToStringFull = "";
+        public string ToStringShort = "TestPawn";
     }
 
     // IExposable 接口桩，供 AdvisorRequestRecord 实现
@@ -70,6 +73,39 @@ namespace Verse
     {
         public static TickManager TickManager { get; set; } = new TickManager();
         public static List<Map> Maps { get; } = new List<Map>();
+        public static WorldPawns WorldPawns { get; } = new WorldPawns();
+        public static Map? CurrentMap { get; set; }
+        public static Selector Selector { get; } = new Selector();
+    }
+
+    public sealed class Selector { public object? SingleSelectedThing { get; set; } }
+    public sealed class Game { }
+    public static class Current { public static Game? Game { get; set; } }
+    public sealed class StaticConstructorOnStartupAttribute : Attribute { }
+
+    public static class LongEventHandler
+    {
+        private static readonly ConcurrentQueue<Action> Pending = new();
+        public static TaskCompletionSource<bool> Queued { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public static void ExecuteWhenFinished(Action action)
+        {
+            Pending.Enqueue(action);
+            Queued.TrySetResult(true);
+        }
+        public static void Drain()
+        {
+            while (Pending.TryDequeue(out Action? action)) action();
+        }
+        public static void Reset()
+        {
+            Pending.Clear();
+            Queued = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    public class WorldPawns
+    {
+        public List<Pawn> AllPawnsAlive { get; } = new List<Pawn>();
     }
 
     public class TickManager
@@ -77,17 +113,14 @@ namespace Verse
         public int TicksGame { get; set; } = 0;
     }
 
-    // Map 桩，供 AdvisorApprovalGateAdapter 查找 Pawn
     public class Map
     {
         public MapPawns mapPawns = new MapPawns();
     }
 
-    // MapPawns 桩，供 AdvisorApprovalGateAdapter 遍历 AllPawns / FreeColonists
     public class MapPawns
     {
         public List<Pawn> AllPawns = new List<Pawn>();
-        // FreeColonists 桩，供 AdvisorApprovalGateAdapter.RequestApproval 回退到第一个殖民者
         public List<Pawn> FreeColonists = new List<Pawn>();
     }
 }
@@ -155,6 +188,57 @@ namespace RimMind.Presentation.Api
 {
     public static class RimMindAPI
     {
+        public static class Settings
+        {
+            public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? ContextEngine { get; set; }
+            public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? GetContextEngine() => ContextEngine;
+            public static bool DebugLogging => false;
+        }
+
+        public static bool IsConfigured() => true;
+        public static int GetModCooldownTicksLeft(string modId) => 0;
+        public static void ClearModCooldown(string modId) { }
+        public static IReadOnlyList<RimMind.Application.Common.Models.UI.RequestEntry> GetPendingRequests() => PendingRequests;
+        public static class Context
+        {
+            public static string ScenarioDecision => RimMind.Application.Common.Models.Context.ScenarioIds.Decision;
+            public static TestContextRegistry ContextKeys { get; } = new TestContextRegistry();
+        }
+
+        public sealed class TestContextRegistry
+        {
+            public List<RimMind.Application.Common.Interfaces.Context.ContextProviderDef> Definitions { get; } = new();
+            public void Register(RimMind.Application.Common.Interfaces.Context.ContextProviderDef definition)
+                => Definitions.Add(definition);
+        }
+
+        public static class Providers
+        {
+            public static void RegisterPawnProvider(string id, string owner, Func<Verse.Pawn, string> provider,
+                int priority, bool overrideExisting) { }
+        }
+
+        public static class Tools
+        {
+            public static List<RimMind.Application.Common.Models.Tools.ToolDefinition> Definitions { get; } = new();
+            public static IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetAllDefinitions() => Definitions;
+            public static object? FindById(string id) => Definitions.Find(definition => definition.Id == id);
+        }
+
+        public static class Request
+        {
+            public static List<RimMind.Domain.Llm.LlmRequestEnvelope> Sent { get; } = new();
+            public static void Send(RimMind.Domain.Llm.LlmRequestEnvelope envelope,
+                Action<RimMind.Domain.ValueObjects.Result<RimMind.Domain.Llm.LlmResponse, RimMind.Domain.ValueObjects.RimMindError>> callback)
+                => Sent.Add(envelope);
+            public static void Send(RimMind.Domain.Llm.LlmRequestEnvelope envelope,
+                Action<RimMind.Domain.ValueObjects.Result<RimMind.Domain.Llm.LlmResponse, RimMind.Domain.ValueObjects.RimMindError>, RimMind.Application.Common.Models.Pipeline.LlmRequestContext> callback)
+                => Sent.Add(envelope);
+        }
+
+        public static bool ShouldSkipAction(string id) => false;
+        public static void PublishPerception(int pawnId, string kind, string summary, float intensity) { }
+
         public static void RequestStructuredAsync(object request, string? schema,
             System.Action<object> onComplete, object? tools = null) { }
 
@@ -203,9 +287,46 @@ namespace RimMind.Advisor.Settings
     {
         public string advisorCustomPrompt = "";
         public int requestExpireTicks = 600;
+        public int requestCooldownTicks = 600;
+        public int maxConcurrentRequests = 3;
         // 审批相关设置，供 ApprovalManager 测试使用
         public bool enableRiskApproval = true;
+        public bool enableLegacyJsonFallback;
         public RimMind.Domain.Enums.RiskLevel autoBlockRiskLevel = RimMind.Domain.Enums.RiskLevel.High;
         public bool enableRequestSystem = true;
+    }
+}
+
+namespace LudeonTK
+{
+    public enum DebugActionType { Action }
+    public sealed class DebugActionAttribute : Attribute
+    {
+        public DebugActionAttribute(string category, string name) { Name = name; }
+        public DebugActionType actionType;
+        public string Name { get; }
+    }
+}
+
+namespace RimMind.Advisor
+{
+    public static class RimMindAdvisorMod
+    {
+        public static Settings.RimMindAdvisorSettings Settings { get; } = new();
+    }
+    public static class JobCandidateBuilder
+    {
+        public static string Build(Verse.Pawn pawn) => string.Empty;
+    }
+}
+
+namespace RimMind.Advisor.Comps
+{
+    public sealed class CompAIAdvisor
+    {
+        public int AdvisorCooldownTicksLeft => 0;
+        public bool IsEnabled => true;
+        public bool HasPendingRequest => false;
+        public void ForceRequestAdvice() { }
     }
 }
