@@ -1,66 +1,60 @@
 [h1]RimMind - Advisor[/h1]
-你的私人 AI 殖民地顾问，为每个殖民者提供个性化的行动建议。当小人空闲或心情低落时自动分析状态和性格，通过 LLM 选择最符合角色的下一步行动。
 
-[h2] RimMind 是什么 [/h2]
-RimMind 是一套 AI 驱动的 RimWorld 模组套件，通过接入大语言模型 (LLM)，让殖民者拥有人格、记忆、对话和自主决策能力。
+[i]你的殖民者不再只是棋子——他们有了自己的判断。[/i]
 
-[h2] 子模组列表与依赖关系 [/h2]
-[table][tr][td][b] 模组 [/b][/td][td][b] 职责 [/b][/td][td][b] 依赖 [/b][/td][td][b] GitHub [/b][/td][/tr][tr][td] RimMind-Core [/td][td] API 客户端、请求调度、上下文打包 [/td][td] Harmony [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core] 链接 [/url][/td][/tr][tr][td] RimMind-Actions [/td][td] AI 控制小人的动作执行库 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions] 链接 [/url][/td][/tr][tr][td][b] RimMind-Advisor [/b][/td][td] AI 扮演小人做出工作决策 [/td][td] Core, Actions [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor] 链接 [/url][/td][/tr][tr][td] RimMind-Dialogue [/td][td] AI 驱动的对话系统 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Dialogue] 链接 [/url][/td][/tr][tr][td] RimMind-Memory [/td][td] 记忆采集与上下文注入 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Memory] 链接 [/url][/td][/tr][tr][td] RimMind-Personality [/td][td] AI 生成人格与想法 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Personality] 链接 [/url][/td][/tr][tr][td] RimMind-Storyteller [/td][td] AI 叙事者，智能选择事件 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Storyteller] 链接 [/url][/td][/tr][tr][td] RimMind-Bridge-RimChat [/td][td] RimChat 协调层：对话/动作门控与上下文拉取 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimChat] 链接 [/url][/td][/tr][tr][td] RimMind-Bridge-RimTalk [/td][td] RimTalk 协调层：对话门控与双向数据流 [/td][td] Core [/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimTalk] 链接 [/url][/td][/tr][/table]
-[code]Core ── Actions ── Advisor
-  ├── Dialogue
-  ├── Memory
-  ├── Personality
-  ├── Storyteller
-  ├── Bridge-RimChat
-  └── Bridge-RimTalk[/code]
+[h2]想象一下[/h2]
+矿工 Alice 空闲了。铁矿石就在不远处，但她的心情跌到了 25%。如果你来决定，也许会让她继续挖矿——但 Advisor 知道她的性格偏社交，此刻最需要的是找人聊聊天。于是她走向休息区，头顶冒出气泡："心情太差了，需要找人聊聊天。"
 
-[h2] 核心能力 [/h2]
-[b] 个性化决策 [/b] - AI 顾问会综合考虑殖民者的状态、性格、技能和当前可用工作，选择最符合角色特点的行动。
-[b] 深度角色扮演 [/b] - AI 深度扮演殖民者本人，决策理由显示在头顶气泡中，体现角色内心独白。
-[b] 候选工作展示 [/b] - 向 AI 展示当前可用的工作目标列表（按距离排序），让 AI 做出知情选择，而非盲目决策。
-[b] 审批系统 [/b] - 支持两层审批机制：殖民者主动请求需玩家批准，高风险动作自动拦截需玩家批准。审批历史注入 AI 上下文，让 AI 学习玩家偏好。
-[b] 风险控制 [/b] - 可配置自动拦截的风险等级阈值（Low/Medium/High/Critical），达到阈值的动作自动弹出审批窗口。
-[b] 并发控制 [/b] - 智能管理多个殖民者的顾问请求，限制同时等待响应数，避免 API 限流和游戏卡顿。
-[b] 请求过期 [/b] - AI 请求设有过期时间，超时未响应自动取消，避免请求堆积。
-[b] 自定义提示词 [/b] - 支持在设置中添加自定义规则，追加在系统 Prompt 末尾，让顾问按照你的偏好行事。
+这不是脚本触发的事件，是 AI [b]扮演 Alice 本人[/b]做出的决定。每次都不一样，因为每个殖民者的状态、性格、周围环境都在变。
 
-[h2] 使用场景 [/h2]
+[h2]和普通自动分配有什么不同[/h2]
+普通的自动工作只看优先级数字。Advisor 看到的是[b]完整的人[/b]：
+
 [list]
-[*] 不知道让哪个殖民者去做什么？Advisor 会给出建议
-[*] 想让人物行为更符合其背景故事？AI 会考虑童年和成年经历
-[*] 需要平衡工作效率和角色扮演？Advisor 兼顾两者
-[*] 担心 AI 做出危险决策？高风险动作需要你审批
-[*] 想让殖民者主动提出需求？开启请求系统，殖民者会向玩家提出行动请求
+[*] 暴力倾向的殖民者更可能选择战斗相关行动
+[*] 社交达人会主动找人聊天，而不是独自发呆
+[*] 有医疗技能的殖民者发现伤员后主动去救治
+[*] 心情崩溃前会自己选择放松，而不是闷头干活直到精神崩溃
 [/list]
 
-[h2] 核心功能 [/h2]
-[b] 智能空闲决策 [/b]
-殖民者空闲时，Advisor 自动触发：
+每个决策都有[b]理由气泡[/b]——你能看到小人"为什么"这么做。殖民地的故事就这样自然浮现了。
+
+[h2]反馈循环：AI 会思考下一步[/h2]
+Advisor 不只是"问一次 AI，执行一次"。执行动作后，结果会回传给 AI，让 AI 判断是否需要调整。比如 AI 让殖民者去救治伤员，但发现伤员已经被别人治好了——AI 会重新选择下一个动作。最多进行 3 轮这样的思考，让决策链条更完整。
+
+[h2]你说了算[/h2]
+Advisor 不会越权。每个殖民者需要你手动开启 AI 顾问（选中殖民者 → 点击信息栏的 AI 顾问按钮）。高风险动作会弹出审批窗口让你决定。你可以批准、拒绝，或者干脆关掉风险拦截让 AI 放手干。
+
+你拒绝过的动作会记入历史，AI 下次会参考你的偏好。[b]越用越懂你。[/b]
+
+[h2]配合其他 RimMind 模组[/h2]
+Advisor 是 RimMind 套件的一部分，配合使用效果倍增：
+
 [list]
-[*] [b]状态分析[/b] — 收集小人的人格、技能、心情、健康等上下文
-[*] [b]候选生成[/b] — 构建当前可行的任务列表（工作 + 即时动作）
-[*] [b]AI 决策[/b] — 向 LLM 发送 Prompt，获取角色一致的行动建议
-[*] [b]动作执行[/b] — 通过 RimMind-Actions 执行决策
+[*] [b]Personality[/b] — AI 顾问读取殖民者的人格档案，决策更符合角色设定
+[*] [b]Memory[/b] — 殖民者过去的经历会注入上下文，让 AI 的选择更有故事感
+[*] [b]Dialogue[/b] — 殖民者之间可以对话，Advisor 的决策可能触发社交互动
 [/list]
 
-[b] 审批系统 [/b]
-高风险动作自动弹出审批窗口，玩家可以批准、拒绝或忽略。审批历史记录注入后续 AI 请求的上下文，让 AI 学习玩家偏好。
+[h2]实际游戏体验[/h2]
+开启 Advisor 后，殖民地变得更有生命力。你会看到：
 
-[b] 并发控制 [/b]
-限制同时等待响应的请求数（默认 3 个），防止 API 限流和游戏卡顿。
+[list]
+[*] 采矿工人在心情低落时主动去休息，而不是闷头挖矿直到崩溃
+[*] 有人倒地了，附近的殖民者主动跑去救援
+[*] 社交达人找同伴一起吃饭，而不是独自在角落发呆
+[*] 决策气泡让每个小人的"想法"可见，殖民地的日常变成了故事
+[/list]
 
-[h2] 设置项 [/h2]
-[table][tr][td][b] 设置 [/b][/td][td][b] 默认值 [/b][/td][td][b] 说明 [/b][/td][/tr][tr][td] 启用 AI 顾问系统 [/td][td] 开启 [/td][td] 总开关 [/td][/tr][tr][td] 小人空闲时触发 [/td][td] 开启 [/td][td] 空闲时自动触发 [/td][/tr][tr][td] 小人扫描间隔 [/td][td] 3600 ticks (~60s) [/td][td] 检测空闲小人的频率 [/td][/tr][tr][td] 心情低时触发 [/td][td] 开启 [/td][td] 心情低于阈值额外触发 [/td][/tr][tr][td] 心情触发阈值 [/td][td] 30% [/td][td] 触发额外评估的心情线 [/td][/tr][tr][td] 请求冷却 [/td][td] 12 游戏小时 (30000 ticks) [/td][td] 每个殖民者的独立冷却 [/td][/tr][tr][td] 最大并发请求数 [/td][td] 3 [/td][td] 同时等待响应的请求上限 [/td][/tr][tr][td] 请求过期 [/td][td] 0.5 游戏天 (30000 ticks) [/td][td] 请求超时自动取消 [/td][/tr][tr][td] 显示 AI 决策气泡 [/td][td] 开启 [/td][td] 在头顶显示决策理由 [/td][/tr][tr][td] 启用审批系统 [/td][td] 开启 [/td][td] 殖民者请求需玩家批准 [/td][/tr][tr][td] 启用风险拦截 [/td][td] 开启 [/td][td] 高风险动作需玩家批准 [/td][/tr][tr][td] 自动拦截风险级别 [/td][td] High [/td][td] 此级别及以上自动拦截 [/td][/tr][tr][td] 自定义顾问 Prompt [/td][td] - [/td][td] 追加在系统 Prompt 末尾 [/td][/tr][/table]
+[b]提示[/b]：建议先给 1-2 个殖民者开启顾问，观察 AI 的决策风格后再逐步扩展。
 
-[h2] 常见问题 [/h2]
-[b] Q: 每个殖民者都要单独开启吗？ [/b]
-A: 是的。选中殖民者 → 信息栏点击"AI顾问"按钮切换。默认关闭，避免不想要的殖民者被 AI 控制。
+[h2]快速上手[/h2]
+[list]
+1. 安装 RimMind-Core 和 RimMind-Actions
+2. 在 Core 设置中填写 API Key 和模型
+3. 进入游戏，选中一个殖民者
+4. 点击信息栏的"AI顾问：关闭"按钮切换为开启
+5. 小人空闲时自动触发 AI 决策
+[/list]
 
-[b] Q: AI 会做出危险决策吗？ [/b]
-A: AI 被提示优先选择低风险动作。高风险动作需要玩家审批，可在设置中调整自动拦截级别。
-
-[b] Q: 配合 Personality 和 Memory 效果更好吗？ [/b]
-A: 是的。Personality 提供人格档案，Memory 提供历史记忆，Advisor 会综合这些信息做出更符合角色的决策。
-
-[b] Q: 会影响游戏帧率吗？ [/b]
-A: 不会。所有 AI 请求异步执行，并发数有上限控制。
+13 项设置让你精细调控 AI 的行为节奏——从触发条件到冷却时间，从心情阈值到并发数量，总有一组参数适合你的殖民地。
