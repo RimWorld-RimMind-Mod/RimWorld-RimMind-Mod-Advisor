@@ -2,6 +2,7 @@
 <LanguageData>
   <!-- RimMindAdvisorMod.cs -->
   <!-- Settings -->
+  <RimMind.Advisor.SettingsTitle>RimMind - 顾问</RimMind.Advisor.SettingsTitle>
   <RimMind.Advisor.Settings.Tab>顾问</RimMind.Advisor.Settings.Tab>
   <RimMind.Advisor.Settings.EnableAdvisor>启用 AI 顾问系统</RimMind.Advisor.Settings.EnableAdvisor>
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>开启后，AI 会根据殖民者的状态和性格为其选择下一步行动。</RimMind.Advisor.Settings.EnableAdvisor.Desc>

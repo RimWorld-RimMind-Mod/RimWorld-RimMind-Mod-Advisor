@@ -5,6 +5,7 @@ using System.Text;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Features.Llm;
+using RimMind.Domain.Common;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
 using RimMind.Application.Common.Models.Context;
@@ -214,7 +215,7 @@ namespace RimMind.Advisor.Advisor
                 sb.AppendLine("[RimMind-Advisor] Player reactions to previous AI advice:");
                 foreach (var r in rejected)
                 {
-                    int day = r.tick / 60000 + 1;
+                    int day = r.tick / RimMindTime.TicksPerDay + 1;
                     sb.AppendLine($"[Day {day}] Action: {r.action}, Reason: {r.reason ?? "N/A"}, Player rejected");
                 }
                 return sb.ToString().TrimEnd();

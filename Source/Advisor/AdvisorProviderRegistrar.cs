@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Text;
 using RimMind.Advisor.Data;
+using RimMind.Application.Common.Constants;
 using RimMind.Application.Common.Interfaces.Context;
 using RimMind.Domain.Enums;
 using RimMind.Domain.ValueObjects;
@@ -21,8 +22,7 @@ namespace RimMind.Advisor.Advisor
                 async (ctx, ct) =>
                 {
                     if (ctx.PawnId <= 0) return null;
-                    var pawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId)
-                        ?? Find.CurrentMap?.mapPawns?.FreeColonists.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId);
+                    var pawn = RimMindPawnLookup.FindPawnByNumber(ctx.PawnId);
                     if (pawn == null) return null;
                     var historyStore = AdvisorHistoryStore.Instance;
                     if (historyStore == null) return null;
@@ -43,7 +43,7 @@ namespace RimMind.Advisor.Advisor
                         sb.AppendLine($"- {r.action}: {r.reason} → {resultLabel}");
                     }
                     return sb.ToString().TrimEnd();
-                }, "RimMind.Advisor", stalenessTicks: 3000, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 3000, invalidationTriggers: new[] { "AdvisorEvent" }));
 
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
                 "actions_list", ContextLayer.L3_State, 0.85f,
@@ -51,11 +51,10 @@ namespace RimMind.Advisor.Advisor
                 {
                     if (ctx.Scenario != RimMindAPI.Context.ScenarioDecision) return null;
                     if (ctx.PawnId <= 0) return null;
-                    var pawn = Find.WorldPawns.AllPawnsAlive.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId)
-                        ?? Find.CurrentMap?.mapPawns?.FreeColonists.FirstOrDefault(p => p.thingIDNumber == ctx.PawnId);
+                    var pawn = RimMindPawnLookup.FindPawnByNumber(ctx.PawnId);
                     var text = BuildToolListText();
                     return string.IsNullOrEmpty(text) ? null : text;
-                }, "RimMind.Advisor", stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
 
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
                 "advisor_task", ContextLayer.L0_Static, 0.95f,
@@ -66,7 +65,7 @@ namespace RimMind.Advisor.Advisor
                         .Select(k => (string)$"RimMind.Advisor.Prompt.TaskInstruction.{k}".Translate())
                         .Where(t => !string.IsNullOrEmpty(t)));
                     return instruction;
-                }, "RimMind.Advisor", stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
 
             RegisterPublicProviders();
         }

@@ -8,6 +8,7 @@ using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Application.Common.Models.UI;
+using RimMind.Domain.Common;
 using RimMind.Domain.Enums;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
@@ -78,7 +79,7 @@ namespace RimMind.Advisor.Advisor
         {
             if (_hasPendingRequest)
             {
-                if (Find.TickManager.TicksGame - _pendingRequestTick > 60000)
+                if (Find.TickManager.TicksGame - _pendingRequestTick > RimMindTime.TicksPerDay)
                 {
                     RimMindErrors.Warn(
                         $"[RimMind-Advisor] ForceRequest: {_pawn.Name.ToStringShort} pending request timed out, resetting.");

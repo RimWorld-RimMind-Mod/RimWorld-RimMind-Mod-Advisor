@@ -2,6 +2,7 @@
 <LanguageData>
   <!-- RimMindAdvisorMod.cs -->
   <!-- Settings -->
+  <RimMind.Advisor.SettingsTitle>RimMind - Advisor</RimMind.Advisor.SettingsTitle>
   <RimMind.Advisor.Settings.Tab>Advisor</RimMind.Advisor.Settings.Tab>
   <RimMind.Advisor.Settings.EnableAdvisor>Enable AI Advisor System</RimMind.Advisor.Settings.EnableAdvisor>
   <RimMind.Advisor.Settings.EnableAdvisor.Desc>When enabled, AI will choose the next action for colonists based on their state and personality.</RimMind.Advisor.Settings.EnableAdvisor.Desc>

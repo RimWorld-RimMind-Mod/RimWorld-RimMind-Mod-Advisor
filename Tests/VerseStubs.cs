@@ -271,6 +271,25 @@ namespace RimMind.Presentation.Api
         // Mechanisms 桩，供 AdvisorToolRiskResolver 编译使用（测试时返回 null -> Resolve 返回 Low）
         public static IGameMechanismRegistry? Mechanisms => null;
     }
+
+    public static class RimMindPawnLookup
+    {
+        public static Verse.Pawn? FindPawnByNumber(int thingIDNumber)
+        {
+            if (thingIDNumber <= 0) return null;
+            return Verse.Find.WorldPawns?.AllPawnsAlive?.Find(p => p.thingIDNumber == thingIDNumber)
+                ?? Verse.Find.CurrentMap?.mapPawns?.FreeColonists?.Find(p => p.thingIDNumber == thingIDNumber);
+        }
+
+        public static Verse.Pawn? FindPawnById(string? pawnId)
+        {
+            if (string.IsNullOrEmpty(pawnId)) return null;
+            return Verse.Find.WorldPawns?.AllPawnsAlive?.Find(p => p.ThingID == pawnId)
+                ?? Verse.Find.CurrentMap?.mapPawns?.FreeColonists?.Find(p => p.ThingID == pawnId);
+        }
+
+        public static bool IsEligibleColonist(Verse.Pawn? pawn) => pawn != null && !pawn.Dead;
+    }
 }
 
 namespace RimMind.Presentation
