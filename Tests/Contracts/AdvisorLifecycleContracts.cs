@@ -232,6 +232,66 @@ namespace RimMind.Advisor.Tests.Contracts
                 }));
         }
 
+        [Fact]
+        public void Advisor_cooldown_calculator_adapts_to_danger_and_pawn_crisis()
+        {
+            ContractCaseRunner.Run(
+                ("normal peaceful state preserves base cooldown", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 30000,
+                        isMapHighDanger: false,
+                        isPawnInCrisis: false,
+                        isPawnInExtremeBreakRisk: false);
+                    Assert.Equal(30000, cooldown);
+                }),
+                ("map high danger applies 0.20x reduction", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 30000,
+                        isMapHighDanger: true,
+                        isPawnInCrisis: false,
+                        isPawnInExtremeBreakRisk: false);
+                    Assert.Equal(6000, cooldown);
+                }),
+                ("pawn extreme mental break risk applies 0.15x reduction", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 30000,
+                        isMapHighDanger: false,
+                        isPawnInCrisis: false,
+                        isPawnInExtremeBreakRisk: true);
+                    Assert.Equal(4500, cooldown);
+                }),
+                ("pawn physical crisis applies 0.10x reduction", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 30000,
+                        isMapHighDanger: false,
+                        isPawnInCrisis: true,
+                        isPawnInExtremeBreakRisk: false);
+                    Assert.Equal(3000, cooldown);
+                }),
+                ("compound crisis prioritizes physical crisis over map high danger", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 30000,
+                        isMapHighDanger: true,
+                        isPawnInCrisis: true,
+                        isPawnInExtremeBreakRisk: true);
+                    Assert.Equal(3000, cooldown);
+                }),
+                ("minimum crisis cooldown guards against excessive flood", () =>
+                {
+                    int cooldown = AdvisorCooldownCalculator.CalculateDynamicCooldown(
+                        baseCooldownTicks: 5000,
+                        isMapHighDanger: true,
+                        isPawnInCrisis: true,
+                        isPawnInExtremeBreakRisk: true);
+                    Assert.Equal(AdvisorCooldownCalculator.MinCrisisCooldownTicks, cooldown);
+                }));
+        }
+
         private static string ReadSource(string relativePath) =>
             File.ReadAllText(Path.Combine(
                 SourceRoot(),

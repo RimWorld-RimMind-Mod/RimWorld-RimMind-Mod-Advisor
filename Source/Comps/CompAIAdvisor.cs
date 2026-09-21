@@ -106,6 +106,17 @@ namespace RimMind.Advisor.Comps
         {
             base.PostExposeData();
             Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
+            int lastTick = Cycle.LastRequestTick;
+            Scribe_Values.Look(ref lastTick, "aiAdvisorLastRequestTick", -9999);
+            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                if (lastTick <= 0 && Find.TickManager != null)
+                {
+                    int stagger = (Pawn.thingIDNumber & 0x7FFF) % 1500;
+                    lastTick = Find.TickManager.TicksGame - (Settings.requestCooldownTicks - stagger);
+                }
+                Cycle.LastRequestTick = lastTick;
+            }
         }
     }
 }

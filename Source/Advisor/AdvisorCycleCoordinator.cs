@@ -44,10 +44,10 @@ namespace RimMind.Advisor.Advisor
         }
 
         public bool HasPendingRequest => _hasPendingRequest;
-        public int LastRequestTick => _lastRequestTick;
+        public int LastRequestTick { get => _lastRequestTick; set => _lastRequestTick = value; }
         public AdvisorTaskDriver? TaskDriver => _taskDriver;
         public int CooldownTicksLeft =>
-            Math.Max(0, Settings.requestCooldownTicks - (Find.TickManager.TicksGame - _lastRequestTick));
+            Math.Max(0, AdvisorCooldownCalculator.CalculateCooldownForPawn(_pawn, Settings) - (Find.TickManager.TicksGame - _lastRequestTick));
 
         private RimMindAdvisorSettings Settings => _settings();
 

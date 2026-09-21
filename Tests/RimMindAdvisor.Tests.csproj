@@ -26,6 +26,7 @@
     <Compile Include="../Source/Concurrency/AdvisorConcurrencyTracker.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdvisorToolRiskResolver.cs" />
+    <Compile Include="../Source/Advisor/AdvisorCooldownCalculator.cs" />
     <Compile Include="../Source/Advisor/AdvisorRequestAugmentationFactory.cs" />
     <Compile Include="../Source/Advisor/AdvisorProviderRegistrar.cs" />
     <Compile Include="../Source/Advisor/AdvisorTaskDriver.cs" />

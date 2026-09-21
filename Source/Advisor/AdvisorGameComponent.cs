@@ -22,6 +22,7 @@ namespace RimMind.Advisor.Advisor
         {
             base.FinalizeInit();
             Instance = this;
+            AdvisorConcurrencyTracker.Reset();
         }
 
         public override void GameComponentTick()
@@ -59,7 +60,8 @@ namespace RimMind.Advisor.Advisor
                     if (!shouldTrigger) continue;
 
                     int ticksGame = Find.TickManager.TicksGame;
-                    int advisorCooldownLeft = settings.requestCooldownTicks - (ticksGame - comp.LastRequestTick);
+                    int dynamicCooldown = AdvisorCooldownCalculator.CalculateCooldownForPawn(pawn, settings);
+                    int advisorCooldownLeft = dynamicCooldown - (ticksGame - comp.LastRequestTick);
                     if (advisorCooldownLeft > 0) continue;
 
                     if (!capacity.TryReserve()) return;

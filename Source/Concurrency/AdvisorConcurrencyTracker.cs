@@ -25,5 +25,8 @@ namespace RimMind.Advisor.Concurrency
                 RimMindErrors.Warn("[RimMind-Advisor] Concurrency tracker went negative, auto-corrected");
             }
         }
+
+        public static void Reset() =>
+            System.Threading.Interlocked.Exchange(ref _active, 0);
     }
 }
