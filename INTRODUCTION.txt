@@ -1,26 +1,41 @@
 [h1]RimMind - Advisor[/h1]
+[h1]RimMind - Advisor (智囊与顾问)[/h1]
 
 [i]你的殖民者不再只是棋子——他们有了自己的判断。[/i]
+[i]你的殖民者不再是提线木偶——他们有了自己的思考、判断与处事主见。[/i]
+[i]Your colonists are no longer puppets — They now possess autonomous judgment, proactive suggestions, and genuine agency.[/i]
 
 [h2]想象一下[/h2]
 矿工 Alice 空闲了。铁矿石就在不远处，但她的心情跌到了 25%。如果你来决定，也许会让她继续挖矿——但 Advisor 知道她的性格偏社交，此刻最需要的是找人聊聊天。于是她走向休息区，头顶冒出气泡："心情太差了，需要找人聊聊天。"
+[hr]
+[h2]📖 中文介绍 / Chinese Overview[/h2]
 
 这不是脚本触发的事件，是 AI [b]扮演 Alice 本人[/b]做出的决定。每次都不一样，因为每个殖民者的状态、性格、周围环境都在变。
+[b]RimMind-Advisor[/b] 是 RimMind 智能体套件的“决策与思考中枢”。AI 会代入每个殖民者的个性、身体状况、心情与周围情境，扮演他们本人做出合乎逻辑的日常抉择与宏观建议。
 
 [h2]和普通自动分配有什么不同[/h2]
 普通的自动工作只看优先级数字。Advisor 看到的是[b]完整的人[/b]：
 
+[h3]🌟 核心特性[/h3]
 [list]
 [*] 暴力倾向的殖民者更可能选择战斗相关行动
 [*] 社交达人会主动找人聊天，而不是独自发呆
 [*] 有医疗技能的殖民者发现伤员后主动去救治
 [*] 心情崩溃前会自己选择放松，而不是闷头干活直到精神崩溃
+[*] [b]小人自主思考决策[/b]：空闲或状态跃迁时，小人会综合评估自身需求（饿了找吃的、烦闷去下棋、疲劳去休息、危险去避难）。
+[*] [b]三轮思考与反馈闭环[/b]：动作执行后会将结果反馈给 AI，由 AI 判定是否达成意图或需要继续微调，形成完整连贯的行为链。
+[*] [b]殖民地宏观战略提议[/b]：定期侦测殖民地宏观资源与防御短板，向玩家提出建设性建议。
+[*] [b]玩家决策主权与审批[/b]：高风险决策会通过悬浮窗向玩家请求审批；玩家的批准或拒绝会被记录，AI 越用越懂你的管理风格！
+[*] [b]动态频率调谐[/b]：完全受 Core 的 `ActivityFrequencyScale` 统一滑块控制，支持自由控制思考节奏，杜绝高频打扰。
 [/list]
 
 每个决策都有[b]理由气泡[/b]——你能看到小人"为什么"这么做。殖民地的故事就这样自然浮现了。
+[hr]
+[h2]🌐 English Overview[/h2]
 
 [h2]反馈循环：AI 会思考下一步[/h2]
 Advisor 不只是"问一次 AI，执行一次"。执行动作后，结果会回传给 AI，让 AI 判断是否需要调整。比如 AI 让殖民者去救治伤员，但发现伤员已经被别人治好了——AI 会重新选择下一个动作。最多进行 3 轮这样的思考，让决策链条更完整。
+[b]RimMind-Advisor[/b] serves as the cognitive decision-making hub of the RimMind AI suite. Instead of relying on static algorithmic work priorities, the LLM roleplays as the pawn, assessing their health, personality, mood, and surroundings to make autonomous life decisions.
 
 [h2]你说了算[/h2]
 Advisor 不会越权。每个殖民者需要你手动开启 AI 顾问（选中殖民者 → 点击信息栏的 AI 顾问按钮）。高风险动作会弹出审批窗口让你决定。你可以批准、拒绝，或者干脆关掉风险拦截让 AI 放手干。
@@ -30,20 +45,30 @@ Advisor 不会越权。每个殖民者需要你手动开启 AI 顾问（选中�
 [h2]配合其他 RimMind 模组[/h2]
 Advisor 是 RimMind 套件的一部分，配合使用效果倍增：
 
+[h3]🌟 Key Highlights[/h3]
 [list]
 [*] [b]Personality[/b] — AI 顾问读取殖民者的人格档案，决策更符合角色设定
 [*] [b]Memory[/b] — 殖民者过去的经历会注入上下文，让 AI 的选择更有故事感
 [*] [b]Dialogue[/b] — 殖民者之间可以对话，Advisor 的决策可能触发社交互动
+[*] [b]Autonomous Agent Roleplay[/b]: Colonists reflect on their current conditions and take initiative (e.g., grab food when hungry, socialize when lonely, shelter when under threat).
+[*] [b]Multi-Turn Feedback Loops[/b]: The AI evaluates the outcome of executed actions and adapts its next steps dynamically.
+[*] [b]Strategic Colony Advising[/b]: Periodically analyzes colony-wide supply bottlenecks, defenses, and pawn mental states to propose suggestions.
+[*] [b]Player Sovereignty & Approval[/b]: Sensitive or high-risk actions prompt an interactive review window. Approved and rejected decisions shape the AI's future proposals.
+[*] [b]Frequency Scaling[/b]: Fully synchronized with Core's dynamic activity frequency slider.
 [/list]
 
 [h2]实际游戏体验[/h2]
 开启 Advisor 后，殖民地变得更有生命力。你会看到：
 
+[hr]
+[h2]⚙️ 依赖与推荐 / Requirements & Order[/h2]
 [list]
 [*] 采矿工人在心情低落时主动去休息，而不是闷头挖矿直到崩溃
 [*] 有人倒地了，附近的殖民者主动跑去救援
 [*] 社交达人找同伴一起吃饭，而不是独自在角落发呆
 [*] 决策气泡让每个小人的"想法"可见，殖民地的日常变成了故事
+[*] [b]必需前置 (Required)[/b]: Harmony, [b]RimMind-Core[/b]
+[*] [b]强烈推荐 (Highly Recommended)[/b]: [b]RimMind-Actions[/b]（用于执行具体动作）、[b]RimMind-Personality[/b]（赋予差异化大五人格）
 [/list]
 
 [b]提示[/b]：建议先给 1-2 个殖民者开启顾问，观察 AI 的决策风格后再逐步扩展。
