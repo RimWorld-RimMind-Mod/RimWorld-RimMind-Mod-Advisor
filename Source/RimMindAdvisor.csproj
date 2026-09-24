@@ -11,6 +11,7 @@
     <OutputPath>../$(GameVersion)/Assemblies/</OutputPath>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -23,14 +24,17 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.*" PrivateAssets="All" />
   </ItemGroup>
 
-  <!-- RimMind-Core 编译期引用（游戏运行时由 RimWorld 加载，不打包进 DLL） -->
   <ItemGroup>
-    <Reference Include="RimMindCore">
-      <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/RimMindCore.dll</HintPath>
+    <Reference Include="0_RimMindDomain">
+      <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/0_RimMindDomain.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="RimMindActions">
-      <HintPath>../../RimMind-Actions/$(GameVersion)/Assemblies/RimMindActions.dll</HintPath>
+    <Reference Include="1_RimMindApplication">
+      <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/1_RimMindApplication.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="2_RimMindCore">
+      <HintPath>../../RimMind-Core/$(GameVersion)/Assemblies/2_RimMindCore.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
