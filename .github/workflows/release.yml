@@ -21,6 +21,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Dependencies
+        run: |
+          git clone --depth 1 https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core.git ../RimMind-Core
+          git clone --depth 1 https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions.git ../RimMind-Actions
+          dotnet build ../RimMind-Core/Source/RimMindCore.csproj --configuration Release
+          dotnet build ../RimMind-Actions/Source/RimMindActions.csproj --configuration Release
+
+      - name: Build Mod
+        run: dotnet build Source/RimMindAdvisor.csproj --configuration Release
+
       - name: Determine Git Range
         id: git-range
         run: |
