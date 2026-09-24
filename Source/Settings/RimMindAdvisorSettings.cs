@@ -8,8 +8,11 @@ namespace RimMind.Advisor.Settings
         /// <summary>总开关。</summary>
         public bool enableAdvisor = true;
 
-        /// <summary>请求冷却（ticks）。3600~72000，步进 600，默认 30000 ≈ 12 游戏小时。</summary>
-        public int requestCooldownTicks = 30000;
+        /// <summary>请求冷却（ticks）。3600~72000，步进 600，默认 5000 ≈ 2 游戏小时保险保护。</summary>
+        public int requestCooldownTicks = 5000;
+
+        /// <summary>宏观/转折检查触发概率（0.1~1.0）。</summary>
+        public float macroCheckChance = 0.35f;
 
         /// <summary>全局最大同时等待响应数（1~5）。</summary>
         public int maxConcurrentRequests = 3;
@@ -50,7 +53,8 @@ namespace RimMind.Advisor.Settings
         public override void ExposeData()
         {
             Scribe_Values.Look(ref enableAdvisor, "enableAdvisor", true);
-            Scribe_Values.Look(ref requestCooldownTicks, "requestCooldownTicks", 30000);
+            Scribe_Values.Look(ref requestCooldownTicks, "requestCooldownTicks", 5000);
+            Scribe_Values.Look(ref macroCheckChance, "macroCheckChance", 0.35f);
             Scribe_Values.Look(ref maxConcurrentRequests, "maxConcurrentRequests", 3);
             Scribe_Values.Look(ref showThoughtBubble, "showThoughtBubble", true);
             Scribe_Values.Look(ref enableLegacyJsonFallback, "enableLegacyJsonFallback", false);
