@@ -35,6 +35,13 @@ graph TD
     Core --> BridgeRimTalk["Bridge-RimTalk"]
 ```
 
+## 🎮 实机特性展示 / In-Game Showcase
+
+![RimMind-Advisor In-Game Showcase](docs/images/showcase.jpg)
+
+- **悬浮审批卡片 (RequestOverlay)**：殖民者自主决策生成建议提案卡片（包含决策理由、目标与动作参数），支持玩家一键批准、拒绝或自动采纳。
+- **迷你胶囊自动折叠**：无待审批请求时自动平滑收缩为右上角紧凑胶囊 `[Pending: 0]`，新建议到达时即时展开，不遮挡战局与建造视野。
+
 ## 安装步骤
 
 ### 从源码安装
@@ -202,6 +209,13 @@ RimMind is an AI-driven RimWorld mod suite that connects to Large Language Model
 | RimMind-Bridge-RimChat | Coordination & mutual exclusion layer with RimChat mod | Core, RimChat | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimChat) |
 | RimMind-Bridge-RimTalk | Dialogue bubbles & context bridge with RimTalk mod | Core, RimTalk | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimTalk) |
 | RimMind-Extension-ModelService | Extended model gateway, OpenCode Go subscription & multi-endpoint load balancing | Core | [Link](https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Extension-ModelService) |
+
+## 🎮 In-Game Showcase / Feature Demonstration
+
+![RimMind-Advisor In-Game Showcase](docs/images/showcase.jpg)
+
+- **Floating Approval Card (RequestOverlay)**: Autonomous colonist proposals are formatted into clean approval cards (showing intention, rationale, and action parameters), supporting 1-click Approve, Reject, or Auto-execute.
+- **Auto-Collapsing Mini-Pill**: Smoothly shrinks into a non-intrusive compact pill `[Pending: 0]` when the queue is clear, automatically expanding when new colonist advice arrives without obscuring the combat or construction view.
 
 ## Installation
 
