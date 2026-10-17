@@ -136,8 +136,24 @@ namespace RimMind.Advisor.Advisor
                         var injured = pawn.Map?.mapPawns.FreeColonistsSpawned
                             .Where(p => p != pawn && p.health?.HasHediffsNeedingTend() == true)
                             .ToList();
-                        if (injured == null || injured.Count == 0) return null;
-                        return "RimMind.Advisor.Prompt.TendPawnHint".Translate(injured[0].Name.ToStringShort);
+                        if (injured != null && injured.Count > 0)
+                        {
+                            string colName = injured[0].Name?.ToStringShort ?? injured[0].LabelShort;
+                            return "RimMind.Advisor.Prompt.TendPawnHint".Translate(colName);
+                        }
+
+                        if (pawn.Map != null)
+                        {
+                            var injuredAnimal = RimMindPawnLookup.GetActiveSpawnedColonyAnimals(pawn.Map)
+                                .FirstOrDefault(a => a.health?.HasHediffsNeedingTend() == true);
+                            if (injuredAnimal != null)
+                            {
+                                string name = injuredAnimal.Name?.ToStringShort ?? injuredAnimal.LabelShort;
+                                return "RimMind.Advisor.Prompt.TendPawnHint".Translate(name);
+                            }
+                        }
+
+                        return null;
                     }
 
                 case "rescue_pawn":
@@ -145,8 +161,24 @@ namespace RimMind.Advisor.Advisor
                         var downed = pawn.Map?.mapPawns.FreeColonistsSpawned
                             .Where(p => p != pawn && p.Downed)
                             .ToList();
-                        if (downed == null || downed.Count == 0) return null;
-                        return "RimMind.Advisor.Prompt.RescuePawnHint".Translate(downed[0].Name.ToStringShort);
+                        if (downed != null && downed.Count > 0)
+                        {
+                            string colName = downed[0].Name?.ToStringShort ?? downed[0].LabelShort;
+                            return "RimMind.Advisor.Prompt.RescuePawnHint".Translate(colName);
+                        }
+
+                        if (pawn.Map != null)
+                        {
+                            var downedAnimal = RimMindPawnLookup.GetActiveSpawnedColonyAnimals(pawn.Map)
+                                .FirstOrDefault(a => a.Downed || (a.needs?.food != null && a.needs.food.CurCategory >= HungerCategory.Starving));
+                            if (downedAnimal != null)
+                            {
+                                string name = downedAnimal.Name?.ToStringShort ?? downedAnimal.LabelShort;
+                                return "RimMind.Advisor.Prompt.RescuePawnHint".Translate(name);
+                            }
+                        }
+
+                        return null;
                     }
 
                 case "inspire_work":

@@ -145,11 +145,6 @@ namespace RimMind.Advisor.Advisor
             {
                 taskDriver.SetReasoningContent(response.ReasoningContent);
                 toolCalls = taskDriver.TryParseContentAsToolCallsIfEnabled(response.Content);
-                if (toolCalls != null)
-                {
-                    Log.Message(
-                        $"[RimMind-Advisor] Parsed {toolCalls.Count} action(s) from content fallback for {_pawn.Name.ToStringShort}");
-                }
             }
 
             if (toolCalls == null || toolCalls.Count == 0)
@@ -162,6 +157,7 @@ namespace RimMind.Advisor.Advisor
 
             var approvedCalls = new List<ClientStructuredToolCall>();
             var approvedReasons = new Dictionary<string, string?>();
+            var deferredCalls = new List<(ClientStructuredToolCall toolCall, RiskLevel riskLevel)>();
             requestCycle.BeginResponseBatch();
             try
             {
@@ -180,7 +176,7 @@ namespace RimMind.Advisor.Advisor
                     var riskLevel = AdvisorToolRiskResolver.Resolve(toolCall.Name);
                     if (ShouldDeferForApproval(riskLevel, toolCall.Arguments))
                     {
-                        SubmitToolCallForApproval(toolCall, riskLevel, taskDriver, requestCycle);
+                        deferredCalls.Add((toolCall, riskLevel));
                     }
                     else
                     {
@@ -188,6 +184,15 @@ namespace RimMind.Advisor.Advisor
                         approvedReasons[toolCall.Id ?? toolCall.Name] =
                             ExtractToolCallReason(toolCall) ?? toolCall.Name;
                     }
+                }
+
+                if (deferredCalls.Count > 1)
+                {
+                    SubmitCabinetProposalForApproval(deferredCalls, taskDriver, requestCycle);
+                }
+                else if (deferredCalls.Count == 1)
+                {
+                    SubmitToolCallForApproval(deferredCalls[0].toolCall, deferredCalls[0].riskLevel, taskDriver, requestCycle);
                 }
 
                 if (approvedCalls.Count > 0)
@@ -215,9 +220,6 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyDictionary<string, string?> approvedReasons)
         {
             var results = ExecuteToolCallsSafely(approvedCalls, requestId);
-            var succeeded = results.Count(result => !result.IsError);
-            Log.Message(
-                $"[RimMind-Advisor] ToolCalls: executed {succeeded}/{approvedCalls.Count} tools for {_pawn.Name.ToStringShort}");
 
             foreach (var result in results.Where(result => result.IsError))
             {
@@ -259,7 +261,7 @@ namespace RimMind.Advisor.Advisor
                     MoteMaker.ThrowText(
                         _pawn.DrawPos,
                         _pawn.Map,
-                        moteText,
+                        FormatAdvisorMoteText(moteText),
                         new Color(0.6f, 0.9f, 1f),
                         5f);
                 }
@@ -289,8 +291,6 @@ namespace RimMind.Advisor.Advisor
                 if (!taskDriver.ShouldRequestFeedback())
                 {
                     requestCycle.DiscardQueuedFeedback();
-                    Log.Message(
-                        $"[RimMind-Advisor] Max tool call depth ({AdvisorTaskDriver.MaxToolCallDepth}) reached for {_pawn.Name.ToStringShort}");
                     CompleteRequestCycle(taskDriver, requestCycle);
                     return;
                 }
@@ -376,8 +376,6 @@ namespace RimMind.Advisor.Advisor
 
             if (!Settings.enableRequestSystem)
             {
-                Log.Message(
-                    $"[RimMind-Advisor] Tool '{toolCall.Name}' blocked by risk level {riskLevel} (approval system disabled)");
                 RecordToolHistory(toolCall.Name, reason, "blocked");
                 return false;
             }
@@ -471,6 +469,155 @@ namespace RimMind.Advisor.Advisor
                 RecordToolHistory(toolCall.Name, reason, "approval_error");
                 RimMindErrors.Warn(
                     $"[RimMind-Advisor] Failed to register approval for '{toolCall.Name}': {exception.Message}");
+                return false;
+            }
+        }
+
+        private bool SubmitCabinetProposalForApproval(
+            IReadOnlyList<(ClientStructuredToolCall toolCall, RiskLevel riskLevel)> deferredCalls,
+            AdvisorTaskDriver taskDriver,
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+        {
+            if (deferredCalls == null || deferredCalls.Count == 0) return false;
+
+            if (!Settings.enableRequestSystem)
+            {
+                foreach (var (toolCall, _) in deferredCalls)
+                {
+                    var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
+                    RecordToolHistory(toolCall.Name, reason, "blocked");
+                }
+                return false;
+            }
+
+            _approvalManager ??= new ApprovalManager(Settings);
+
+            string title = "RimMind.Advisor.Cabinet.StrategicProposalTitle".CanTranslate()
+                ? "RimMind.Advisor.Cabinet.StrategicProposalTitle".Translate(_pawn.Name?.ToStringShort ?? "Advisor").ToString()
+                : $"[Cabinet Card] Strategic Plan by {_pawn.Name?.ToStringShort ?? "Advisor"}";
+
+            var proposal = new CabinetProposal
+            {
+                Title = title,
+                Summary = taskDriver.LastReasoningContent ?? ""
+            };
+
+            var callsToExecute = new List<ClientStructuredToolCall>();
+            var reasonsToRecord = new List<string>();
+
+            foreach (var (toolCall, riskLevel) in deferredCalls)
+            {
+                var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
+                var arguments = ParseToolCallArguments(toolCall.Arguments);
+                arguments.TryGetValue("target", out var targetName);
+                arguments.TryGetValue("param", out var parameter);
+
+                proposal.Items.Add(new AdviceItem
+                {
+                    Action = toolCall.Name,
+                    Target = targetName,
+                    Param = parameter,
+                    Reason = reason,
+                    RiskLevel = riskLevel,
+                    request_type = AdvisorApprovalPolicy.IsExplicitRequest(toolCall.Arguments) ? "request" : "normal"
+                });
+
+                callsToExecute.Add(toolCall);
+                reasonsToRecord.Add(reason);
+            }
+
+            RequestEntry? approvalEntry = null;
+            try
+            {
+                approvalEntry = _approvalManager.SubmitCabinetProposal(
+                    proposal,
+                    _pawn,
+                    onAllApproved: () =>
+                    {
+                        if (!IsCurrentCycle(taskDriver, requestCycle))
+                            return;
+
+                        try
+                        {
+                            if (_pawn.Dead || _pawn.Map == null)
+                                return;
+
+                            var results = ExecuteToolCallsSafely(callsToExecute, null);
+                            for (int i = 0; i < callsToExecute.Count; i++)
+                            {
+                                var call = callsToExecute[i];
+                                var rsn = reasonsToRecord[i];
+                                taskDriver.BroadcastDecisionExecuted(call.Name, rsn);
+                            }
+
+                            foreach (var result in results)
+                            {
+                                var callId = result.ToolCallId ?? result.ToolName ?? "tool";
+                                RecordToolHistory(
+                                    result.ToolName ?? callId,
+                                    "Cabinet Plan",
+                                    result.IsError ? result.Content : "approved");
+                                if (result.IsError)
+                                {
+                                    RimMindErrors.Warn(
+                                        $"[RimMind-Advisor] Cabinet tool '{result.ToolName ?? "unknown"}' failed for {_pawn.Name?.ToStringShort ?? _pawn.LabelShort}: {result.Content}");
+                                }
+                            }
+
+                            string executedMote = "RimMind.Advisor.Cabinet.ExecutedMote".CanTranslate()
+                                ? "RimMind.Advisor.Cabinet.ExecutedMote".Translate().ToString()
+                                : "[RimMind] Cabinet plan approved & executed!";
+                            ShowToolThoughtBubble(executedMote);
+                            QueueFeedbackBatch(requestCycle, callsToExecute, results);
+                        }
+                        finally
+                        {
+                            FinishTrackedApproval(taskDriver, requestCycle, approvalEntry);
+                        }
+                    },
+                    onRejected: () =>
+                    {
+                        if (!IsCurrentCycle(taskDriver, requestCycle))
+                            return;
+
+                        try
+                        {
+                            foreach (var call in callsToExecute)
+                            {
+                                RecordToolHistory(call.Name, "Cabinet Plan", "rejected");
+                            }
+                        }
+                        finally
+                        {
+                            FinishTrackedApproval(taskDriver, requestCycle, approvalEntry);
+                        }
+                    },
+                    onDismissed: () =>
+                        FinishTrackedApproval(taskDriver, requestCycle, approvalEntry),
+                    beforeRegister: entry =>
+                    {
+                        approvalEntry = entry;
+                        requestCycle.TrackPendingApproval(
+                            entry,
+                            () => RimMindAPI.DismissPendingRequest(entry));
+                    });
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                if (approvalEntry != null)
+                {
+                    requestCycle.TryFinishApproval(approvalEntry);
+                    RimMindAPI.DismissPendingRequest(approvalEntry);
+                }
+
+                foreach (var (toolCall, _) in deferredCalls)
+                {
+                    RecordToolHistory(toolCall.Name, "Cabinet Plan", "approval_error");
+                }
+                RimMindErrors.Warn(
+                    $"[RimMind-Advisor] Failed to register cabinet approval for {_pawn.Name?.ToStringShort ?? _pawn.LabelShort}: {exception.Message}");
                 return false;
             }
         }
@@ -588,9 +735,39 @@ namespace RimMind.Advisor.Advisor
             MoteMaker.ThrowText(
                 _pawn.DrawPos,
                 _pawn.Map,
-                $"[RimMind] {reason}",
+                FormatAdvisorMoteText($"[RimMind] {reason}"),
                 new Color(0.6f, 0.9f, 1f),
                 5f);
+        }
+
+        private static string FormatAdvisorMoteText(string text, int maxLineLength = 22, int maxTotalLength = 66)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+
+            var normalized = text.Replace("\r", " ").Replace("\n", " ").Trim();
+            if (normalized.Length > maxTotalLength)
+            {
+                normalized = normalized.Substring(0, maxTotalLength - 1).TrimEnd() + "…";
+            }
+
+            if (normalized.Length <= maxLineLength)
+                return normalized;
+
+            var sb = new System.Text.StringBuilder(normalized.Length + 4);
+            int lineLen = 0;
+            for (int i = 0; i < normalized.Length; i++)
+            {
+                char c = normalized[i];
+                sb.Append(c);
+                lineLen++;
+                if (lineLen >= maxLineLength && i < normalized.Length - 1)
+                {
+                    sb.Append('\n');
+                    lineLen = 0;
+                }
+            }
+            return sb.ToString();
         }
     }
 }

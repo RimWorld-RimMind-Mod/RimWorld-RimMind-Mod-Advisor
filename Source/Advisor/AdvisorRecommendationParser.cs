@@ -62,43 +62,95 @@ namespace RimMind.Advisor.Advisor
             {
                 string trimmed = ExtractJsonObject(nonBlankContent.Trim());
                 var parsed = JsonConvert.DeserializeObject<Dictionary<string, object>>(trimmed);
-                if (parsed == null || !parsed.TryGetValue("advices", out object? advicesToken))
-                    return null;
-
-                var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>?>>(
-                    JsonConvert.SerializeObject(advicesToken));
-                if (advices == null || advices.Count == 0)
-                    return null;
-
-                var toolCalls = new List<ClientStructuredToolCall>();
-                foreach (var advice in advices)
+                if (parsed != null && parsed.TryGetValue("advices", out object? advicesToken))
                 {
-                    if (advice == null
-                        || !advice.TryGetValue("action", out string? actionName)
-                        || actionName.NullOrEmpty()
-                        || !_toolExists(actionName))
+                    var advices = JsonConvert.DeserializeObject<List<Dictionary<string, string>?>>(
+                        JsonConvert.SerializeObject(advicesToken));
+                    if (advices != null && advices.Count > 0)
                     {
-                        continue;
+                        var toolCalls = new List<ClientStructuredToolCall>();
+                        foreach (var advice in advices)
+                        {
+                            if (advice == null
+                                || !advice.TryGetValue("action", out string? actionName)
+                                || actionName.NullOrEmpty()
+                                || !_toolExists(actionName))
+                            {
+                                continue;
+                            }
+
+                            var args = new Dictionary<string, string>();
+                            CopyNonBlank(advice, args, "target");
+                            CopyNonBlank(advice, args, "param");
+                            CopyNonBlank(advice, args, "reason");
+                            toolCalls.Add(new ClientStructuredToolCall
+                            {
+                                Id = $"fallback_{toolCalls.Count}",
+                                Name = actionName,
+                                Arguments = JsonConvert.SerializeObject(args),
+                            });
+                        }
+
+                        if (toolCalls.Count > 0)
+                            return toolCalls;
                     }
-
-                    var args = new Dictionary<string, string>();
-                    CopyNonBlank(advice, args, "target");
-                    CopyNonBlank(advice, args, "param");
-                    CopyNonBlank(advice, args, "reason");
-                    toolCalls.Add(new ClientStructuredToolCall
-                    {
-                        Id = $"fallback_{toolCalls.Count}",
-                        Name = actionName,
-                        Arguments = JsonConvert.SerializeObject(args),
-                    });
                 }
-
-                return toolCalls.Count == 0 ? null : toolCalls;
             }
             catch (Exception)
             {
-                return null;
+                // Fall through to pseudo-function-call extraction
             }
+
+            return TryParsePseudoFunctionCall(nonBlankContent);
+        }
+
+        private List<ClientStructuredToolCall>? TryParsePseudoFunctionCall(string content)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                content.Trim(),
+                @"\b(?<tool>[a-z][a-z0-9_]{2,})\s*\((?<args>[\s\S]+?)\)?\s*$",
+                System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!match.Success)
+            {
+                match = System.Text.RegularExpressions.Regex.Match(
+                    content,
+                    @"(?<tool>[a-z][a-z0-9_]{2,})\s*\((?<args>[^)]*)\)",
+                    System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }
+            if (!match.Success)
+                return null;
+
+            string toolName = match.Groups["tool"].Value.Trim();
+            if (!_toolExists(toolName))
+                return null;
+
+            string argsBody = match.Groups["args"].Value;
+            var argsDict = new Dictionary<string, object>();
+            var kvMatches = System.Text.RegularExpressions.Regex.Matches(
+                argsBody,
+                @"(?<key>[a-zA-Z_][a-zA-Z0-9_]*)\)?\s*[:=]\s*(?:""(?<dq>(?:\\.|[^""])*)""|'(?<sq>(?:\\.|[^'])*)'|\((?<pq>[^)]*)\)|(?<raw>[^,)]+))");
+            foreach (System.Text.RegularExpressions.Match kv in kvMatches)
+            {
+                string key = kv.Groups["key"].Value.Trim();
+                string val = kv.Groups["dq"].Success
+                    ? kv.Groups["dq"].Value
+                    : kv.Groups["sq"].Success
+                        ? kv.Groups["sq"].Value
+                        : kv.Groups["pq"].Success
+                            ? kv.Groups["pq"].Value.Trim()
+                            : kv.Groups["raw"].Value.Trim();
+                argsDict[key] = val;
+            }
+
+            return new List<ClientStructuredToolCall>
+            {
+                new ClientStructuredToolCall
+                {
+                    Id = "fallback_pseudo_0",
+                    Name = toolName,
+                    Arguments = JsonConvert.SerializeObject(argsDict),
+                }
+            };
         }
 
         private static string ExtractJsonObject(string content)

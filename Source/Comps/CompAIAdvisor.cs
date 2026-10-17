@@ -9,7 +9,7 @@ namespace RimMind.Advisor.Comps
 {
     public class CompAIAdvisor : ThingComp
     {
-        public bool IsEnabled = false;
+        public bool IsEnabled = true;
 
         private AdvisorCycleCoordinator? _cycle;
 
@@ -105,7 +105,7 @@ namespace RimMind.Advisor.Comps
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", false);
+            Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", true);
             int lastTick = Cycle.LastRequestTick;
             Scribe_Values.Look(ref lastTick, "aiAdvisorLastRequestTick", -9999);
             if (Scribe.mode == LoadSaveMode.LoadingVars)

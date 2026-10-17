@@ -116,4 +116,14 @@ Available actions (from L3 layer):
 
 Tool Calling output: call assign_work function, param="Crafting", reason="Zero food — her Crafting(5) can produce goods to trade for food"</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
+
+  <!-- Cabinet Strategic Proposal & Approval Keys -->
+  <RimMind.Advisor.Cabinet.StrategicProposal>Colony Cabinet Strategic Proposal</RimMind.Advisor.Cabinet.StrategicProposal>
+  <RimMind.Advisor.Cabinet.StrategicProposalTitle>[Cabinet Card] Strategic Plan by {0}</RimMind.Advisor.Cabinet.StrategicProposalTitle>
+  <RimMind.Advisor.Cabinet.ProposedMeasures>Proposed Strategic Measures</RimMind.Advisor.Cabinet.ProposedMeasures>
+  <RimMind.Advisor.Cabinet.ApproveAll>Approve All</RimMind.Advisor.Cabinet.ApproveAll>
+  <RimMind.Advisor.Cabinet.ApproveSelected>Approve Selected</RimMind.Advisor.Cabinet.ApproveSelected>
+  <RimMind.Advisor.Cabinet.Inspect>Inspect</RimMind.Advisor.Cabinet.Inspect>
+  <RimMind.Advisor.Cabinet.Dismiss>Dismiss</RimMind.Advisor.Cabinet.Dismiss>
+  <RimMind.Advisor.Cabinet.ExecutedMote>[RimMind] Cabinet plan approved &amp; executed!</RimMind.Advisor.Cabinet.ExecutedMote>
 </LanguageData>

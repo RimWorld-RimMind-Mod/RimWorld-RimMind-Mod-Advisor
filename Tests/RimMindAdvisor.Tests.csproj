@@ -43,6 +43,7 @@
     <Compile Include="../Source/Extensions/AdvisorPromptHelper.cs" />
     <Compile Include="../Source/Extensions/InstantHintRegistry.cs" />
     <Compile Include="../Source/Concurrency/AdvisorRequestCapacity.cs" />
+    <Compile Include="../Source/Perception/ColonyMacroPerceiver.cs" />
   </ItemGroup>
 
   <ItemGroup>

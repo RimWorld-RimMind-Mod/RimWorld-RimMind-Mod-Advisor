@@ -116,4 +116,14 @@
 
 Tool Calling输出：调用 assign_work function，param="Crafting"，reason="食物储备严重不足，手工制作物品可以换取食物"</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
+
+  <!-- Cabinet Strategic Proposal & Approval Keys -->
+  <RimMind.Advisor.Cabinet.StrategicProposal>营地内阁战略提案</RimMind.Advisor.Cabinet.StrategicProposal>
+  <RimMind.Advisor.Cabinet.StrategicProposalTitle>【内阁决策卡】{0}的综合施政方案</RimMind.Advisor.Cabinet.StrategicProposalTitle>
+  <RimMind.Advisor.Cabinet.ProposedMeasures>建议采取的协同对策</RimMind.Advisor.Cabinet.ProposedMeasures>
+  <RimMind.Advisor.Cabinet.ApproveAll>一键全权批准</RimMind.Advisor.Cabinet.ApproveAll>
+  <RimMind.Advisor.Cabinet.ApproveSelected>批准勾选项</RimMind.Advisor.Cabinet.ApproveSelected>
+  <RimMind.Advisor.Cabinet.Inspect>详细审阅</RimMind.Advisor.Cabinet.Inspect>
+  <RimMind.Advisor.Cabinet.Dismiss>搁置/驳回</RimMind.Advisor.Cabinet.Dismiss>
+  <RimMind.Advisor.Cabinet.ExecutedMote>[RimMind] 内阁决议全权批准并执行！</RimMind.Advisor.Cabinet.ExecutedMote>
 </LanguageData>
