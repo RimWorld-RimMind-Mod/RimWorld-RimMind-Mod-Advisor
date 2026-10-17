@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RimMind.Advisor.Advisor;
+using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Context;
 using RimMind.Application.Common.Models.Context;
@@ -53,6 +54,41 @@ namespace RimMind.Advisor.Tests.Contracts
                 RimMindAPI.Context.ContextKeys.Definitions.Clear();
                 RimMindAPI.Tools.Definitions.Clear();
                 RimMindAPI.Request.Sent.Clear();
+            }
+        }
+
+        [Fact]
+        public async Task Advisor_history_formats_errors_without_collapsing_to_ignored()
+        {
+            RimMindAPI.Context.ContextKeys.Definitions.Clear();
+            var historyStore = new AdvisorHistoryStore(new RimWorld.Planet.World());
+
+            var pawn = new Pawn { thingIDNumber = 15 };
+            Find.CurrentMap = new Map();
+            Find.CurrentMap.mapPawns.FreeColonists.Add(pawn);
+
+            historyStore.AddRecord(pawn, new RimMind.Advisor.Data.AdvisorRequestRecord
+            {
+                action = "actions_place_blueprint",
+                reason = "build shelter",
+                result = "Insufficient steel: need 50, have 10",
+                tick = 100
+            });
+
+            try
+            {
+                AdvisorProviderRegistrar.RegisterAll();
+                var historyDef = RimMindAPI.Context.ContextKeys.Definitions.Single(d => d.Key == "advisor_history");
+                var context = new ProviderContext(ScenarioIds.Decision, "trace") { PawnId = 15 };
+                var text = await historyDef.Provider(context, CancellationToken.None);
+
+                Assert.NotNull(text);
+                Assert.Contains("Failed (Insufficient steel: need 50, have 10)", text);
+                Assert.DoesNotContain("Ignored", text);
+            }
+            finally
+            {
+                RimMindAPI.Context.ContextKeys.Definitions.Clear();
             }
         }
     }

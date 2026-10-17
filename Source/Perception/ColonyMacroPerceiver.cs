@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using RimMind.Domain.Common;
+using RimMind.Presentation.Api;
 using RimWorld;
 using Verse;
 
@@ -157,7 +158,7 @@ namespace RimMind.Advisor.Perception
 
             try
             {
-                var colonists = map.mapPawns?.FreeColonistsSpawned?.Where(p => !p.Dead).ToList() ?? new List<Pawn>();
+                var colonists = map.mapPawns?.FreeColonistsSpawned?.Where(p => RimMindPawnLookup.IsActiveSpawnedColonist(p)).ToList() ?? new List<Pawn>();
                 snapshot.ColonistCount = colonists.Count;
                 snapshot.DownedColonistCount = colonists.Count(p => p.Downed);
 

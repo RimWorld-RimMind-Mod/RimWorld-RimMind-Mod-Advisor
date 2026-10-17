@@ -102,6 +102,18 @@ namespace RimMind.Advisor.Comps
             }
         }
 
+        public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
+        {
+            ApprovalManager.CancelPendingForPawn(Pawn);
+            base.PostDeSpawn(map, mode);
+        }
+
+        public override void PostDestroy(DestroyMode mode, Map previousMap)
+        {
+            ApprovalManager.CancelPendingForPawn(Pawn);
+            base.PostDestroy(mode, previousMap);
+        }
+
         public override void PostExposeData()
         {
             base.PostExposeData();

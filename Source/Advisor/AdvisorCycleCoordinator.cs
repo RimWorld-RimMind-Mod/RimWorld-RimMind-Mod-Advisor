@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
@@ -115,7 +116,7 @@ namespace RimMind.Advisor.Advisor
                 requestCycle.FinishFeedback();
             }
 
-            if (_pawn.Dead || _pawn.Map == null)
+            if (!RimMindPawnLookup.IsActiveSpawnedColonist(_pawn) || _pawn.Downed)
             {
                 CompleteRequestCycle(taskDriver, requestCycle);
                 return;
@@ -173,8 +174,17 @@ namespace RimMind.Advisor.Advisor
                         continue;
                     }
 
+                    if (AdvisorToolRiskResolver.IsAutonomyForbidden(_pawn, toolCall.Name))
+                    {
+                        var blockedReason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
+                        RecordToolHistory(toolCall.Name, blockedReason, "blocked");
+                        RimMindErrors.Warn(
+                            $"[RimMind-Advisor] Tool '{toolCall.Name}' blocked by autonomy policy for {_pawn.Name.ToStringShort}.");
+                        continue;
+                    }
+
                     var riskLevel = AdvisorToolRiskResolver.Resolve(toolCall.Name);
-                    if (ShouldDeferForApproval(riskLevel, toolCall.Arguments))
+                    if (ShouldDeferForApproval(toolCall, riskLevel))
                     {
                         deferredCalls.Add((toolCall, riskLevel));
                     }
@@ -219,7 +229,8 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<ClientStructuredToolCall> approvedCalls,
             IReadOnlyDictionary<string, string?> approvedReasons)
         {
-            var results = ExecuteToolCallsSafely(approvedCalls, requestId);
+            var sanitizedCalls = approvedCalls.Select(StripPreApproval).ToList();
+            var results = ExecuteToolCallsSafely(sanitizedCalls, requestId);
 
             foreach (var result in results.Where(result => result.IsError))
             {
@@ -227,7 +238,7 @@ namespace RimMind.Advisor.Advisor
                     $"[RimMind-Advisor] Tool '{result.ToolName ?? "unknown"}' failed for {_pawn.Name.ToStringShort}: {result.Content}");
             }
 
-            foreach (var call in approvedCalls)
+            foreach (var call in sanitizedCalls)
                 taskDriver.BroadcastDecisionExecuted(call.Name, ExtractToolCallReason(call) ?? call.Name);
 
             var historyStore = AdvisorHistoryStore.Instance;
@@ -249,7 +260,7 @@ namespace RimMind.Advisor.Advisor
 
             if (Settings.showThoughtBubble && _pawn.Map != null)
             {
-                var reasons = approvedCalls
+                var reasons = sanitizedCalls
                     .Select(call => ExtractToolCallReason(call) ?? call.Name)
                     .Where(reason => !reason.NullOrEmpty())
                     .ToList();
@@ -267,7 +278,7 @@ namespace RimMind.Advisor.Advisor
                 }
             }
 
-            QueueFeedbackBatch(requestCycle, approvedCalls, results);
+            QueueFeedbackBatch(requestCycle, sanitizedCalls, results);
         }
 
         private bool IsCurrentCycle(
@@ -356,6 +367,10 @@ namespace RimMind.Advisor.Advisor
             }
         }
 
+        private bool ShouldDeferForApproval(ClientStructuredToolCall call, RiskLevel riskLevel) =>
+            ShouldDeferForApproval(riskLevel, call.Arguments) ||
+            AdvisorToolRiskResolver.RequiresAutonomyApproval(_pawn, call.Name ?? string.Empty);
+
         private bool ShouldDeferForApproval(RiskLevel riskLevel, string? arguments) =>
             AdvisorApprovalPolicy.RequiresApproval(
                 Settings.enableRiskApproval,
@@ -406,10 +421,11 @@ namespace RimMind.Advisor.Advisor
 
                         try
                         {
-                            if (_pawn.Dead || _pawn.Map == null)
+                            if (_pawn == null || !RimMindPawnLookup.IsActiveSpawnedColonist(_pawn) || _pawn.Downed)
                                 return;
 
-                            var calls = new List<ClientStructuredToolCall> { toolCall };
+                            var approvedCall = WithPreApproval(toolCall);
+                            var calls = new List<ClientStructuredToolCall> { approvedCall };
                             var results = ExecuteToolCallsSafely(calls, toolCall.Id);
                             taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);
                             foreach (var result in results)
@@ -504,9 +520,11 @@ namespace RimMind.Advisor.Advisor
 
             var callsToExecute = new List<ClientStructuredToolCall>();
             var reasonsToRecord = new List<string>();
+            var approvedIndices = new HashSet<int>();
 
-            foreach (var (toolCall, riskLevel) in deferredCalls)
+            for (int i = 0; i < deferredCalls.Count; i++)
             {
+                var (toolCall, riskLevel) = deferredCalls[i];
                 var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
                 var arguments = ParseToolCallArguments(toolCall.Arguments);
                 arguments.TryGetValue("target", out var targetName);
@@ -523,7 +541,10 @@ namespace RimMind.Advisor.Advisor
                 });
 
                 callsToExecute.Add(toolCall);
-                reasonsToRecord.Add(reason);
+                reasonsToRecord.Add(string.IsNullOrWhiteSpace(reason) ? "Cabinet Plan" : reason);
+
+                int capturedIndex = i;
+                proposal.ExecutionCallbacks.Add(() => approvedIndices.Add(capturedIndex));
             }
 
             RequestEntry? approvalEntry = null;
@@ -539,23 +560,43 @@ namespace RimMind.Advisor.Advisor
 
                         try
                         {
-                            if (_pawn.Dead || _pawn.Map == null)
+                            if (_pawn == null || !RimMindPawnLookup.IsActiveSpawnedColonist(_pawn) || _pawn.Downed)
                                 return;
 
-                            var results = ExecuteToolCallsSafely(callsToExecute, null);
+                            var indicesToRun = approvedIndices.Count > 0
+                                ? approvedIndices.OrderBy(idx => idx).ToList()
+                                : Enumerable.Range(0, callsToExecute.Count).ToList();
+
                             for (int i = 0; i < callsToExecute.Count; i++)
                             {
-                                var call = callsToExecute[i];
-                                var rsn = reasonsToRecord[i];
+                                if (!indicesToRun.Contains(i))
+                                {
+                                    var rejectedReason = !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan";
+                                    RecordToolHistory(callsToExecute[i].Name, rejectedReason, "rejected");
+                                }
+                            }
+
+                            var selectedCalls = indicesToRun.Select(i => callsToExecute[i]).ToList();
+                            var selectedReasons = indicesToRun.Select(i => !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan").ToList();
+                            var preApprovedCalls = selectedCalls.Select(WithPreApproval).ToList();
+                            var results = ExecuteToolCallsSafely(preApprovedCalls, null);
+                            for (int i = 0; i < selectedCalls.Count; i++)
+                            {
+                                var call = selectedCalls[i];
+                                var rsn = selectedReasons[i];
                                 taskDriver.BroadcastDecisionExecuted(call.Name, rsn);
                             }
 
-                            foreach (var result in results)
+                            for (int i = 0; i < results.Count; i++)
                             {
+                                var result = results[i];
                                 var callId = result.ToolCallId ?? result.ToolName ?? "tool";
+                                var rsn = i < selectedReasons.Count && !string.IsNullOrWhiteSpace(selectedReasons[i])
+                                    ? selectedReasons[i]
+                                    : "Cabinet Plan";
                                 RecordToolHistory(
                                     result.ToolName ?? callId,
-                                    "Cabinet Plan",
+                                    rsn,
                                     result.IsError ? result.Content : "approved");
                                 if (result.IsError)
                                 {
@@ -568,7 +609,7 @@ namespace RimMind.Advisor.Advisor
                                 ? "RimMind.Advisor.Cabinet.ExecutedMote".Translate().ToString()
                                 : "[RimMind] Cabinet plan approved & executed!";
                             ShowToolThoughtBubble(executedMote);
-                            QueueFeedbackBatch(requestCycle, callsToExecute, results);
+                            QueueFeedbackBatch(requestCycle, selectedCalls, results);
                         }
                         finally
                         {
@@ -582,9 +623,10 @@ namespace RimMind.Advisor.Advisor
 
                         try
                         {
-                            foreach (var call in callsToExecute)
+                            for (int i = 0; i < callsToExecute.Count; i++)
                             {
-                                RecordToolHistory(call.Name, "Cabinet Plan", "rejected");
+                                var rsn = !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan";
+                                RecordToolHistory(callsToExecute[i].Name, rsn, "rejected");
                             }
                         }
                         finally
@@ -612,9 +654,10 @@ namespace RimMind.Advisor.Advisor
                     RimMindAPI.DismissPendingRequest(approvalEntry);
                 }
 
-                foreach (var (toolCall, _) in deferredCalls)
+                for (int i = 0; i < callsToExecute.Count; i++)
                 {
-                    RecordToolHistory(toolCall.Name, "Cabinet Plan", "approval_error");
+                    var rsn = !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan";
+                    RecordToolHistory(callsToExecute[i].Name, rsn, "approval_error");
                 }
                 RimMindErrors.Warn(
                     $"[RimMind-Advisor] Failed to register cabinet approval for {_pawn.Name?.ToStringShort ?? _pawn.LabelShort}: {exception.Message}");
@@ -648,7 +691,8 @@ namespace RimMind.Advisor.Advisor
                 return;
             }
 
-            requestCycle.QueueFeedback(calls, results);
+            var cleanCalls = calls.Select(StripPreApproval).ToList();
+            requestCycle.QueueFeedback(cleanCalls, results);
         }
 
         private static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)
@@ -694,15 +738,81 @@ namespace RimMind.Advisor.Advisor
             }
         }
 
+        private static ClientStructuredToolCall WithPreApproval(ClientStructuredToolCall toolCall)
+        {
+            var injected = InjectPreApprovalArgument(toolCall.Arguments);
+            return new ClientStructuredToolCall
+            {
+                Id = toolCall.Id,
+                Name = toolCall.Name,
+                Arguments = injected
+            };
+        }
+
+        private static ClientStructuredToolCall StripPreApproval(ClientStructuredToolCall toolCall)
+        {
+            var stripped = StripPreApprovalArgument(toolCall.Arguments);
+            return new ClientStructuredToolCall
+            {
+                Id = toolCall.Id,
+                Name = toolCall.Name,
+                Arguments = stripped
+            };
+        }
+
+        internal static string StripPreApprovalArgument(string? argumentsJson)
+        {
+            if (string.IsNullOrWhiteSpace(argumentsJson))
+                return argumentsJson ?? string.Empty;
+
+            try
+            {
+                var jobj = JObject.Parse(argumentsJson!);
+                bool removed = false;
+                if (jobj.Remove("pre_approved")) removed = true;
+                if (jobj.Remove("is_approved")) removed = true;
+                return removed ? jobj.ToString(Formatting.None) : argumentsJson!;
+            }
+            catch
+            {
+                return argumentsJson!;
+            }
+        }
+
+        private static string InjectPreApprovalArgument(string? argumentsJson)
+        {
+            try
+            {
+                var jobj = string.IsNullOrWhiteSpace(argumentsJson)
+                    ? new JObject()
+                    : JObject.Parse(argumentsJson!);
+                jobj["pre_approved"] = true;
+                jobj["is_approved"] = true;
+                return jobj.ToString(Formatting.None);
+            }
+            catch
+            {
+                return argumentsJson ?? "{\"pre_approved\":true,\"is_approved\":true}";
+            }
+        }
+
         private static Dictionary<string, string> ParseToolCallArguments(string? arguments)
         {
-            if (arguments == null || arguments.Trim().Length == 0)
+            if (string.IsNullOrWhiteSpace(arguments))
                 return new Dictionary<string, string>();
 
             try
             {
-                return JsonConvert.DeserializeObject<Dictionary<string, string>>(arguments)
-                    ?? new Dictionary<string, string>();
+                var dict = new Dictionary<string, string>();
+                var jobj = JObject.Parse(arguments!);
+                foreach (var prop in jobj.Properties())
+                {
+                    if (prop.Value != null && prop.Value.Type != JTokenType.Null)
+                    {
+                        dict[prop.Name] = prop.Value.ToString();
+                    }
+                }
+                return dict;
             }
             catch (Exception exception)
             {

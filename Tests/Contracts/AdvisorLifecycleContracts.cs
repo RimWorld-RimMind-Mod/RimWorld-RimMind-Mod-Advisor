@@ -197,7 +197,7 @@ namespace RimMind.Advisor.Tests.Contracts
                         source,
                         StringComparison.Ordinal);
                     Assert.Contains(
-                        "foreach (var record in history.Take(5))",
+                        "foreach (var record in history.Skip(Math.Max(0, history.Count - 5)))",
                         source,
                         StringComparison.Ordinal);
                     Assert.Contains(
@@ -208,6 +208,16 @@ namespace RimMind.Advisor.Tests.Contracts
                         "return text.ToString().TrimEnd();",
                         source,
                         StringComparison.Ordinal);
+                }),
+                ("coordinator strips spoofed pre-approval and enforces autonomy approval and forbidden checks", () =>
+                {
+                    var coordinator = ReadSource("Advisor/AdvisorCycleCoordinator.cs");
+                    var component = ReadSource("Comps/CompAIAdvisor.cs");
+                    Assert.Contains("AdvisorToolRiskResolver.IsAutonomyForbidden", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("AdvisorToolRiskResolver.RequiresAutonomyApproval", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("StripPreApprovalArgument", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("proposal.ExecutionCallbacks.Add", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("ApprovalManager.CancelPendingForPawn(Pawn);", component, StringComparison.Ordinal);
                 }),
                 ("driver reset clears feedback depth reasoning and request state", () =>
                 {

@@ -8,11 +8,11 @@
 <p>
   <a href="https://rimworldgame.com/"><img src="https://img.shields.io/badge/RimWorld-1.6-brightgreen.svg" alt="RimWorld 1.6"></a>
   <a href="https://github.com/mcocdaa/RimWorld-RimMind-Mod-Core"><img src="https://img.shields.io/badge/核心依赖-RimMind--Core-blue.svg" alt="依赖: RimMind-Core"></a>
-  <a href="#"><img src="https://img.shields.io/badge/单元测试-18%2B%20通过-success.svg" alt="单元测试"></a>
+  <a href="#"><img src="https://img.shields.io/badge/单元测试-34%2B%20通过-success.svg" alt="单元测试"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
-<p><em>将 AI 心理感知沉淀为有理有据的战略建言，通过玩家审批与多轮反馈形成认知闭环。</em></p>
+<p><em>将 AI 心理感知沉淀为有理有据的战略建言，通过 5 大自治域分级策略、玩家审批与多轮反馈形成认知闭环。</em></p>
 
 </div>
 
@@ -20,12 +20,13 @@
 
 ## 📖 模块概览
 
-**RimMind-Advisor** 赋予殖民者根据当前身心状态、环境危机和长远期望提出建议的能力。它绝不野蛮接管玩家的最高统治权，而是以兼具角色个性与说服力的卡片向玩家建言献策。
+**RimMind-Advisor** 赋予殖民者根据当前身心状态、环境危机和全殖民地宏观预警提出建议的能力。通过 5 大自治领域策略路由，殖民者既可在授权域内自主执行紧急动作，也可将关键决策封装为结构化卡片交由玩家定夺。
 
 ### 核心特性
-- **优雅的玩家审批流**：建议卡片悬浮于屏幕，展示小人真实动机、紧迫度与拟采取举措，提供一键【批准】与【驳回】选项。
-- **迷你胶囊平滑自动收缩**：完成审批或超时后，悬浮窗顺滑收缩为极简胶囊 `[Pending: 0]`，彻底杜绝遮挡战场视线。
-- **3 轮执行反馈回路**：持续跟踪已批准动作的实际执行成效，小人能从成功或失误中总结经验教训。
+- **5 大自治域策略与 `AdvisorToolRiskResolver`**：支持在紧急生存（`EmergencySurvival`）、资源标记（`ResourceMarking`）、工作台清单（`WorktableBills`）、蓝图建造（`BlueprintPlacement`）与高风险操作（`HighRiskOperations`）5 大领域独立配置禁用、需审批或完全自主，优先于全局强制审批开关判定。
+- **玩家审批流与生命周期清理（`ApprovalManager`）**：悬浮建议卡片清晰展示建言动机与拟执行工具，提供一键【批准】/【驳回】；小人离图或阵亡时自动触发 `CancelPendingForPawn` 清理悬空请求。
+- **宏观态势感知与内阁会议（`ColonyMacroPerceiver` & `CabinetMeetingCoordinator`）**：定期扫描全殖民地粮食、医药、防务与士气危机，支持发起多工具联合内阁提案并在批准后直接执行 `ExecutionCallbacks`。
+- **迷你胶囊自动收缩与 3 轮执行反馈闭环**：无待办时自动折叠为 `[Pending: 0]` 迷你胶囊，并持续追踪动作结果完成多轮反馈评估。
 
 ---
 
@@ -40,14 +41,15 @@
 
 ```mermaid
 flowchart TD
-    Pawn["殖民者身心与环境感知"] --> Thought["心理 Thought 与愿望"]
-    Thought --> Advisor["RimMind-Advisor 智能体"]
-    Advisor --> Proposal["结构化建议方案"]
-    Proposal --> Overlay["建议审批卡片 (UI 悬浮窗)"]
+    Pawn["殖民者身心与 ColonyMacroPerceiver 宏观感知"] --> Thought["心理 Thought 与宏观危机预警"]
+    Thought --> Advisor["RimMind-Advisor (AdvisorCycleCoordinator)"]
+    Advisor --> Policy{"AdvisorToolRiskResolver (5 大自治域判定)"}
+    Policy -- FullAutonomous --> Execute["通过 Core ToolCall 派发动作"]
+    Policy -- RequireApproval --> Overlay["ApprovalManager / 内阁提案卡片 (UI)"]
     Overlay --> Decision{"玩家裁决"}
-    Decision -- 批准 --> Execute["通过 Core ToolCall 派发动作"]
+    Decision -- 批准 --> Execute
     Decision -- 驳回 --> Cooldown["记录反馈并进入冷静冷却"]
-    Execute --> Feedback["3 轮执行成效闭环评估"]
+    Execute --> Feedback["聚合反馈与 3 轮成效闭环评估"]
 ```
 
 ---
