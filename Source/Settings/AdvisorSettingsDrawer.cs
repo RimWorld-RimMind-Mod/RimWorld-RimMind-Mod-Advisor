@@ -35,11 +35,9 @@ namespace RimMind.Advisor.Settings
             {
                 string scanTicks = $"{RimMindAdvisorMod.Settings.pawnScanIntervalTicks}";
                 string scanSecs = $"{RimMindAdvisorMod.Settings.pawnScanIntervalTicks / 60f:F1}";
-                listing.Label("  " + "RimMind.Advisor.Settings.PawnScanInterval".Translate(scanTicks, scanSecs));
-                GUI.color = Color.gray;
-                listing.Label("    " + "RimMind.Advisor.Settings.PawnScanInterval.Desc".Translate());
-                GUI.color = Color.white;
-                RimMindAdvisorMod.Settings.pawnScanIntervalTicks = (int)listing.Slider(RimMindAdvisorMod.Settings.pawnScanIntervalTicks, 600f, 6000f);
+                string scanTip = "RimMind.Advisor.Settings.PawnScanInterval.Desc".Translate();
+                listing.LabelWithTooltip("  " + "RimMind.Advisor.Settings.PawnScanInterval".Translate(scanTicks, scanSecs), scanTip);
+                RimMindAdvisorMod.Settings.pawnScanIntervalTicks = (int)listing.SliderWithTooltip(RimMindAdvisorMod.Settings.pawnScanIntervalTicks, 600f, 6000f, scanTip);
                 RimMindAdvisorMod.Settings.pawnScanIntervalTicks = (RimMindAdvisorMod.Settings.pawnScanIntervalTicks / 100) * 100;
             }
             listing.CheckboxLabeled("RimMind.Advisor.Settings.EnableMoodTrigger".Translate(), ref RimMindAdvisorMod.Settings.enableMoodTrigger,
@@ -47,11 +45,9 @@ namespace RimMind.Advisor.Settings
             if (RimMindAdvisorMod.Settings.enableMoodTrigger)
             {
                 string moodPct = $"{RimMindAdvisorMod.Settings.moodThreshold * 100:F0}";
-                listing.Label("  " + "RimMind.Advisor.Settings.MoodThreshold".Translate(moodPct));
-                GUI.color = Color.gray;
-                listing.Label("    " + "RimMind.Advisor.Settings.MoodThreshold.Desc".Translate());
-                GUI.color = Color.white;
-                RimMindAdvisorMod.Settings.moodThreshold = listing.Slider(RimMindAdvisorMod.Settings.moodThreshold, 0.25f, 0.6f);
+                string moodTip = "RimMind.Advisor.Settings.MoodThreshold.Desc".Translate();
+                listing.LabelWithTooltip("  " + "RimMind.Advisor.Settings.MoodThreshold".Translate(moodPct), moodTip);
+                RimMindAdvisorMod.Settings.moodThreshold = listing.SliderWithTooltip(RimMindAdvisorMod.Settings.moodThreshold, 0.25f, 0.6f, moodTip);
             }
             if (!RimMindAdvisorMod.Settings.enableIdleTrigger && !RimMindAdvisorMod.Settings.enableMoodTrigger)
             {
@@ -69,24 +65,18 @@ namespace RimMind.Advisor.Settings
             SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Request".Translate());
             string cooldownHours = $"{RimMindAdvisorMod.Settings.requestCooldownTicks / 2500f:F1}";
             string cooldownTicks = $"{RimMindAdvisorMod.Settings.requestCooldownTicks}";
-            listing.Label("RimMind.Advisor.Settings.RequestCooldown".Translate(cooldownHours, cooldownTicks));
-            GUI.color = Color.gray;
-            listing.Label("  " + "RimMind.Advisor.Settings.RequestCooldown.Desc".Translate());
-            GUI.color = Color.white;
-            RimMindAdvisorMod.Settings.requestCooldownTicks = (int)listing.Slider(RimMindAdvisorMod.Settings.requestCooldownTicks, 3600f, 72000f);
+            string cooldownTip = "RimMind.Advisor.Settings.RequestCooldown.Desc".Translate();
+            listing.LabelWithTooltip("RimMind.Advisor.Settings.RequestCooldown".Translate(cooldownHours, cooldownTicks), cooldownTip);
+            RimMindAdvisorMod.Settings.requestCooldownTicks = (int)listing.SliderWithTooltip(RimMindAdvisorMod.Settings.requestCooldownTicks, 3600f, 72000f, cooldownTip);
             RimMindAdvisorMod.Settings.requestCooldownTicks = (RimMindAdvisorMod.Settings.requestCooldownTicks / 600) * 600;
 
-            listing.Label("RimMind.Advisor.Settings.MaxConcurrent".Translate($"{RimMindAdvisorMod.Settings.maxConcurrentRequests}"));
-            GUI.color = Color.gray;
-            listing.Label("  " + "RimMind.Advisor.Settings.MaxConcurrent.Desc".Translate());
-            GUI.color = Color.white;
-            RimMindAdvisorMod.Settings.maxConcurrentRequests = (int)listing.Slider(RimMindAdvisorMod.Settings.maxConcurrentRequests, 1f, 5f);
+            string maxConcTip = "RimMind.Advisor.Settings.MaxConcurrent.Desc".Translate();
+            listing.LabelWithTooltip("RimMind.Advisor.Settings.MaxConcurrent".Translate($"{RimMindAdvisorMod.Settings.maxConcurrentRequests}"), maxConcTip);
+            RimMindAdvisorMod.Settings.maxConcurrentRequests = (int)listing.SliderWithTooltip(RimMindAdvisorMod.Settings.maxConcurrentRequests, 1f, 5f, maxConcTip);
 
-            listing.Label("RimMind.Advisor.Settings.RequestExpire".Translate($"{RimMindAdvisorMod.Settings.requestExpireTicks / 60000f:F2}"));
-            GUI.color = Color.gray;
-            listing.Label("  " + "RimMind.Advisor.Settings.RequestExpire.Desc".Translate());
-            GUI.color = Color.white;
-            RimMindAdvisorMod.Settings.requestExpireTicks = (int)listing.Slider(RimMindAdvisorMod.Settings.requestExpireTicks, 3600f, 120000f);
+            string expireTip = "RimMind.Advisor.Settings.RequestExpire.Desc".Translate();
+            listing.LabelWithTooltip("RimMind.Advisor.Settings.RequestExpire".Translate($"{RimMindAdvisorMod.Settings.requestExpireTicks / 60000f:F2}"), expireTip);
+            RimMindAdvisorMod.Settings.requestExpireTicks = (int)listing.SliderWithTooltip(RimMindAdvisorMod.Settings.requestExpireTicks, 3600f, 120000f, expireTip);
             RimMindAdvisorMod.Settings.requestExpireTicks = (RimMindAdvisorMod.Settings.requestExpireTicks / 1500) * 1500;
 
             SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.Approval".Translate());
@@ -102,13 +92,10 @@ namespace RimMind.Advisor.Settings
             }
             if (RimMindAdvisorMod.Settings.enableRiskApproval)
             {
-                string[] riskLabels = new[] { "Low", "Medium", "High", "Critical" };
-                string currentLabel = RimMindAdvisorMod.Settings.autoBlockRiskLevel.ToString();
-                listing.Label("RimMind.Advisor.Settings.AutoBlockRiskLevel".Translate(currentLabel));
-                GUI.color = Color.gray;
-                listing.Label("  " + "RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc".Translate());
-                GUI.color = Color.white;
-                int riskVal = (int)listing.Slider((float)RimMindAdvisorMod.Settings.autoBlockRiskLevel, 0f, 3f);
+                string currentLabel = AdvisorPromptHelper.RiskTag(RimMindAdvisorMod.Settings.autoBlockRiskLevel);
+                string riskTip = "RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc".Translate();
+                listing.LabelWithTooltip("RimMind.Advisor.Settings.AutoBlockRiskLevel".Translate(currentLabel), riskTip);
+                int riskVal = (int)listing.SliderWithTooltip((float)RimMindAdvisorMod.Settings.autoBlockRiskLevel, 0f, 3f, riskTip);
                 RimMindAdvisorMod.Settings.autoBlockRiskLevel = (RiskLevel)riskVal;
             }
 

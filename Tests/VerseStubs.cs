@@ -19,6 +19,7 @@ namespace Verse
         public static bool NullOrEmpty(this string? s) => string.IsNullOrEmpty(s);
         public static string Translate(this string key) => key;
         public static string Translate(this string key, params object[] args) => key;
+        public static bool CanTranslate(this string key) => true;
     }
 
     public class Pawn
@@ -122,6 +123,8 @@ namespace Verse
     {
         public List<Pawn> AllPawns = new List<Pawn>();
         public List<Pawn> FreeColonists = new List<Pawn>();
+        public List<Pawn> FreeColonistsSpawned = new List<Pawn>();
+        public List<Pawn> SpawnedColonyAnimals = new List<Pawn>();
     }
 }
 
@@ -289,6 +292,27 @@ namespace RimMind.Presentation.Api
         }
 
         public static bool IsEligibleColonist(Verse.Pawn? pawn) => pawn != null && !pawn.Dead;
+        public static bool IsActiveColonyAnimal(Verse.Pawn? pawn) => pawn != null && !pawn.Dead;
+
+        public static IEnumerable<Verse.Pawn> GetEligibleColonists(Verse.Map? map = null)
+        {
+            var targetMap = map ?? Verse.Find.CurrentMap;
+            if (targetMap?.mapPawns?.FreeColonists != null)
+            {
+                foreach (var p in targetMap.mapPawns.FreeColonists)
+                    if (IsEligibleColonist(p)) yield return p;
+            }
+        }
+
+        public static IEnumerable<Verse.Pawn> GetActiveSpawnedColonyAnimals(Verse.Map? map = null)
+        {
+            var targetMap = map ?? Verse.Find.CurrentMap;
+            if (targetMap?.mapPawns?.SpawnedColonyAnimals != null)
+            {
+                foreach (var p in targetMap.mapPawns.SpawnedColonyAnimals)
+                    if (IsActiveColonyAnimal(p)) yield return p;
+            }
+        }
     }
 }
 

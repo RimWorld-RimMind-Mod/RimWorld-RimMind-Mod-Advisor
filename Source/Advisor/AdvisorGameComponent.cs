@@ -2,6 +2,7 @@ using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
 using RimMind.Advisor.Settings;
 using RimMind.Presentation.Api;
+using RimWorld;
 using Verse;
 
 namespace RimMind.Advisor.Advisor
@@ -48,7 +49,9 @@ namespace RimMind.Advisor.Advisor
 
             foreach (var map in Find.Maps)
             {
-                foreach (var pawn in map.mapPawns.FreeColonists)
+                bool hasCrisisAlert = HasColonyCrisisAlert(map);
+
+                foreach (var pawn in RimMindPawnLookup.GetEligibleColonists(map))
                 {
                     if (capacity.Remaining == 0) return;
 
@@ -57,9 +60,16 @@ namespace RimMind.Advisor.Advisor
                     if (RimMindAPI.IsAgentActive(pawn.ThingID)) continue;
 
                     bool shouldTrigger = comp.ShouldIdleTrigger() || comp.ShouldMoodTrigger();
+                    if (!shouldTrigger && comp.IsIdle() && HasDistressedColonyAnimals(map))
+                    {
+                        shouldTrigger = true;
+                    }
+                    if (!shouldTrigger && hasCrisisAlert)
+                    {
+                        shouldTrigger = true;
+                    }
                     if (!shouldTrigger) continue;
 
-                    if (Rand.Value > settings.macroCheckChance) continue;
                     float scale = RimMindAPI.Settings.ActivityFrequencyScale;
                     float effectiveChance = UnityEngine.Mathf.Clamp(settings.macroCheckChance * scale, 0.05f, 0.95f);
                     if (Rand.Value > effectiveChance) continue;
@@ -75,6 +85,63 @@ namespace RimMind.Advisor.Advisor
                     comp.RequestAdvice(settings);
                 }
             }
+        }
+
+        private static bool HasDistressedColonyAnimals(Map map)
+        {
+            var animals = RimMindPawnLookup.GetActiveSpawnedColonyAnimals(map);
+            if (animals == null) return false;
+            foreach (var animal in animals)
+            {
+                if (animal.Downed) return true;
+                if (animal.health?.HasHediffsNeedingTend() == true) return true;
+                if (animal.needs?.food?.CurCategory >= HungerCategory.UrgentlyHungry) return true;
+            }
+            return false;
+        }
+
+        private static Alert_RolesEmpty? _cachedRolesAlert;
+        private static Alert_ColonistsIdle? _cachedIdleAlert;
+        private static System.Reflection.FieldInfo? _activeAlertsField;
+
+        private static bool HasColonyCrisisAlert(Map map)
+        {
+            try
+            {
+                if (ModsConfig.IdeologyActive)
+                {
+                    _cachedRolesAlert ??= new Alert_RolesEmpty();
+                    if (_cachedRolesAlert.GetReport().active) return true;
+                }
+
+                _cachedIdleAlert ??= new Alert_ColonistsIdle();
+                if (_cachedIdleAlert.GetReport().active) return true;
+
+                if (Find.UIRoot is UIRoot_Play playUi && playUi.alerts != null)
+                {
+                    _activeAlertsField ??= HarmonyLib.AccessTools.Field(typeof(AlertsReadout), "activeAlerts");
+                    if (_activeAlertsField?.GetValue(playUi.alerts) is System.Collections.Generic.List<Alert> activeAlerts)
+                    {
+                        for (int i = 0; i < activeAlerts.Count; i++)
+                        {
+                            var alert = activeAlerts[i];
+                            if (alert == null) continue;
+                            if (alert is Alert_RolesEmpty || alert is Alert_ColonistsIdle) return true;
+                            string typeName = alert.GetType().Name;
+                            if (typeName.IndexOf("Role", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                typeName.IndexOf("Idle", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception)
+            {
+                // Silently ignore during uninitialized states
+            }
+            return false;
         }
 
         public override void ExposeData()

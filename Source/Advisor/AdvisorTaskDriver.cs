@@ -48,6 +48,16 @@ namespace RimMind.Advisor.Advisor
 
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
+            string? macroAugmentation = null;
+#if !RIMMIND_ADVISOR_TESTS
+            if (_pawn.Map != null)
+            {
+                var snapshot = Perception.ColonyMacroPerceiver.CaptureSnapshot(_pawn.Map);
+                var macroState = Perception.ColonyMacroPerceiver.Evaluate(snapshot);
+                macroAugmentation = Perception.ColonyMacroPerceiver.FormatPromptAugmentation(macroState);
+            }
+#endif
+
             var envelope = AdvisorRequestAugmentationFactory.Create(
                 npcId,
                 schema,
@@ -57,7 +67,8 @@ namespace RimMind.Advisor.Advisor
                 tools,
                 400,
                 0.7f,
-                expireAtTicks);
+                expireAtTicks,
+                macroAugmentation);
 
             RimMindAPI.Request.Send(envelope, (result, context) =>
             {

@@ -15,6 +15,7 @@ namespace RimMind.Advisor.Advisor
         public const string LegacyJsonFallbackId = "advisor.legacy-json-fallback";
         public const string CustomPromptId = "advisor.custom-prompt";
         public const string RejectedDecisionsId = "advisor.rejected-decisions";
+        public const string ColonyMacroStatusId = "advisor.colony-macro-status";
 
         private const string LegacyJsonFallbackContent =
             "[Legacy compatibility] Native ToolCall is preferred. If your model cannot emit tool_calls, respond with JSON object {\"advices\":[{\"action\":\"tool.id\",\"param\":\"{}\",\"reason\":\"short reason\"}]}.";
@@ -28,9 +29,12 @@ namespace RimMind.Advisor.Advisor
             List<StructuredTool>? tools = null,
             int maxTokens = 400,
             float temperature = 0.7f,
-            int? expireAtTicks = null)
+            int? expireAtTicks = null,
+            string? colonyMacroStatus = null)
         {
             var augmentations = new List<PromptAugmentation>();
+            if (!string.IsNullOrWhiteSpace(colonyMacroStatus))
+                augmentations.Add(new PromptAugmentation(ColonyMacroStatusId, colonyMacroStatus!, 5));
             if (enableLegacyJsonFallback)
                 augmentations.Add(new PromptAugmentation(LegacyJsonFallbackId, LegacyJsonFallbackContent, 10));
             if (!string.IsNullOrWhiteSpace(customPrompt))

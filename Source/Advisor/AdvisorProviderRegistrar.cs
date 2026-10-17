@@ -62,7 +62,9 @@ namespace RimMind.Advisor.Advisor
                 {
                     if (ctx.Scenario != RimMindAPI.Context.ScenarioDecision) return null;
                     var instruction = string.Join("\n\n", new[] { "Role", "Goal", "Process", "Constraint", "Output", "FieldRules", "OutputRules", "RiskControl", "DiversityHint", "RequestRules", "Example" }
-                        .Select(k => (string)$"RimMind.Advisor.Prompt.TaskInstruction.{k}".Translate())
+                        .Select(k => $"RimMind.Advisor.Prompt.TaskInstruction.{k}")
+                        .Where(key => key.CanTranslate())
+                        .Select(key => (string)key.Translate())
                         .Where(t => !string.IsNullOrEmpty(t)));
                     return instruction;
                 }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
