@@ -86,6 +86,87 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Equal(MechanismOperationType.Trigger, AdvisorToolRiskResolver.ResolveOperation("Trigger"));
                     Assert.Null(AdvisorToolRiskResolver.ResolveOperation("unknown"));
                     Assert.Equal(RiskLevel.Low, AdvisorToolRiskResolver.Resolve("missing-mechanism.set"));
+                }),
+                ("tool definitions inherit manifest risk and require approval escalates to critical", () =>
+                {
+                    try
+                    {
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
+                            Id = "actions_high_risk",
+                            Manifest = new ToolManifest { RiskLevel = RiskLevel.High, RequiresApproval = false }
+                        });
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
+                            Id = "actions_needs_approval",
+                            Manifest = new ToolManifest { RiskLevel = RiskLevel.Low, RequiresApproval = true }
+                        });
+
+                        Assert.Equal(RiskLevel.High, AdvisorToolRiskResolver.Resolve("actions_high_risk"));
+                        Assert.Equal(RiskLevel.Critical, AdvisorToolRiskResolver.Resolve("actions_needs_approval"));
+                    }
+                    finally
+                    {
+                        RimMindAPI.Tools.Definitions.Clear();
+                    }
+                }),
+                ("autonomy domain mapping resolves risk, approval, and forbidden state", () =>
+                {
+                    var pawn = new Pawn { thingIDNumber = 10 };
+                    RimMindAPI.Autonomy.Policy = RimMind.Domain.Agent.Policies.AgentAutonomyPolicy.CreateDefault();
+                    try
+                    {
+                        Assert.Equal(RiskLevel.Medium, AdvisorToolRiskResolver.Resolve("actions_place_blueprint"));
+                        Assert.Equal(RiskLevel.Medium, AdvisorToolRiskResolver.Resolve("actions_add_worktable_bill"));
+                        Assert.Equal(RiskLevel.Low, AdvisorToolRiskResolver.Resolve("actions_designate_resources"));
+                        Assert.True(AdvisorToolRiskResolver.RequiresAutonomyApproval(pawn, "actions_place_blueprint"));
+                        Assert.False(AdvisorToolRiskResolver.RequiresAutonomyApproval(pawn, "actions_designate_resources"));
+                        Assert.False(AdvisorToolRiskResolver.IsAutonomyForbidden(pawn, "actions_place_blueprint"));
+
+                        RimMindAPI.Autonomy.SetLevel(
+                            pawn,
+                            RimMind.Domain.Agent.Policies.AutonomyDomain.BlueprintPlacement,
+                            RimMind.Domain.Agent.Policies.AutonomyLevel.Disabled);
+                        Assert.True(AdvisorToolRiskResolver.IsAutonomyForbidden(pawn, "actions_place_blueprint"));
+                    }
+                    finally
+                    {
+                        RimMindAPI.Autonomy.Policy = RimMind.Domain.Agent.Policies.AgentAutonomyPolicy.CreateDefault();
+                    }
+                }),
+                ("CancelPendingForPawn dismisses only that pawn's pending requests", () =>
+                {
+                    var settings = new RimMindAdvisorSettings { requestExpireTicks = 600 };
+                    var manager = new ApprovalManager(settings);
+                    RimMindAPI.ClearPendingRequests();
+                    int dismissed1 = 0;
+                    int dismissed2 = 0;
+                    var pawn1 = new Pawn { thingIDNumber = 101 };
+                    var pawn2 = new Pawn { thingIDNumber = 102 };
+                    try
+                    {
+                        manager.SubmitForApproval(
+                            new AdviceItem { Action = "action.one" },
+                            pawn1,
+                            () => { },
+                            () => { },
+                            () => dismissed1++);
+                        manager.SubmitForApproval(
+                            new AdviceItem { Action = "action.two" },
+                            pawn2,
+                            () => { },
+                            () => { },
+                            () => dismissed2++);
+
+                        ApprovalManager.CancelPendingForPawn(pawn1);
+                        Assert.Equal(1, dismissed1);
+                        Assert.Equal(0, dismissed2);
+                        Assert.Single(RimMindAPI.PendingRequests);
+                    }
+                    finally
+                    {
+                        RimMindAPI.ClearPendingRequests();
+                    }
                 }));
         }
 

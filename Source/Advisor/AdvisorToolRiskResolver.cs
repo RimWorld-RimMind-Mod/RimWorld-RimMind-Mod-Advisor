@@ -1,40 +1,163 @@
 using System;
 using System.Collections.Generic;
+using RimMind.Domain.Agent.Policies;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
+using Verse;
 
 namespace RimMind.Advisor.Advisor
 {
     internal static class AdvisorToolRiskResolver
     {
+        private static readonly Dictionary<string, AutonomyDomain> ToolAutonomyDomainMap
+            = new Dictionary<string, AutonomyDomain>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "actions_place_blueprint", AutonomyDomain.BlueprintPlacement },
+                { "actions_plan_room_project", AutonomyDomain.BlueprintPlacement },
+                { "actions_designate_resources", AutonomyDomain.ResourceMarking },
+                { "actions_manage_zone", AutonomyDomain.ResourceMarking },
+                { "actions_add_worktable_bill", AutonomyDomain.WorktableBills },
+                { "actions_manage_equipment", AutonomyDomain.EmergencySurvival },
+                { "actions_emergency_flee", AutonomyDomain.EmergencySurvival },
+                { "actions_stabilize_rest", AutonomyDomain.EmergencySurvival },
+                { "actions_eat_and_recreation", AutonomyDomain.EmergencySurvival },
+                { "actions_triage_patient", AutonomyDomain.EmergencySurvival },
+            };
+
         public static RiskLevel Resolve(string toolName)
         {
-            if (!TryParseToolName(toolName, out var mechanismId, out var operation))
+            if (string.IsNullOrWhiteSpace(toolName))
             {
                 return RiskLevel.Low;
             }
 
-            var mechanismRegistry = RimMindAPI.Mechanisms;
-            if (mechanismRegistry == null)
+            if (TryParseToolName(toolName, out var mechanismId, out var operation))
             {
-                return RiskLevel.Low;
+                try
+                {
+                    var mechanism = RimMindAPI.Mechanisms?.FindById(mechanismId);
+                    if (mechanism != null)
+                    {
+                        return MapMechanismRisk(mechanism.GetRiskForOperation(operation));
+                    }
+                }
+                catch
+                {
+                }
             }
 
-            var mechanism = mechanismRegistry.FindById(mechanismId);
-            if (mechanism == null)
+            if (TryGetAutonomyDomain(toolName, out var domain))
             {
-                return RiskLevel.Low;
+                return MapAutonomyDomainRisk(domain);
             }
 
-            var mechanismRisk = mechanism.GetRiskForOperation(operation);
-            return mechanismRisk switch
+            try
+            {
+                var manifest = RimMindAPI.Tools.FindById(toolName)?.Definition?.Manifest;
+                if (manifest != null && (manifest.RequiresApproval || manifest.RiskLevel != RiskLevel.Medium))
+                {
+                    if (manifest.RequiresApproval)
+                    {
+                        return RiskLevel.Critical;
+                    }
+                    return manifest.RiskLevel;
+                }
+            }
+            catch
+            {
+            }
+
+            return RiskLevel.Low;
+        }
+
+        public static bool TryGetAutonomyDomain(string? toolName, out AutonomyDomain domain)
+        {
+            if (string.IsNullOrWhiteSpace(toolName))
+            {
+                domain = default;
+                return false;
+            }
+
+            return ToolAutonomyDomainMap.TryGetValue(toolName!.Trim(), out domain);
+        }
+
+        public static bool RequiresAutonomyApproval(Pawn? pawn, string? toolName)
+        {
+            if (string.IsNullOrWhiteSpace(toolName))
+            {
+                return false;
+            }
+
+            if (TryGetAutonomyDomain(toolName, out var domain))
+            {
+                try
+                {
+                    if (RimMindAPI.Autonomy.RequiresApproval(pawn, domain))
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            try
+            {
+                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
+                if (manifest != null && manifest.RequiresApproval)
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        public static bool IsAutonomyForbidden(Pawn? pawn, string? toolName)
+        {
+            if (string.IsNullOrWhiteSpace(toolName))
+            {
+                return false;
+            }
+
+            if (TryGetAutonomyDomain(toolName, out var domain))
+            {
+                try
+                {
+                    return RimMindAPI.Autonomy.GetLevel(pawn, domain) == AutonomyLevel.Disabled;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        private static RiskLevel MapMechanismRisk(MechanismRisk mechanismRisk) =>
+            mechanismRisk switch
             {
                 MechanismRisk.Safe => RiskLevel.Low,
                 MechanismRisk.Moderate => RiskLevel.Medium,
                 MechanismRisk.Dangerous => RiskLevel.High,
                 _ => RiskLevel.Low
             };
-        }
+
+        private static RiskLevel MapAutonomyDomainRisk(AutonomyDomain domain) =>
+            domain switch
+            {
+                AutonomyDomain.EmergencySurvival => RiskLevel.Low,
+                AutonomyDomain.ResourceMarking => RiskLevel.Low,
+                AutonomyDomain.WorktableBills => RiskLevel.Medium,
+                AutonomyDomain.BlueprintPlacement => RiskLevel.Medium,
+                AutonomyDomain.HighRiskOperations => RiskLevel.High,
+                _ => RiskLevel.Low
+            };
 
         private static bool TryParseToolName(
             string toolName,

@@ -75,6 +75,7 @@
   <RimMind.Advisor.Prompt.ResultRejected>玩家拒绝</RimMind.Advisor.Prompt.ResultRejected>
   <RimMind.Advisor.Prompt.ResultBlocked>系统拦截</RimMind.Advisor.Prompt.ResultBlocked>
   <RimMind.Advisor.Prompt.ResultIgnored>已忽略</RimMind.Advisor.Prompt.ResultIgnored>
+  <RimMind.Advisor.Prompt.ResultFailed>执行失败 ({0})</RimMind.Advisor.Prompt.ResultFailed>
   <!-- Request System -->
   <RimMind.Advisor.Request.RiskAction>高危操作: {0}</RimMind.Advisor.Request.RiskAction>
   <RimMind.Advisor.Request.Approve>批准</RimMind.Advisor.Request.Approve>

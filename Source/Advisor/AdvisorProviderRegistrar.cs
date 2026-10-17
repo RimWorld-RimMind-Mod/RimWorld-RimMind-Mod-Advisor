@@ -30,16 +30,47 @@ namespace RimMind.Advisor.Advisor
                     if (records.Count == 0) return null;
                     var recent = records.Skip(Math.Max(0, records.Count - 5)).ToList();
                     var sb = new StringBuilder();
-                    sb.AppendLine("RimMind.Advisor.Prompt.RecentHistory".Translate());
+                    string historyHeader = "RimMind.Advisor.Prompt.RecentHistory".CanTranslate()
+                        ? "RimMind.Advisor.Prompt.RecentHistory".Translate().ToString()
+                        : "[Recent Request History]";
+                    sb.AppendLine(historyHeader);
                     foreach (var r in recent)
                     {
-                        string resultLabel = r.result switch
+                        string resultLabel;
+                        if (r.result == "approved")
                         {
-                            "approved" => "RimMind.Advisor.Prompt.ResultApproved".Translate(),
-                            "rejected" => "RimMind.Advisor.Prompt.ResultRejected".Translate(),
-                            "system_blocked" => "RimMind.Advisor.Prompt.ResultBlocked".Translate(),
-                            _ => "RimMind.Advisor.Prompt.ResultIgnored".Translate()
-                        };
+                            resultLabel = "RimMind.Advisor.Prompt.ResultApproved".CanTranslate()
+                                ? "RimMind.Advisor.Prompt.ResultApproved".Translate().ToString()
+                                : "Approved";
+                        }
+                        else if (r.result == "rejected")
+                        {
+                            resultLabel = "RimMind.Advisor.Prompt.ResultRejected".CanTranslate()
+                                ? "RimMind.Advisor.Prompt.ResultRejected".Translate().ToString()
+                                : "Player Rejected";
+                        }
+                        else if (r.result == "system_blocked" || r.result == "blocked")
+                        {
+                            resultLabel = "RimMind.Advisor.Prompt.ResultBlocked".CanTranslate()
+                                ? "RimMind.Advisor.Prompt.ResultBlocked".Translate().ToString()
+                                : "System Blocked";
+                        }
+                        else if (r.result == "ignored")
+                        {
+                            resultLabel = "RimMind.Advisor.Prompt.ResultIgnored".CanTranslate()
+                                ? "RimMind.Advisor.Prompt.ResultIgnored".Translate().ToString()
+                                : "Ignored";
+                        }
+                        else if (!string.IsNullOrWhiteSpace(r.result))
+                        {
+                            resultLabel = $"Failed ({r.result})";
+                        }
+                        else
+                        {
+                            resultLabel = "RimMind.Advisor.Prompt.ResultIgnored".CanTranslate()
+                                ? "RimMind.Advisor.Prompt.ResultIgnored".Translate().ToString()
+                                : "Ignored";
+                        }
                         sb.AppendLine($"- {r.action}: {r.reason} → {resultLabel}");
                     }
                     return sb.ToString().TrimEnd();
@@ -84,7 +115,7 @@ namespace RimMind.Advisor.Advisor
                         return string.Empty;
 
                     var text = new StringBuilder("[RimMind Advisor]");
-                    foreach (var record in history.Take(5))
+                    foreach (var record in history.Skip(Math.Max(0, history.Count - 5)))
                     {
                         text.AppendLine(
                             $"- {record.action}: {record.reason} ({record.result})");

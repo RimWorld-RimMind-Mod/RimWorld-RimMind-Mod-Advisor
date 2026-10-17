@@ -29,6 +29,8 @@ namespace Verse
         public string NameToStringShort = "TestPawn";
         public string ThingID = "TestPawn_0";
         public bool Dead;
+        public bool Downed;
+        public Map? Map;
         public bool Destroyed() => Dead;
         public Name Name = new Name();
         public T? GetComp<T>() where T : class => null;
@@ -221,11 +223,32 @@ namespace RimMind.Presentation.Api
                 int priority, bool overrideExisting) { }
         }
 
+        private sealed class StubToolHandler : RimMind.Application.Common.Interfaces.Tools.IToolHandler
+        {
+            public StubToolHandler(RimMind.Application.Common.Models.Tools.ToolDefinition definition)
+            {
+                Definition = definition;
+            }
+            public string Id => Definition.Id;
+            public string OwnerModId => "RimMind.Test";
+            public RimMind.Application.Common.Models.Tools.ToolDefinition Definition { get; }
+            public System.Threading.Tasks.Task<RimMind.Domain.ValueObjects.Result<RimMind.Application.Common.Models.Tools.ToolResult, RimMind.Domain.ValueObjects.RimMindError>> ExecuteAsync(
+                RimMind.Application.Common.Models.Tools.ToolCallArgs args,
+                System.Threading.CancellationToken ct) =>
+                System.Threading.Tasks.Task.FromResult(
+                    RimMind.Domain.ValueObjects.Result<RimMind.Application.Common.Models.Tools.ToolResult, RimMind.Domain.ValueObjects.RimMindError>.Ok(
+                        RimMind.Application.Common.Models.Tools.ToolResult.Ok("ok", args.ToolCallId, args.ToolName)));
+        }
+
         public static class Tools
         {
             public static List<RimMind.Application.Common.Models.Tools.ToolDefinition> Definitions { get; } = new();
             public static IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetAllDefinitions() => Definitions;
-            public static object? FindById(string id) => Definitions.Find(definition => definition.Id == id);
+            public static RimMind.Application.Common.Interfaces.Tools.IToolHandler? FindById(string id)
+            {
+                var def = Definitions.Find(definition => definition.Id == id);
+                return def == null ? null : new StubToolHandler(def);
+            }
         }
 
         public static class Request
@@ -271,12 +294,45 @@ namespace RimMind.Presentation.Api
             RegisterPendingRequestBehavior = null;
         }
 
-        // Mechanisms 桩，供 AdvisorToolRiskResolver 编译使用（测试时返回 null -> Resolve 返回 Low）
-        public static IGameMechanismRegistry? Mechanisms => null;
+        // Mechanisms 桩，供 AdvisorToolRiskResolver 编译和测试使用
+        public static IGameMechanismRegistry? Mechanisms { get; set; }
+
+        public static class Autonomy
+        {
+            public static RimMind.Domain.Agent.Policies.AgentAutonomyPolicy Policy { get; set; }
+                = RimMind.Domain.Agent.Policies.AgentAutonomyPolicy.CreateDefault();
+
+            public static RimMind.Domain.Agent.Policies.AutonomyLevel GetLevel(
+                Verse.Pawn? pawn,
+                RimMind.Domain.Agent.Policies.AutonomyDomain domain)
+                => Policy.GetLevel(domain);
+
+            public static bool CanExecuteAutonomous(
+                Verse.Pawn? pawn,
+                RimMind.Domain.Agent.Policies.AutonomyDomain domain)
+                => Policy.CanExecuteAutonomous(domain);
+
+            public static bool RequiresApproval(
+                Verse.Pawn? pawn,
+                RimMind.Domain.Agent.Policies.AutonomyDomain domain)
+                => Policy.RequiresApproval(domain);
+
+            public static bool IsDisabled(
+                Verse.Pawn? pawn,
+                RimMind.Domain.Agent.Policies.AutonomyDomain domain)
+                => Policy.IsDisabled(domain);
+
+            public static void SetLevel(
+                Verse.Pawn? pawn,
+                RimMind.Domain.Agent.Policies.AutonomyDomain domain,
+                RimMind.Domain.Agent.Policies.AutonomyLevel level)
+                => Policy.SetLevel(domain, level);
+        }
     }
 
     public static class RimMindPawnLookup
     {
+        public static bool IsActiveSpawnedColonist(Verse.Pawn? pawn) => pawn != null && !pawn.Dead && pawn.Map != null;
         public static Verse.Pawn? FindPawnByNumber(int thingIDNumber)
         {
             if (thingIDNumber <= 0) return null;

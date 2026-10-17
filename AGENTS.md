@@ -6,13 +6,15 @@ Advisor 在小人空闲或心情低落时请求角色化建议，通过 Core Too
 
 先读 `Source/Advisor/README.md`。通常只需要继续打开：
 
-- `Source/Comps/CompAIAdvisor.cs`：Verse 适配与持久化开关。
+- `Source/Comps/CompAIAdvisor.cs`：Verse 适配、持久化开关与 `PostDeSpawn`/`PostDestroy` 悬空审批清理。
 - `Source/Advisor/AdvisorGameComponent.cs`：节流扫描和触发。
-- `Source/Advisor/AdvisorCycleCoordinator.cs`：请求周期与唯一终态。
+- `Source/Advisor/AdvisorCycleCoordinator.cs`：请求周期、LLM `pre_approved` 防伪剥离、按自治域自动注入 `pre_approved`、内阁批量提案与唯一终态。
 - `Source/Advisor/AdvisorTaskDriver.cs`：请求和反馈消息构建。
 - `Source/Advisor/AdvisorRequestAugmentationFactory.cs`：初始 Decision envelope 与可选提示词增量。
 - `Source/Advisor/AdvisorRequestCycleState.cs`：纯审批/反馈状态机。
-- `Source/Advisor/AdvisorApprovalPolicy.cs`、`ApprovalManager.cs`：审批条件与 Core RequestEntry 终态回调。
+- `Source/Advisor/AdvisorToolRiskResolver.cs`：5 大自治域（`EmergencySurvival`、`ResourceMarking`、`WorktableBills`、`BlueprintPlacement`、`HighRiskOperations`）风险与自动授权判定（领域策略优先于全局 `IsGlobalForceApprovalEnabled`）。
+- `Source/Advisor/AdvisorApprovalPolicy.cs`、`ApprovalManager.cs`：审批条件、内阁提案 `ExecutionCallbacks` 执行、`CancelPendingForPawn` 生命周期清理与 Core RequestEntry 终态回调。
+- `Source/Perception/ColonyMacroPerceiver.cs`、`CabinetMeetingCoordinator.cs`：全殖民地宏观危机感知（仅统计 `RimMindPawnLookup.IsActiveSpawnedColonist`）与内阁会议协同。
 - `Source/RimMindAdvisorMod.cs`：组合根与设置入口。
 - `Source/Advisor/AdvisorProviderRegistrar.cs`：Context Provider 注册与工具列表格式化。
 - `Source/Settings/AdvisorSettingsDrawer.cs`：原生/Core 设置页共享绘制实现。
@@ -20,12 +22,13 @@ Advisor 在小人空闲或心情低落时请求角色化建议，通过 Core Too
 ## Main flow
 
 ```text
-AdvisorGameComponent
+AdvisorGameComponent / ColonyMacroPerceiver
   → CompAIAdvisor trigger checks
   → AdvisorCycleCoordinator
   → AdvisorTaskDriver
   → RimMindAPI.Request.Send
-  → approval/direct execution
+  → AdvisorToolRiskResolver (domain autonomy check & pre_approved injection)
+  → approval (single or CabinetProposal) / direct execution
   → one aggregated feedback batch
   → terminal cleanup
 ```
@@ -38,6 +41,9 @@ Advisor 只通过 `RimMindAPI` 使用 Core 请求、ToolRegistry、ContextKey �
 
 - 初始请求、feedback 和审批回调必须捕获并验证原 driver/cycle。
 - 初始和 feedback 请求都使用 `RimMindAPI.Context.ScenarioDecision`，与 `advisor_task` / `actions_list` provider 守卫一致。
+- 收到 LLM 原始 ToolCall 时必须先调用 `StripPreApprovedFlag` 剥离伪造的 `pre_approved: true`，仅当 `AdvisorToolRiskResolver.IsDomainFullAutonomous` 判定为全自主或玩家在 UI 点击批准后才注入 `pre_approved = true`。
+- `AdvisorToolRiskResolver.DoesToolRequireApproval` 必须先评估具体 `AutonomyDomain` 的配置（`Disabled` / `RequireApproval` / `FullAutonomous`），仅对未映射工具回退到 `IsGlobalForceApprovalEnabled`。
+- `CompAIAdvisor.PostDeSpawn` 与 `PostDestroy` 必须调用 `ApprovalManager.CancelPendingForPawn` 取消该小人的悬空审批。
 - 一个响应批次的直接和审批结果只发送一次聚合 feedback。
 - Tool handler 可能修改 Verse 状态，必须在主线程完成。
 - 每个开始的周期只释放一次并发槽，并清理审批和 driver 状态。

@@ -75,6 +75,7 @@
   <RimMind.Advisor.Prompt.ResultRejected>Player Rejected</RimMind.Advisor.Prompt.ResultRejected>
   <RimMind.Advisor.Prompt.ResultBlocked>System Blocked</RimMind.Advisor.Prompt.ResultBlocked>
   <RimMind.Advisor.Prompt.ResultIgnored>Ignored</RimMind.Advisor.Prompt.ResultIgnored>
+  <RimMind.Advisor.Prompt.ResultFailed>Failed ({0})</RimMind.Advisor.Prompt.ResultFailed>
   <!-- Request System -->
   <RimMind.Advisor.Request.RiskAction>High-risk action: {0}</RimMind.Advisor.Request.RiskAction>
   <RimMind.Advisor.Request.Approve>Approve</RimMind.Advisor.Request.Approve>

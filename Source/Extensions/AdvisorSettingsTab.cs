@@ -9,7 +9,7 @@ namespace RimMind.Advisor
     {
         public string Id => "advisor";
         public string OwnerModId => "RimMindAdvisor";
-        public string Label => "RimMind.Advisor.Settings.Tab".Translate();
+        public string Label => "RimMind.Advisor.Settings.Tab".CanTranslate() ? (string)"RimMind.Advisor.Settings.Tab".Translate() : "Advisor";
         public void Draw(Rect rect) => AdvisorSettingsDrawer.Draw(rect);
     }
 }
