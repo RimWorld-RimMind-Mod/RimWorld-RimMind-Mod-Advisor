@@ -33,7 +33,7 @@
 ## 🎮 In-Game Showcase
 
 ![RimMind-Advisor Showcase](docs/images/showcase.jpg)
-*In-game advice approval card: A colonist presents a tactical proposal to harvest wild medicinal herbs before winter, with interactive approve/reject options and status indicator.*
+*In-game advice approval card (`[+] 1.2x ZOOM`): Triggered by colonist frustration over nutrient paste ("Bella's Hunger Strike"), the floating multi-line proposal card presents zero-truncation [Approve] and [Reject] controls alongside the active colony lodge and `[RimMind-Dialogue]` HUD.*
 
 ---
 
