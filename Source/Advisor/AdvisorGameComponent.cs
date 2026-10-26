@@ -24,6 +24,23 @@ namespace RimMind.Advisor.Advisor
             base.FinalizeInit();
             Instance = this;
             AdvisorConcurrencyTracker.Reset();
+            ApprovalManager.ClearPendingRequests();
+        }
+
+        public override void StartedNewGame()
+        {
+            base.StartedNewGame();
+            Instance = this;
+            AdvisorConcurrencyTracker.Reset();
+            ApprovalManager.ClearPendingRequests();
+        }
+
+        public override void LoadedGame()
+        {
+            base.LoadedGame();
+            Instance = this;
+            AdvisorConcurrencyTracker.Reset();
+            ApprovalManager.ClearPendingRequests();
         }
 
         public override void GameComponentTick()
@@ -50,6 +67,7 @@ namespace RimMind.Advisor.Advisor
             foreach (var map in Find.Maps)
             {
                 bool hasCrisisAlert = HasColonyCrisisAlert(map);
+                bool hasDistressedAnimals = HasDistressedColonyAnimals(map);
 
                 foreach (var pawn in RimMindPawnLookup.GetEligibleColonists(map))
                 {
@@ -60,7 +78,7 @@ namespace RimMind.Advisor.Advisor
                     if (RimMindAPI.IsAgentActive(pawn.ThingID)) continue;
 
                     bool shouldTrigger = comp.ShouldIdleTrigger() || comp.ShouldMoodTrigger();
-                    if (!shouldTrigger && comp.IsIdle() && HasDistressedColonyAnimals(map))
+                    if (!shouldTrigger && comp.IsIdle() && hasDistressedAnimals)
                     {
                         shouldTrigger = true;
                     }
@@ -71,15 +89,15 @@ namespace RimMind.Advisor.Advisor
                     if (!shouldTrigger) continue;
 
                     float scale = RimMindAPI.Settings.ActivityFrequencyScale;
-                    float effectiveChance = UnityEngine.Mathf.Clamp(settings.macroCheckChance * scale, 0.05f, 0.95f);
-                    if (Rand.Value > effectiveChance) continue;
-
                     int ticksGame = Find.TickManager.TicksGame;
                     int dynamicCooldown = AdvisorCooldownCalculator.CalculateCooldownForPawn(pawn, settings);
                     float cdMult = scale > 0.01f ? (1.0f / scale) : 1.0f;
                     dynamicCooldown = UnityEngine.Mathf.RoundToInt(dynamicCooldown * UnityEngine.Mathf.Clamp(cdMult, 0.35f, 3.5f));
                     int advisorCooldownLeft = dynamicCooldown - (ticksGame - comp.LastRequestTick);
-                    if (advisorCooldownLeft > 0) continue;
+                    if (advisorCooldownLeft > 0 || !comp.CanRequestAdvice()) continue;
+
+                    float effectiveChance = UnityEngine.Mathf.Clamp(settings.macroCheckChance * scale, 0.05f, 0.95f);
+                    if (Rand.Value > effectiveChance) continue;
 
                     if (!capacity.TryReserve()) return;
                     comp.RequestAdvice(settings);
@@ -100,36 +118,22 @@ namespace RimMind.Advisor.Advisor
             return false;
         }
 
-        private static Alert_RolesEmpty? _cachedRolesAlert;
-        private static Alert_ColonistsIdle? _cachedIdleAlert;
-        private static System.Reflection.FieldInfo? _activeAlertsField;
+        private static readonly System.Reflection.FieldInfo? _activeAlertsField =
+            HarmonyLib.AccessTools.Field(typeof(AlertsReadout), "activeAlerts");
 
         private static bool HasColonyCrisisAlert(Map map)
         {
             try
             {
-                if (ModsConfig.IdeologyActive)
-                {
-                    _cachedRolesAlert ??= new Alert_RolesEmpty();
-                    if (_cachedRolesAlert.GetReport().active) return true;
-                }
-
-                _cachedIdleAlert ??= new Alert_ColonistsIdle();
-                if (_cachedIdleAlert.GetReport().active) return true;
-
                 if (Find.UIRoot is UIRoot_Play playUi && playUi.alerts != null)
                 {
-                    _activeAlertsField ??= HarmonyLib.AccessTools.Field(typeof(AlertsReadout), "activeAlerts");
                     if (_activeAlertsField?.GetValue(playUi.alerts) is System.Collections.Generic.List<Alert> activeAlerts)
                     {
                         for (int i = 0; i < activeAlerts.Count; i++)
                         {
                             var alert = activeAlerts[i];
-                            if (alert == null) continue;
-                            if (alert is Alert_RolesEmpty || alert is Alert_ColonistsIdle) return true;
-                            string typeName = alert.GetType().Name;
-                            if (typeName.IndexOf("Role", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                                typeName.IndexOf("Idle", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            if (alert == null || alert is Alert_ColonistsIdle) continue;
+                            if (alert.Priority == AlertPriority.Critical || alert.Priority == AlertPriority.High)
                             {
                                 return true;
                             }

@@ -133,10 +133,10 @@ namespace RimMind.Advisor.Advisor
 
                 case "tend_pawn":
                     {
-                        var injured = pawn.Map?.mapPawns.FreeColonistsSpawned
+                        var injured = RimMindPawnLookup.GetSpawnedColonistsSafe(pawn.Map)
                             .Where(p => p != pawn && RimMindPawnLookup.IsActiveSpawnedColonist(p) && p.health?.HasHediffsNeedingTend() == true)
                             .ToList();
-                        if (injured != null && injured.Count > 0)
+                        if (injured.Count > 0)
                         {
                             string colName = injured[0].Name?.ToStringShort ?? injured[0].LabelShort;
                             return "RimMind.Advisor.Prompt.TendPawnHint".CanTranslate()
@@ -162,10 +162,10 @@ namespace RimMind.Advisor.Advisor
 
                 case "rescue_pawn":
                     {
-                        var downed = pawn.Map?.mapPawns.FreeColonistsSpawned
+                        var downed = RimMindPawnLookup.GetSpawnedColonistsSafe(pawn.Map)
                             .Where(p => p != pawn && RimMindPawnLookup.IsActiveSpawnedColonist(p) && p.Downed)
                             .ToList();
-                        if (downed != null && downed.Count > 0)
+                        if (downed.Count > 0)
                         {
                             string colName = downed[0].Name?.ToStringShort ?? downed[0].LabelShort;
                             return "RimMind.Advisor.Prompt.RescuePawnHint".CanTranslate()

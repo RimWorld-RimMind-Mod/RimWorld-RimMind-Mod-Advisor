@@ -57,6 +57,20 @@ namespace Verse
         Reference
     }
 
+    public enum LoadSaveMode
+    {
+        Inactive,
+        Saving,
+        LoadingVars,
+        ResolvingCrossRefs,
+        PostLoadInit
+    }
+
+    public static class Scribe
+    {
+        public static LoadSaveMode mode = LoadSaveMode.Inactive;
+    }
+
     // Scribe_Values 桩，供 AdvisorRequestRecord.ExposeData 使用
     public static class Scribe_Values
     {
@@ -193,6 +207,28 @@ namespace RimMind.Presentation.Api
 {
     public static class RimMindAPI
     {
+        /// <summary>Test double for Core's main-thread dispatcher: queues until the test drains.</summary>
+        public static class MainThread
+        {
+            private static readonly ConcurrentQueue<Action> Pending = new();
+            public static TaskCompletionSource<bool> Queued { get; private set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            public static int PendingCount => Pending.Count;
+            public static void Post(Action action)
+            {
+                Pending.Enqueue(action);
+                Queued.TrySetResult(true);
+            }
+            public static void Drain()
+            {
+                while (Pending.TryDequeue(out Action? action)) action();
+            }
+            public static void Reset()
+            {
+                Pending.Clear();
+                Queued = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
         public static class Settings
         {
             public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? ContextEngine { get; set; }
@@ -332,7 +368,7 @@ namespace RimMind.Presentation.Api
 
     public static class RimMindPawnLookup
     {
-        public static bool IsActiveSpawnedColonist(Verse.Pawn? pawn) => pawn != null && !pawn.Dead && pawn.Map != null;
+        public static bool IsActiveSpawnedColonist(Verse.Pawn? pawn) => pawn != null && !pawn.Dead && (pawn.Map != null || (Verse.Find.CurrentMap?.mapPawns?.FreeColonists?.Contains(pawn) ?? false));
         public static Verse.Pawn? FindPawnByNumber(int thingIDNumber)
         {
             if (thingIDNumber <= 0) return null;

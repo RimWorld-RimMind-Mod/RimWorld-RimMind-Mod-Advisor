@@ -122,7 +122,7 @@ namespace RimMind.Advisor.Advisor
                 return;
             }
 
-            if (result.IsErr)
+            if (result.IsErr && result.Error.Code == RimMindErrorCode.Cancelled) { CompleteRequestCycle(taskDriver, requestCycle); return; } if (result.IsErr)
             {
                 RimMindErrors.Warn(
                     $"[RimMind-Advisor] Request failed for {_pawn.Name.ToStringShort}: {result.Error}");
@@ -424,9 +424,9 @@ namespace RimMind.Advisor.Advisor
                             if (_pawn == null || !RimMindPawnLookup.IsActiveSpawnedColonist(_pawn) || _pawn.Downed)
                                 return;
 
-                            var approvedCall = WithPreApproval(toolCall);
+                            var approvedCall = StripPreApproval(toolCall);
                             var calls = new List<ClientStructuredToolCall> { approvedCall };
-                            var results = ExecuteToolCallsSafely(calls, toolCall.Id);
+                            var results = ExecuteToolCallsSafely(calls, toolCall.Id, playerApproved: true);
                             taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);
                             foreach (var result in results)
                             {
@@ -578,8 +578,8 @@ namespace RimMind.Advisor.Advisor
 
                             var selectedCalls = indicesToRun.Select(i => callsToExecute[i]).ToList();
                             var selectedReasons = indicesToRun.Select(i => !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan").ToList();
-                            var preApprovedCalls = selectedCalls.Select(WithPreApproval).ToList();
-                            var results = ExecuteToolCallsSafely(preApprovedCalls, null);
+                            var preApprovedCalls = selectedCalls.Select(StripPreApproval).ToList();
+                            var results = ExecuteToolCallsSafely(preApprovedCalls, null, playerApproved: true);
                             for (int i = 0; i < selectedCalls.Count; i++)
                             {
                                 var call = selectedCalls[i];
@@ -695,32 +695,60 @@ namespace RimMind.Advisor.Advisor
             requestCycle.QueueFeedback(cleanCalls, results);
         }
 
-        private static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)
+        internal static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)
         {
             var arguments = ParseToolCallArguments(toolCall.Arguments);
-            return arguments.TryGetValue("reason", out var reason) && !reason.NullOrEmpty()
-                ? reason
-                : null;
+            if (arguments.TryGetValue("reason", out var reason) && !reason.NullOrEmpty())
+                return reason;
+
+            var readableTool = FormatHumanReadableToolName(toolCall.Name);
+            string[] detailKeys =
+            {
+                "building_def", "recipe_def", "zone_type", "work_type",
+                "resource_type", "job_type", "item_def", "target", "operation"
+            };
+            foreach (var key in detailKeys)
+            {
+                if (arguments.TryGetValue(key, out var detail) && !detail.NullOrEmpty())
+                {
+                    return $"{readableTool}: {FormatHumanReadableToolName(detail)}";
+                }
+            }
+
+            return readableTool;
         }
+
+        internal static string FormatHumanReadableToolName(string? rawName) =>
+            ApprovalManager.FormatHumanReadableToolName(rawName);
 
         private List<ToolResult> ExecuteToolCallsSafely(
             IReadOnlyList<ClientStructuredToolCall> calls,
-            string? traceId)
+            string? traceId,
+            bool playerApproved = false)
         {
             try
             {
+                // Approval travels via ToolCallArgs.IsPlayerApproved (trusted channel), never via LLM JSON.
                 var executionTask = _toolExecutor.ExecuteAsync(
                     calls,
                     $"NPC-{_pawn.thingIDNumber}",
                     traceId,
-                    CancellationToken.None);
+                    CancellationToken.None,
+                    playerApproved);
 
                 if (!executionTask.IsCompleted)
                 {
+                    RimMind.Application.Common.Threading.SynchronousTaskGate.ObserveFault(executionTask);
                     RimMindErrors.Warn(
                         "[RimMind-Advisor][ToolCall][MainThreadWait] " +
-                        $"Tool execution is asynchronous; preserving main-thread completion for {_pawn.Name.ToStringShort} " +
-                        $"(trace={traceId ?? "unknown"}, tools={calls.Count}).");
+                        $"Tool execution did not complete synchronously on main thread for {_pawn.Name.ToStringShort} " +
+                        $"(trace={traceId ?? "unknown"}, tools={calls.Count}); failing fast to avoid main-thread freeze.");
+                    return calls
+                        .Select(call => ToolResult.Fail(
+                            RimMind.Application.Common.Threading.SynchronousTaskGate.AsyncNotSupportedMessage,
+                            call.Id,
+                            call.Name))
+                        .ToList();
                 }
 
                 return executionTask.GetAwaiter().GetResult();
@@ -736,17 +764,6 @@ namespace RimMind.Advisor.Advisor
                         call.Name))
                     .ToList();
             }
-        }
-
-        private static ClientStructuredToolCall WithPreApproval(ClientStructuredToolCall toolCall)
-        {
-            var injected = InjectPreApprovalArgument(toolCall.Arguments);
-            return new ClientStructuredToolCall
-            {
-                Id = toolCall.Id,
-                Name = toolCall.Name,
-                Arguments = injected
-            };
         }
 
         private static ClientStructuredToolCall StripPreApproval(ClientStructuredToolCall toolCall)
@@ -776,23 +793,6 @@ namespace RimMind.Advisor.Advisor
             catch
             {
                 return argumentsJson!;
-            }
-        }
-
-        private static string InjectPreApprovalArgument(string? argumentsJson)
-        {
-            try
-            {
-                var jobj = string.IsNullOrWhiteSpace(argumentsJson)
-                    ? new JObject()
-                    : JObject.Parse(argumentsJson!);
-                jobj["pre_approved"] = true;
-                jobj["is_approved"] = true;
-                return jobj.ToString(Formatting.None);
-            }
-            catch
-            {
-                return argumentsJson ?? "{\"pre_approved\":true,\"is_approved\":true}";
             }
         }
 
@@ -850,7 +850,7 @@ namespace RimMind.Advisor.Advisor
                 5f);
         }
 
-        private static string FormatAdvisorMoteText(string text, int maxLineLength = 22, int maxTotalLength = 66)
+        internal static string FormatAdvisorMoteText(string text, int maxLineLength = 24, int maxTotalLength = 66)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
@@ -864,19 +864,46 @@ namespace RimMind.Advisor.Advisor
             if (normalized.Length <= maxLineLength)
                 return normalized;
 
+            var words = normalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var sb = new System.Text.StringBuilder(normalized.Length + 4);
             int lineLen = 0;
-            for (int i = 0; i < normalized.Length; i++)
+
+            foreach (var word in words)
             {
-                char c = normalized[i];
-                sb.Append(c);
-                lineLen++;
-                if (lineLen >= maxLineLength && i < normalized.Length - 1)
+                if (lineLen > 0 && lineLen + 1 + word.Length > maxLineLength)
                 {
                     sb.Append('\n');
                     lineLen = 0;
                 }
+
+                if (word.Length > maxLineLength)
+                {
+                    int offset = 0;
+                    while (offset < word.Length)
+                    {
+                        if (lineLen > 0)
+                        {
+                            sb.Append('\n');
+                            lineLen = 0;
+                        }
+                        int take = Math.Min(maxLineLength, word.Length - offset);
+                        sb.Append(word, offset, take);
+                        lineLen = take;
+                        offset += take;
+                    }
+                }
+                else
+                {
+                    if (lineLen > 0)
+                    {
+                        sb.Append(' ');
+                        lineLen++;
+                    }
+                    sb.Append(word);
+                    lineLen += word.Length;
+                }
             }
+
             return sb.ToString();
         }
     }

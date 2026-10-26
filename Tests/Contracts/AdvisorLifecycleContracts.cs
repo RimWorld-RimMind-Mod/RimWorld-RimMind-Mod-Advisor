@@ -142,6 +142,35 @@ namespace RimMind.Advisor.Tests.Contracts
                         }
                     }
                     Assert.Equal(200, store.GlobalLog.Count);
+
+                    int trackedBefore = store.TrackedPawnCount;
+                    var unreadPawn = new Pawn { thingIDNumber = 999 };
+                    Assert.Empty(store.GetRecords(unreadPawn));
+                    Assert.Empty(store.GetRecentRecords(unreadPawn, 5));
+                    Assert.Equal(trackedBefore, store.TrackedPawnCount);
+
+                    Find.CurrentMap = new Map();
+                    Find.CurrentMap.mapPawns.FreeColonists.Clear();
+                    Find.CurrentMap.mapPawns.FreeColonists.Add(pawn);
+                    store.ExposeData();
+                    Assert.Equal(1, store.TrackedPawnCount);
+                    Assert.Equal(50, store.GetRecords(pawn).Count);
+                }),
+                ("approval manager clears pending pawn references on game lifecycle reset", () =>
+                {
+                    ApprovalManager.ClearPendingRequests();
+                    RimMind.Presentation.Api.RimMindAPI.ClearPendingRequests();
+                    var manager = new ApprovalManager(new RimMind.Advisor.Settings.RimMindAdvisorSettings());
+                    var pawn = new Pawn { thingIDNumber = 88 };
+                    manager.SubmitForApproval(
+                        new AdviceItem { Action = "actions_place_blueprint", Reason = "test" },
+                        pawn,
+                        onApproved: () => { },
+                        onRejected: () => { });
+                    Assert.Equal(1, ApprovalManager.TrackedPendingCount);
+                    ApprovalManager.ClearPendingRequests();
+                    Assert.Equal(0, ApprovalManager.TrackedPendingCount);
+                    RimMind.Presentation.Api.RimMindAPI.ClearPendingRequests();
                 }),
                 ("instant hints expose exactly the registered action boundary", () =>
                 {

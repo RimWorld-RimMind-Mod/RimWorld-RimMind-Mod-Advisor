@@ -44,7 +44,9 @@ namespace RimMind.Advisor.Tests.Contracts
                 var task = RimMindAPI.Context.ContextKeys.Definitions.Single(definition => definition.Key == "advisor_task");
                 var actions = RimMindAPI.Context.ContextKeys.Definitions.Single(definition => definition.Key == "actions_list");
                 Assert.Contains("TaskInstruction.Role", await task.Provider(context, CancellationToken.None));
-                Assert.Contains("test.action", await actions.Provider(context, CancellationToken.None));
+                var actionsText = await actions.Provider(context, CancellationToken.None);
+                Assert.Contains("test.action", actionsText);
+                Assert.DoesNotContain("fixture action", actionsText);
                 Assert.Equal(ScenarioIds.Decision, envelope.ScenarioId);
                 Assert.Null(await task.Provider(context with { Scenario = ScenarioIds.Dialogue }, CancellationToken.None));
                 Assert.Null(await actions.Provider(context with { Scenario = ScenarioIds.Dialogue }, CancellationToken.None));

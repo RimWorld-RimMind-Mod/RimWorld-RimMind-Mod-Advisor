@@ -138,7 +138,7 @@ namespace RimMind.Advisor.Debug
             {
                 var snapshot = await engine.BuildSnapshotFromEnvelopeAsync(
                     npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
-                LongEventHandler.ExecuteWhenFinished(() =>
+                RimMindAPI.MainThread.Post(() =>
                 {
                     if (!ReferenceEquals(Current.Game, game)) return;
                     if (snapshot == null)
@@ -153,7 +153,7 @@ namespace RimMind.Advisor.Debug
             }
             catch (Exception ex)
             {
-                LongEventHandler.ExecuteWhenFinished(() =>
+                RimMindAPI.MainThread.Post(() =>
                 {
                     if (!ReferenceEquals(Current.Game, game)) return;
                     RimMindErrors.Warn($"[RimMind-Advisor] Context preview failed: {ex.Message}");

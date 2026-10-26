@@ -11,17 +11,35 @@ namespace RimMind.Advisor.Comps
     {
         public bool IsEnabled = true;
 
+        private int _lastRequestTick = -9999;
         private AdvisorCycleCoordinator? _cycle;
 
         private Pawn Pawn => (Pawn)parent;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
-        private AdvisorCycleCoordinator Cycle =>
-            _cycle ??= new AdvisorCycleCoordinator(Pawn, () => Settings);
+        private AdvisorCycleCoordinator Cycle
+        {
+            get
+            {
+                if (_cycle == null)
+                {
+                    _cycle = new AdvisorCycleCoordinator(Pawn, () => Settings)
+                    {
+                        LastRequestTick = _lastRequestTick
+                    };
+                }
+                return _cycle;
+            }
+        }
 
-        public bool HasPendingRequest => Cycle.HasPendingRequest;
-        public int LastRequestTick => Cycle.LastRequestTick;
-        public AdvisorTaskDriver? TaskDriver => Cycle.TaskDriver;
-        public int AdvisorCooldownTicksLeft => Cycle.CooldownTicksLeft;
+        public bool HasPendingRequest => _cycle != null && _cycle.HasPendingRequest;
+        public int LastRequestTick => _cycle != null ? (_lastRequestTick = _cycle.LastRequestTick) : _lastRequestTick;
+        public AdvisorTaskDriver? TaskDriver => _cycle?.TaskDriver;
+        public int AdvisorCooldownTicksLeft => _cycle != null
+            ? _cycle.CooldownTicksLeft
+            : System.Math.Max(0, AdvisorCooldownCalculator.CalculateCooldownForPawn(Pawn, Settings) - ((Find.TickManager?.TicksGame ?? 0) - _lastRequestTick));
+
+        public bool CanRequestAdvice() =>
+            IsEnabled && !HasPendingRequest && IsEligible() && AdvisorCooldownTicksLeft <= 0;
 
         public bool IsEligible() =>
             Pawn.IsFreeNonSlaveColonist &&
@@ -118,16 +136,22 @@ namespace RimMind.Advisor.Comps
         {
             base.PostExposeData();
             Scribe_Values.Look(ref IsEnabled, "aiAdvisorEnabled", true);
-            int lastTick = Cycle.LastRequestTick;
-            Scribe_Values.Look(ref lastTick, "aiAdvisorLastRequestTick", -9999);
+            if (_cycle != null)
+            {
+                _lastRequestTick = _cycle.LastRequestTick;
+            }
+            Scribe_Values.Look(ref _lastRequestTick, "aiAdvisorLastRequestTick", -9999);
             if (Scribe.mode == LoadSaveMode.LoadingVars)
             {
-                if (lastTick <= 0 && Find.TickManager != null)
+                if (_lastRequestTick <= 0 && Find.TickManager != null)
                 {
                     int stagger = (Pawn.thingIDNumber & 0x7FFF) % 1500;
-                    lastTick = Find.TickManager.TicksGame - (Settings.requestCooldownTicks - stagger);
+                    _lastRequestTick = Find.TickManager.TicksGame - (Settings.requestCooldownTicks - stagger);
                 }
-                Cycle.LastRequestTick = lastTick;
+                if (_cycle != null)
+                {
+                    _cycle.LastRequestTick = _lastRequestTick;
+                }
             }
         }
     }

@@ -78,8 +78,14 @@ namespace RimMind.Advisor.Advisor
                 return false;
             }
 
-            return ToolAutonomyDomainMap.TryGetValue(toolName!.Trim(), out domain);
+            // Tool IDs may arrive dotted ("actions.emergency_flee", registry form) or underscored
+            // ("actions_emergency_flee", the OpenAI function-name form). Normalize like ToolRegistry does.
+            return ToolAutonomyDomainMap.TryGetValue(NormalizeToolId(toolName!), out domain);
         }
+
+        internal static string NormalizeToolId(string toolName) => toolName.Trim().Replace('.', '_');
+
+        internal static IEnumerable<string> MappedToolIds => ToolAutonomyDomainMap.Keys;
 
         public static bool RequiresAutonomyApproval(Pawn? pawn, string? toolName)
         {
@@ -134,6 +140,26 @@ namespace RimMind.Advisor.Advisor
                 {
                     return false;
                 }
+            }
+
+            return false;
+        }
+
+        public static bool ShouldSkipAction(string? toolName, Pawn? pawn = null)
+        {
+            if (string.IsNullOrWhiteSpace(toolName))
+            {
+                return true;
+            }
+
+            if (RimMindAPI.ShouldSkipAction(toolName!))
+            {
+                return true;
+            }
+
+            if (IsAutonomyForbidden(pawn, toolName))
+            {
+                return true;
             }
 
             return false;

@@ -8,7 +8,7 @@ Advisor 在小人空闲或心情低落时请求角色化建议，通过 Core Too
 
 - `Source/Comps/CompAIAdvisor.cs`：Verse 适配、持久化开关与 `PostDeSpawn`/`PostDestroy` 悬空审批清理。
 - `Source/Advisor/AdvisorGameComponent.cs`：节流扫描和触发。
-- `Source/Advisor/AdvisorCycleCoordinator.cs`：请求周期、LLM `pre_approved` 防伪剥离、按自治域自动注入 `pre_approved`、内阁批量提案与唯一终态。
+- `Source/Advisor/AdvisorCycleCoordinator.cs`：请求周期、LLM `pre_approved` 防伪剥离、玩家批准经 `ToolCallArgs.IsPlayerApproved` 可信通道传递、内阁批量提案与唯一终态。
 - `Source/Advisor/AdvisorTaskDriver.cs`：请求和反馈消息构建。
 - `Source/Advisor/AdvisorRequestAugmentationFactory.cs`：初始 Decision envelope 与可选提示词增量。
 - `Source/Advisor/AdvisorRequestCycleState.cs`：纯审批/反馈状态机。
@@ -27,7 +27,7 @@ AdvisorGameComponent / ColonyMacroPerceiver
   → AdvisorCycleCoordinator
   → AdvisorTaskDriver
   → RimMindAPI.Request.Send
-  → AdvisorToolRiskResolver (domain autonomy check & pre_approved injection)
+  → AdvisorToolRiskResolver (domain autonomy check; tool ids normalized '.'→'_')
   → approval (single or CabinetProposal) / direct execution
   → one aggregated feedback batch
   → terminal cleanup
@@ -41,7 +41,8 @@ Advisor 只通过 `RimMindAPI` 使用 Core 请求、ToolRegistry、ContextKey �
 
 - 初始请求、feedback 和审批回调必须捕获并验证原 driver/cycle。
 - 初始和 feedback 请求都使用 `RimMindAPI.Context.ScenarioDecision`，与 `advisor_task` / `actions_list` provider 守卫一致。
-- 收到 LLM 原始 ToolCall 时必须先调用 `StripPreApprovedFlag` 剥离伪造的 `pre_approved: true`，仅当 `AdvisorToolRiskResolver.IsDomainFullAutonomous` 判定为全自主或玩家在 UI 点击批准后才注入 `pre_approved = true`。
+- 收到 LLM 原始 ToolCall 时必须先调用 `StripPreApprovalArgument` 剥离伪造的 `pre_approved` / `is_approved`；玩家在 UI 点击批准后只能通过 `ExecuteToolCallsSafely(..., playerApproved: true)` → `ToolCallArgs.IsPlayerApproved` 传递批准，禁止再向参数 JSON 注入批准字段（Actions 已忽略 JSON 字段）。
+- `AdvisorToolRiskResolver` 的映射键使用下划线形式，查找前会把 `.` 归一化为 `_`；新增 Actions 组合工具必须同步映射（`AdvisorToolDomainMapContracts` 守卫）。
 - `AdvisorToolRiskResolver.DoesToolRequireApproval` 必须先评估具体 `AutonomyDomain` 的配置（`Disabled` / `RequireApproval` / `FullAutonomous`），仅对未映射工具回退到 `IsGlobalForceApprovalEnabled`。
 - `CompAIAdvisor.PostDeSpawn` 与 `PostDestroy` 必须调用 `ApprovalManager.CancelPendingForPawn` 取消该小人的悬空审批。
 - 一个响应批次的直接和审批结果只发送一次聚合 feedback。
