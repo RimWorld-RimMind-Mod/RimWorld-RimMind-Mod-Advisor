@@ -27,6 +27,13 @@ namespace RimMind.Advisor.Advisor
             _settings = settings;
         }
 
+        public static int TrackedPendingCount => _pendingRequests.Count;
+
+        public static void ClearPendingRequests()
+        {
+            _pendingRequests.Clear();
+        }
+
         public static void CancelPendingForPawn(Pawn? pawn)
         {
             if (pawn == null) return;
@@ -94,9 +101,16 @@ namespace RimMind.Advisor.Advisor
             string rejectLabel = "RimMind.Advisor.Request.Reject".CanTranslate()
                 ? "RimMind.Advisor.Request.Reject".Translate().ToString()
                 : "Reject";
+            string readableAction = FormatHumanReadableToolName(item.Action);
             string titleText = "RimMind.Advisor.Request.RiskAction".CanTranslate()
-                ? "RimMind.Advisor.Request.RiskAction".Translate(item.Action).ToString()
-                : $"Advisor Action: {item.Action}";
+                ? "RimMind.Advisor.Request.RiskAction".Translate(readableAction).ToString()
+                : $"Advisor Action: {readableAction}";
+            string descriptionText = !string.IsNullOrWhiteSpace(item.Reason) &&
+                                     !string.Equals(item.Reason, item.Action, StringComparison.OrdinalIgnoreCase)
+                ? item.Reason!
+                : (!string.IsNullOrWhiteSpace(item.Target)
+                    ? $"{readableAction}: {item.Target}"
+                    : readableAction);
 
             RequestEntry? entryRef = null;
             var entry = new RequestEntry
@@ -104,7 +118,7 @@ namespace RimMind.Advisor.Advisor
                 source = "advisor",
                 pawn = pawn,
                 title = titleText,
-                description = item.Reason ?? item.Action,
+                description = descriptionText,
                 systemBlocked = true,
                 expireTicks = _settings.requestExpireTicks,
                 options = new[] { approveLabel, rejectLabel },
@@ -197,7 +211,14 @@ namespace RimMind.Advisor.Advisor
             for (int i = 0; i < proposal.Items.Count; i++)
             {
                 var it = proposal.Items[i];
-                sb.AppendLine($"{i + 1}. [{it.Action}] {it.Reason ?? it.Target ?? it.Param ?? ""}");
+                var readableItemAction = FormatHumanReadableToolName(it.Action);
+                var itemSummary = !string.IsNullOrWhiteSpace(it.Reason) &&
+                                  !string.Equals(it.Reason, it.Action, StringComparison.OrdinalIgnoreCase)
+                    ? it.Reason
+                    : (it.Target ?? it.Param ?? "");
+                sb.AppendLine(string.IsNullOrWhiteSpace(itemSummary)
+                    ? $"{i + 1}. [{readableItemAction}]"
+                    : $"{i + 1}. [{readableItemAction}] {itemSummary}");
             }
 
             RequestEntry? entryRef = null;
@@ -278,6 +299,39 @@ namespace RimMind.Advisor.Advisor
 
                 throw;
             }
+        }
+
+        internal static string FormatHumanReadableToolName(string? rawName)
+        {
+            if (string.IsNullOrWhiteSpace(rawName))
+                return "Action";
+
+            var trimmed = rawName!.Trim();
+            string[] prefixes = { "actions_", "pawn_", "rimmind_" };
+            foreach (var prefix in prefixes)
+            {
+                if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+                    trimmed.Length > prefix.Length)
+                {
+                    trimmed = trimmed.Substring(prefix.Length);
+                    break;
+                }
+            }
+
+            var tokens = trimmed.Split(new[] { '_', '.', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0)
+                return trimmed;
+
+            var formatted = new string[tokens.Length];
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                var token = tokens[i];
+                formatted[i] = token.Length == 1
+                    ? token.ToUpperInvariant()
+                    : char.ToUpperInvariant(token[0]) + token.Substring(1);
+            }
+
+            return string.Join(" ", formatted);
         }
     }
 }

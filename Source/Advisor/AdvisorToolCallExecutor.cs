@@ -31,7 +31,8 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<StructuredToolCall> calls,
             string? npcId,
             string? traceId,
-            CancellationToken ct)
+            CancellationToken ct,
+            bool playerApproved = false)
         {
             var results = new List<ToolResult>(calls.Count);
 
@@ -51,10 +52,11 @@ namespace RimMind.Advisor.Advisor
                     ArgumentsJson = string.IsNullOrEmpty(call.Arguments) ? "{}" : call.Arguments,
                     NpcId = npcId,
                     TraceId = traceId,
-                    Ct = ct
+                    Ct = ct,
+                    IsPlayerApproved = playerApproved
                 };
 
-                var result = await handler.ExecuteAsync(args, ct).ConfigureAwait(false);
+                var result = await handler.ExecuteAsync(args, ct);
                 results.Add(result.Match(
                     ok => ok with { ToolCallId = call.Id, ToolName = call.Name },
                     err => ToolResult.Fail(err.Message, call.Id, call.Name)));

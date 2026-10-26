@@ -77,13 +77,11 @@ namespace RimMind.Advisor.Perception
             state.IsFoodCritical = snapshot.ColonistCount > 0 &&
                 (state.FoodDaysRemaining < 3.0f || snapshot.TotalFoodNutrition < 5.0f);
 
-            state.IsExtremeCold = snapshot.OutdoorTemperature < 0f ||
-                snapshot.HasHypothermiaColonist ||
-                (snapshot.ColonistMinComfyTemp > -900f && snapshot.OutdoorTemperature < snapshot.ColonistMinComfyTemp);
+            state.IsExtremeCold = snapshot.OutdoorTemperature < -15f ||
+                snapshot.HasHypothermiaColonist;
 
-            state.IsExtremeHeat = snapshot.OutdoorTemperature > 35f ||
-                snapshot.HasHeatstrokeColonist ||
-                (snapshot.ColonistMaxComfyTemp < 900f && snapshot.OutdoorTemperature > snapshot.ColonistMaxComfyTemp);
+            state.IsExtremeHeat = snapshot.OutdoorTemperature > 45f ||
+                snapshot.HasHeatstrokeColonist;
 
             state.HasUnburiedCorpses = snapshot.UnburiedCorpsesCount > 0;
             state.HasHomelessColonists = snapshot.ColonistCount > snapshot.FreeColonistBedCount;
@@ -150,6 +148,11 @@ namespace RimMind.Advisor.Perception
             return sb.ToString().TrimEnd();
         }
 
+        public static bool IsCriticalCorpse(bool isSpawned, bool isFogged, bool isHumanlike, bool isInHomeArea)
+        {
+            return isSpawned && !isFogged && (isHumanlike || isInHomeArea);
+        }
+
 #if !RIMMIND_ADVISOR_TESTS
         public static ColonyMacroSnapshot CaptureSnapshot(Map map)
         {
@@ -158,7 +161,9 @@ namespace RimMind.Advisor.Perception
 
             try
             {
-                var colonists = map.mapPawns?.FreeColonistsSpawned?.Where(p => RimMindPawnLookup.IsActiveSpawnedColonist(p)).ToList() ?? new List<Pawn>();
+                var colonists = RimMindPawnLookup.GetSpawnedColonistsSafe(map)
+                    .Where(p => RimMindPawnLookup.IsActiveSpawnedColonist(p))
+                    .ToList();
                 snapshot.ColonistCount = colonists.Count;
                 snapshot.DownedColonistCount = colonists.Count(p => p.Downed);
 
@@ -198,7 +203,13 @@ namespace RimMind.Advisor.Perception
                 var corpses = map.listerThings?.ThingsInGroup(ThingRequestGroup.Corpse);
                 if (corpses != null)
                 {
-                    snapshot.UnburiedCorpsesCount = corpses.Count(c => c != null && c.Spawned && !c.Position.Fogged(map));
+                    var homeArea = map.areaManager?.Home;
+                    snapshot.UnburiedCorpsesCount = corpses.OfType<Corpse>().Count(c =>
+                        c != null && IsCriticalCorpse(
+                            c.Spawned,
+                            c.Spawned && c.Position.Fogged(map),
+                            c.InnerPawn?.RaceProps?.Humanlike == true,
+                            c.Spawned && homeArea != null && homeArea[c.Position]));
                 }
 
                 if (map.listerBuildings?.allBuildingsColonist != null)
@@ -208,10 +219,17 @@ namespace RimMind.Advisor.Perception
                         .Count(b => !b.ForPrisoners && !b.Medical && b.def?.building?.bed_humanlike == true);
                 }
 
-                if (map.mapPawns?.AllPawnsSpawned != null)
+                var allSpawned = map.mapPawns?.AllPawnsSpawned;
+                if (allSpawned != null)
                 {
-                    snapshot.HostileThreatCount = map.mapPawns.AllPawnsSpawned
-                        .Count(p => p != null && !p.Dead && !p.Downed && p.HostileTo(Faction.OfPlayer));
+                    int hostileCount = 0;
+                    for (int i = 0; i < allSpawned.Count; i++)
+                    {
+                        var p = allSpawned[i];
+                        if (p != null && !p.Dead && !p.Downed && p.HostileTo(Faction.OfPlayer))
+                            hostileCount++;
+                    }
+                    snapshot.HostileThreatCount = hostileCount;
                 }
 
                 var blueprints = map.listerThings?.ThingsInGroup(ThingRequestGroup.Blueprint);

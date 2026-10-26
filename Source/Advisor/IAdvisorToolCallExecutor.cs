@@ -15,6 +15,7 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<StructuredToolCall> calls,
             string? npcId,
             string? traceId,
-            CancellationToken ct);
+            CancellationToken ct,
+            bool playerApproved = false);
     }
 }

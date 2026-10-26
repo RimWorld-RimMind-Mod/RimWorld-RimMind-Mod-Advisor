@@ -6,6 +6,7 @@
   <modVersion>2.0.0</modVersion>
   <supportedVersions>
     <li>1.6</li>
+    <li>1.7</li>
   </supportedVersions>
   <description>AI-powered pawn advisor. Reads each colonist's state, personality, and available work, then selects the most character-appropriate next action via LLM. [v2.0 BREAKING CHANGES]</description>
   <modDependencies>

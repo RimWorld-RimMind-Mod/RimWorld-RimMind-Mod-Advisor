@@ -83,7 +83,7 @@ namespace RimMind.Advisor.Advisor
                     if (ctx.Scenario != RimMindAPI.Context.ScenarioDecision) return null;
                     if (ctx.PawnId <= 0) return null;
                     var pawn = RimMindPawnLookup.FindPawnByNumber(ctx.PawnId);
-                    var text = BuildToolListText();
+                    var text = BuildToolListText(pawn);
                     return string.IsNullOrEmpty(text) ? null : text;
                 }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
 
@@ -127,7 +127,7 @@ namespace RimMind.Advisor.Advisor
                 overrideExisting: true);
         }
 
-        private static string BuildToolListText()
+        private static string BuildToolListText(Pawn? pawn = null)
         {
             try
             {
@@ -138,13 +138,11 @@ namespace RimMind.Advisor.Advisor
                 sb.AppendLine("RimMind.Advisor.Prompt.InstantSectionHeader".Translate());
                 foreach (var def in defs)
                 {
-                    if (string.IsNullOrWhiteSpace(def.Id)) continue;
-                    if (RimMindAPI.ShouldSkipAction(def.Id)) continue;
+                    if (AdvisorToolRiskResolver.ShouldSkipAction(def.Id, pawn)) continue;
 
                     var riskTag = AdvisorPromptHelper.RiskTag(AdvisorToolRiskResolver.Resolve(def.Id));
                     var category = string.IsNullOrWhiteSpace(def.Category) ? "general" : def.Category;
-                    var description = string.IsNullOrWhiteSpace(def.Description) ? "" : $" | {def.Description}";
-                    sb.AppendLine($"- {def.Id} [{category}]{riskTag}{description}");
+                    sb.AppendLine($"- {def.Id} [{category}]{riskTag}");
                 }
 
                 return sb.ToString().TrimEnd();

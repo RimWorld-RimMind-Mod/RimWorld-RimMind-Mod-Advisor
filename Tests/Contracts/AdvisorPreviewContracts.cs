@@ -28,7 +28,7 @@ namespace RimMind.Advisor.Tests.Contracts
             Find.Selector.SingleSelectedThing = new Pawn { thingIDNumber = 42 };
             Current.Game = new Game();
             Log.Messages.Clear();
-            LongEventHandler.Reset();
+            RimMindAPI.MainThread.Reset();
             try
             {
                 // Invoke the real registered debug command by its menu label, not a helper's name.
@@ -46,9 +46,9 @@ namespace RimMind.Advisor.Tests.Contracts
                 snapshot.AddMessage(new ChatMessage { Role = "system", Content = "fixture system" });
                 snapshot.AddMessage(new ChatMessage { Role = "user", Content = "fixture user" });
                 builder.Completion.SetResult(snapshot);
-                await LongEventHandler.Queued.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                await RimMindAPI.MainThread.Queued.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 Assert.Empty(Log.Messages);
-                LongEventHandler.Drain();
+                RimMindAPI.MainThread.Drain();
 
                 if (changeGame)
                     Assert.Empty(Log.Messages);
@@ -64,7 +64,7 @@ namespace RimMind.Advisor.Tests.Contracts
                 RimMindAPI.Settings.ContextEngine = null;
                 Find.Selector.SingleSelectedThing = null;
                 Current.Game = null;
-                LongEventHandler.Reset();
+                RimMindAPI.MainThread.Reset();
                 Log.Messages.Clear();
             }
         }

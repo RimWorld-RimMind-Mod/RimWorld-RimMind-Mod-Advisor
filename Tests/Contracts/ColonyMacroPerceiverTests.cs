@@ -61,7 +61,7 @@ namespace RimMind.Advisor.Tests.Contracts
                 TotalFoodNutrition = 50f,
                 WoodCount = 100,
                 SteelCount = 100,
-                OutdoorTemperature = -15f,
+                OutdoorTemperature = -18f,
                 ColonistMinComfyTemp = 10f,
                 FreeColonistBedCount = 2
             };
@@ -81,7 +81,7 @@ namespace RimMind.Advisor.Tests.Contracts
                 TotalFoodNutrition = 50f,
                 WoodCount = 100,
                 SteelCount = 100,
-                OutdoorTemperature = 42f,
+                OutdoorTemperature = 48f,
                 ColonistMaxComfyTemp = 32f,
                 FreeColonistBedCount = 2
             };
@@ -90,6 +90,36 @@ namespace RimMind.Advisor.Tests.Contracts
 
             Assert.True(state.IsExtremeHeat);
             Assert.Contains(state.CriticalBottlenecks, b => b.Contains("[Extreme Heat]"));
+        }
+
+        [Fact]
+        public void Evaluate_MildSubZeroTempAndWildAnimalCorpses_DoesNotFlagCritical()
+        {
+            var snapshot = new ColonyMacroSnapshot
+            {
+                ColonistCount = 2,
+                TotalFoodNutrition = 50f,
+                WoodCount = 100,
+                SteelCount = 100,
+                OutdoorTemperature = -5f,
+                ColonistMinComfyTemp = 12f,
+                ColonistMaxComfyTemp = 28f,
+                FreeColonistBedCount = 2,
+                UnburiedCorpsesCount = 0
+            };
+
+            var state = ColonyMacroPerceiver.Evaluate(snapshot);
+            Assert.False(state.IsExtremeCold);
+            Assert.False(state.IsExtremeHeat);
+            Assert.False(state.HasUnburiedCorpses);
+
+            Assert.False(ColonyMacroPerceiver.IsCriticalCorpse(isSpawned: true, isFogged: false, isHumanlike: false, isInHomeArea: false));
+            Assert.True(ColonyMacroPerceiver.IsCriticalCorpse(isSpawned: true, isFogged: false, isHumanlike: true, isInHomeArea: false));
+            Assert.True(ColonyMacroPerceiver.IsCriticalCorpse(isSpawned: true, isFogged: false, isHumanlike: false, isInHomeArea: true));
+            Assert.False(ColonyMacroPerceiver.IsCriticalCorpse(isSpawned: true, isFogged: true, isHumanlike: true, isInHomeArea: true));
+
+            snapshot.HasHypothermiaColonist = true;
+            Assert.True(ColonyMacroPerceiver.Evaluate(snapshot).IsExtremeCold);
         }
 
         [Fact]
@@ -179,7 +209,7 @@ namespace RimMind.Advisor.Tests.Contracts
                 TotalFoodNutrition = 8f,
                 WoodCount = 40,
                 SteelCount = 30,
-                OutdoorTemperature = -8f,
+                OutdoorTemperature = -18f,
                 FreeColonistBedCount = 2
             };
 
@@ -233,9 +263,9 @@ namespace RimMind.Advisor.Tests.Contracts
             Assert.NotNull(entry);
             Assert.Equal("advisor_cabinet", entry.source);
             Assert.Equal("Emergency Survival Cabinet Plan", entry.title);
-            Assert.Contains("actions_designate_resources", entry.description);
-            Assert.Contains("actions_add_worktable_bill", entry.description);
-            Assert.Contains("actions_manage_equipment", entry.description);
+            Assert.Contains("Designate Resources", entry.description);
+            Assert.Contains("Add Worktable Bill", entry.description);
+            Assert.Contains("Manage Equipment", entry.description);
 
             // Simulate selecting "Approve All" (options[0])
             string approveOption = entry.options[0];

@@ -81,7 +81,8 @@ namespace RimMind.Advisor.Tests.Contracts
                 ("source triggers autonomous consultation when idle pawn perceives distressed animal", () =>
                 {
                     string source = ReadSource("Advisor/AdvisorGameComponent.cs");
-                    Assert.Contains("if (!shouldTrigger && comp.IsIdle() && HasDistressedColonyAnimals(map))", source, StringComparison.Ordinal);
+                    Assert.Contains("bool hasDistressedAnimals = HasDistressedColonyAnimals(map);", source, StringComparison.Ordinal);
+                    Assert.Contains("if (!shouldTrigger && comp.IsIdle() && hasDistressedAnimals)", source, StringComparison.Ordinal);
                     Assert.Contains("HasDistressedColonyAnimals(Map map)", source, StringComparison.Ordinal);
                 }));
         }

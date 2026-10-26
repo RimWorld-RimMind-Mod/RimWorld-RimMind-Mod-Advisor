@@ -86,12 +86,15 @@ namespace RimMind.Advisor.Advisor
             {
                 var defs = RimMindAPI.Tools.GetAllDefinitions();
                 if (defs.Count == 0) return null;
-                return defs.Select(d => new StructuredTool
-                {
-                    Name = d.Id,
-                    Description = d.Description,
-                    Parameters = d.ParametersSchema,
-                }).ToList();
+                var tools = defs
+                    .Where(d => !AdvisorToolRiskResolver.ShouldSkipAction(d.Id, _pawn))
+                    .Select(d => new StructuredTool
+                    {
+                        Name = d.Id,
+                        Description = d.Description,
+                        Parameters = d.ParametersSchema,
+                    }).ToList();
+                return tools.Count == 0 ? null : tools;
             }
             catch (Exception ex)
             {
