@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using RimMind.Advisor.Settings;
@@ -19,7 +20,7 @@ namespace RimMind.Advisor.Advisor
 
     public class ApprovalManager
     {
-        private static readonly Dictionary<RequestEntry, Pawn> _pendingRequests = new Dictionary<RequestEntry, Pawn>();
+        private static readonly ConcurrentDictionary<RequestEntry, Pawn> _pendingRequests = new ConcurrentDictionary<RequestEntry, Pawn>();
         private readonly RimMindAdvisorSettings _settings;
 
         public ApprovalManager(RimMindAdvisorSettings settings)
@@ -68,7 +69,7 @@ namespace RimMind.Advisor.Advisor
 
             foreach (var entry in toCancel)
             {
-                _pendingRequests.Remove(entry);
+                _pendingRequests.TryRemove(entry, out _);
                 try
                 {
                     if (!RimMindAPI.DismissPendingRequest(entry))
@@ -124,7 +125,7 @@ namespace RimMind.Advisor.Advisor
                 options = new[] { approveLabel, rejectLabel },
                 callback = choice =>
                 {
-                    if (entryRef != null) _pendingRequests.Remove(entryRef);
+                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
                     if (choice == approveLabel)
                     {
                         onApproved();
@@ -136,7 +137,7 @@ namespace RimMind.Advisor.Advisor
                 },
                 completionCallback = completionReason =>
                 {
-                    if (entryRef != null) _pendingRequests.Remove(entryRef);
+                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
                     if (completionReason == RequestCompletionReason.Selected)
                         return;
 
@@ -159,7 +160,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch
             {
-                _pendingRequests.Remove(entry);
+                _pendingRequests.TryRemove(entry, out _);
                 try
                 {
                     if (!RimMindAPI.DismissPendingRequest(entry))
@@ -233,7 +234,7 @@ namespace RimMind.Advisor.Advisor
                 options = new[] { approveAllLabel, dismissLabel },
                 callback = choice =>
                 {
-                    if (entryRef != null) _pendingRequests.Remove(entryRef);
+                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
                     if (choice == approveAllLabel)
                     {
                         foreach (var cb in proposal.ExecutionCallbacks)
@@ -256,7 +257,7 @@ namespace RimMind.Advisor.Advisor
                 },
                 completionCallback = completionReason =>
                 {
-                    if (entryRef != null) _pendingRequests.Remove(entryRef);
+                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
                     if (completionReason == RequestCompletionReason.Selected)
                         return;
 
@@ -279,7 +280,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch
             {
-                _pendingRequests.Remove(entry);
+                _pendingRequests.TryRemove(entry, out _);
                 try
                 {
                     if (!RimMindAPI.DismissPendingRequest(entry))
