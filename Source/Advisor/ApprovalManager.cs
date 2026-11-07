@@ -307,7 +307,17 @@ namespace RimMind.Advisor.Advisor
                 return "Action";
 
             var trimmed = rawName!.Trim();
-            string[] prefixes = { "actions_", "pawn_", "rimmind_" };
+            try
+            {
+                var displayName = RimMindAPI.Tools.FindById(trimmed)?.Definition?.Manifest?.DisplayName;
+                if (!string.IsNullOrWhiteSpace(displayName))
+                    return displayName!;
+            }
+            catch
+            {
+            }
+
+            string[] prefixes = { "pawn_", "rimmind_" };
             foreach (var prefix in prefixes)
             {
                 if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&

@@ -234,6 +234,7 @@ namespace RimMind.Presentation.Api
             public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? ContextEngine { get; set; }
             public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? GetContextEngine() => ContextEngine;
             public static bool DebugLogging => false;
+            public static float ActivityFrequencyScale { get; set; } = 1f;
         }
 
         public static bool IsConfigured() => true;
@@ -279,11 +280,95 @@ namespace RimMind.Presentation.Api
         public static class Tools
         {
             public static List<RimMind.Application.Common.Models.Tools.ToolDefinition> Definitions { get; } = new();
+            public static List<RimMind.Application.Common.Interfaces.Tools.IToolHandler> Handlers { get; } = new();
+            public static List<(string? RequestId, string ToolName, string? ArgumentsJson, bool Succeeded, string? ResultSummary)> RecordedTraces { get; } = new();
+
             public static IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetAllDefinitions() => Definitions;
+
             public static RimMind.Application.Common.Interfaces.Tools.IToolHandler? FindById(string id)
             {
-                var def = Definitions.Find(definition => definition.Id == id);
+                if (string.IsNullOrWhiteSpace(id)) return null;
+                var trimmed = id.Trim();
+                var normalized = trimmed.Replace('.', '_');
+
+                foreach (var handler in Handlers)
+                {
+                    if (MatchesToolIdOrAlias(handler.Definition, trimmed, normalized))
+                        return handler;
+                }
+
+                var def = Definitions.Find(definition => MatchesToolIdOrAlias(definition, trimmed, normalized));
                 return def == null ? null : new StubToolHandler(def);
+            }
+
+            private static bool MatchesToolIdOrAlias(
+                RimMind.Application.Common.Models.Tools.ToolDefinition? def,
+                string trimmed,
+                string normalized)
+            {
+                if (def == null) return false;
+                if (string.Equals(def.Id, trimmed, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(def.Id.Replace('.', '_'), normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                var aliases = def.Manifest?.Aliases;
+                if (aliases != null)
+                {
+                    for (int i = 0; i < aliases.Count; i++)
+                    {
+                        var alias = aliases[i];
+                        if (!string.IsNullOrWhiteSpace(alias) &&
+                            (string.Equals(alias.Trim(), trimmed, StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(alias.Trim().Replace('.', '_'), normalized, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+
+            public static RimMind.Application.Common.Interfaces.Tools.ToolPolicyDecision? ClassifyPolicy(
+                string? toolId,
+                RimMind.Application.Common.Models.Tools.ToolCallArgs? args = null)
+            {
+                if (string.IsNullOrWhiteSpace(toolId)) return null;
+                var handler = FindById(toolId!);
+                if (handler == null) return null;
+
+                if (args != null && handler is RimMind.Application.Common.Interfaces.Tools.IToolPolicyClassifier classifier)
+                {
+                    return classifier.Classify(args);
+                }
+
+                var manifest = handler.Definition?.Manifest ?? RimMind.Application.Common.Models.Tools.ToolManifest.Default;
+                return new RimMind.Application.Common.Interfaces.Tools.ToolPolicyDecision
+                {
+                    Domain = manifest.DefaultDomain,
+                    DomainId = manifest.AutonomyDomainId ?? manifest.DefaultDomain?.ToString(),
+                    Risk = manifest.RiskLevel,
+                    RequiresApproval = manifest.RequiresApproval
+                };
+            }
+
+            public static RimMind.Application.Common.Interfaces.Tools.ToolPolicyDecision? Preflight(
+                string? toolId,
+                RimMind.Application.Common.Models.Tools.ToolCallArgs? args = null)
+                => ClassifyPolicy(toolId, args);
+
+            public static void RecordToolCallTrace(
+                string? requestId,
+                string toolName,
+                string? argumentsJson,
+                bool succeeded,
+                string? resultSummary)
+            {
+                if (string.IsNullOrWhiteSpace(requestId) || string.IsNullOrWhiteSpace(toolName))
+                    return;
+                RecordedTraces.Add((requestId, toolName, argumentsJson, succeeded, resultSummary));
             }
         }
 

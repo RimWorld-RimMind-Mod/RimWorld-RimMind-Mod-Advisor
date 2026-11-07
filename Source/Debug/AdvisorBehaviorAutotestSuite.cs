@@ -141,8 +141,8 @@ namespace RimMind.Advisor.Debug
             context.Assert(AdvisorConcurrencyTracker.ActiveCount == startCount, "AdvisorConcurrencyTracker decremented correctly");
 
             // 6. Advisor Mod Cooldown
-            RimMindAPI.ClearModCooldown("Advisor");
-            int cdLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
+            RimMindAPI.ClearModCooldown(AdvisorRequestIds.RequestModId);
+            int cdLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
             context.Assert(cdLeft == 0, "Advisor Core-level cooldown cleared successfully");
         }
     }

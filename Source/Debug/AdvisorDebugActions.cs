@@ -51,7 +51,7 @@ namespace RimMind.Advisor.Debug
                 ? $"Cooling down ({advisorLeft} ticks ~ {advisorLeft / 2500f:F2} game hours)"
                 : "Ready";
 
-            int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
+            int coreLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
             string coreCooldown = coreLeft > 0
                 ? $"Cooling down ({coreLeft} ticks ~ {coreLeft / 2500f:F2} game hours)"
                 : "Ready";
@@ -180,7 +180,7 @@ namespace RimMind.Advisor.Debug
                 if (comp == null) continue;
 
                 int advisorLeft = comp.AdvisorCooldownTicksLeft;
-                int coreLeft = RimMindAPI.GetModCooldownTicksLeft("Advisor");
+                int coreLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
                 string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
                 string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
@@ -195,7 +195,7 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ClearAllCooldowns()
         {
-            RimMindAPI.ClearModCooldown("Advisor");
+            RimMindAPI.ClearModCooldown(AdvisorRequestIds.RequestModId);
             Log.Message("[RimMind-Advisor] Advisor Core-layer cooldown cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
         }
 

@@ -17,6 +17,10 @@ namespace RimMind.Advisor.Advisor
 
         internal static void RegisterAll()
         {
+            // Register the typed event before any key names it, so the trigger resolves
+            // to a real event (unknown names never fall back to the base bus event).
+            AdvisorHistoryChangedEvent.Register();
+
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
                 "advisor_history", ContextLayer.L4_History, 0.8f,
                 async (ctx, ct) =>
@@ -74,7 +78,8 @@ namespace RimMind.Advisor.Advisor
                         sb.AppendLine($"- {r.action}: {r.reason} → {resultLabel}");
                     }
                     return sb.ToString().TrimEnd();
-                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 3000, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 3000,
+                invalidationTriggers: new[] { AdvisorHistoryChangedEvent.EventName }));
 
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
                 "actions_list", ContextLayer.L3_State, 0.85f,
@@ -85,7 +90,7 @@ namespace RimMind.Advisor.Advisor
                     var pawn = RimMindPawnLookup.FindPawnByNumber(ctx.PawnId);
                     var text = BuildToolListText(pawn);
                     return string.IsNullOrEmpty(text) ? null : text;
-                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 750, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 750)); // follows the tool registry; refreshed by staleness
 
             RimMindAPI.Context.ContextKeys.Register(new ContextProviderDef(
                 "advisor_task", ContextLayer.L0_Static, 0.95f,
@@ -98,7 +103,7 @@ namespace RimMind.Advisor.Advisor
                         .Select(key => (string)key.Translate())
                         .Where(t => !string.IsNullOrEmpty(t)));
                     return instruction;
-                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 0, invalidationTriggers: new[] { "AdvisorEvent" }));
+                }, RimMindOwnerConsts.AdvisorModId, stalenessTicks: 0));
 
             RegisterPublicProviders();
         }

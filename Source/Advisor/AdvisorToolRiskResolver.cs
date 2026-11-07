@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using RimMind.Application.Common.Interfaces.Tools;
+using RimMind.Application.Common.Models.Tools;
 using RimMind.Domain.Agent.Policies;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
@@ -9,29 +11,14 @@ namespace RimMind.Advisor.Advisor
 {
     internal static class AdvisorToolRiskResolver
     {
-        private static readonly Dictionary<string, AutonomyDomain> ToolAutonomyDomainMap
-            = new Dictionary<string, AutonomyDomain>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "actions_place_blueprint", AutonomyDomain.BlueprintPlacement },
-                { "actions_plan_room_project", AutonomyDomain.BlueprintPlacement },
-                { "actions_designate_resources", AutonomyDomain.ResourceMarking },
-                { "actions_manage_zone", AutonomyDomain.ResourceMarking },
-                { "actions_add_worktable_bill", AutonomyDomain.WorktableBills },
-                { "actions_manage_equipment", AutonomyDomain.EmergencySurvival },
-                { "actions_emergency_flee", AutonomyDomain.EmergencySurvival },
-                { "actions_stabilize_rest", AutonomyDomain.EmergencySurvival },
-                { "actions_eat_and_recreation", AutonomyDomain.EmergencySurvival },
-                { "actions_triage_patient", AutonomyDomain.EmergencySurvival },
-            };
-
-        public static RiskLevel Resolve(string toolName)
+        public static RiskLevel Resolve(string? toolName, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
             {
                 return RiskLevel.Low;
             }
 
-            if (TryParseToolName(toolName, out var mechanismId, out var operation))
+            if (TryParseToolName(toolName!, out var mechanismId, out var operation))
             {
                 try
                 {
@@ -46,14 +33,37 @@ namespace RimMind.Advisor.Advisor
                 }
             }
 
-            if (TryGetAutonomyDomain(toolName, out var domain))
+            try
+            {
+                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName, args);
+                if (policy.HasValue)
+                {
+                    if (policy.Value.RequiresApproval)
+                    {
+                        return RiskLevel.Critical;
+                    }
+                    if (policy.Value.Domain.HasValue)
+                    {
+                        return MapAutonomyDomainRisk(policy.Value.Domain.Value);
+                    }
+                    if (policy.Value.Risk != RiskLevel.Medium)
+                    {
+                        return policy.Value.Risk;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            if (TryGetAutonomyDomain(toolName, args, out var domain))
             {
                 return MapAutonomyDomainRisk(domain);
             }
 
             try
             {
-                var manifest = RimMindAPI.Tools.FindById(toolName)?.Definition?.Manifest;
+                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
                 if (manifest != null && (manifest.RequiresApproval || manifest.RiskLevel != RiskLevel.Medium))
                 {
                     if (manifest.RequiresApproval)
@@ -70,31 +80,107 @@ namespace RimMind.Advisor.Advisor
             return RiskLevel.Low;
         }
 
-        public static bool TryGetAutonomyDomain(string? toolName, out AutonomyDomain domain)
+        public static RiskLevel ResolveRiskLevel(string? toolName, ToolCallArgs? args = null)
+            => Resolve(toolName, args);
+
+        public static AutonomyDomain? ResolveAutonomyDomain(string? toolName, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
             {
-                domain = default;
-                return false;
+                return null;
             }
 
-            // Tool IDs may arrive dotted ("actions.emergency_flee", registry form) or underscored
-            // ("actions_emergency_flee", the OpenAI function-name form). Normalize like ToolRegistry does.
-            return ToolAutonomyDomainMap.TryGetValue(NormalizeToolId(toolName!), out domain);
+            try
+            {
+                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName!, args);
+                if (policy.HasValue)
+                {
+                    if (policy.Value.Domain.HasValue)
+                    {
+                        return policy.Value.Domain.Value;
+                    }
+                    if (!string.IsNullOrWhiteSpace(policy.Value.DomainId) &&
+                        Enum.TryParse<AutonomyDomain>(policy.Value.DomainId, ignoreCase: true, out var parsedDomain))
+                    {
+                        return parsedDomain;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
+                if (manifest != null)
+                {
+                    if (manifest.DefaultDomain.HasValue)
+                    {
+                        return manifest.DefaultDomain.Value;
+                    }
+                    if (!string.IsNullOrWhiteSpace(manifest.AutonomyDomainId) &&
+                        Enum.TryParse<AutonomyDomain>(manifest.AutonomyDomainId, ignoreCase: true, out var manifestDomain))
+                    {
+                        return manifestDomain;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            if (TryParseToolName(toolName!, out var mechanismId, out var operation) &&
+                operation != MechanismOperationType.Query &&
+                operation != MechanismOperationType.List &&
+                operation != MechanismOperationType.Watch)
+            {
+                if (mechanismId.StartsWith("pawn.", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(mechanismId, "pawn", StringComparison.OrdinalIgnoreCase))
+                {
+                    return AutonomyDomain.EmergencySurvival;
+                }
+                if (mechanismId.StartsWith("map.", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(mechanismId, "map", StringComparison.OrdinalIgnoreCase))
+                {
+                    return AutonomyDomain.ResourceMarking;
+                }
+                if (mechanismId.StartsWith("world.", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(mechanismId, "world", StringComparison.OrdinalIgnoreCase))
+                {
+                    return AutonomyDomain.HighRiskOperations;
+                }
+            }
+
+            return null;
+        }
+
+        public static bool TryGetAutonomyDomain(string? toolName, out AutonomyDomain domain)
+            => TryGetAutonomyDomain(toolName, null, out domain);
+
+        public static bool TryGetAutonomyDomain(string? toolName, ToolCallArgs? args, out AutonomyDomain domain)
+        {
+            var resolved = ResolveAutonomyDomain(toolName, args);
+            if (resolved.HasValue)
+            {
+                domain = resolved.Value;
+                return true;
+            }
+
+            domain = default;
+            return false;
         }
 
         internal static string NormalizeToolId(string toolName) => toolName.Trim().Replace('.', '_');
 
-        internal static IEnumerable<string> MappedToolIds => ToolAutonomyDomainMap.Keys;
-
-        public static bool RequiresAutonomyApproval(Pawn? pawn, string? toolName)
+        public static bool RequiresAutonomyApproval(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
             {
                 return false;
             }
 
-            if (TryGetAutonomyDomain(toolName, out var domain))
+            if (TryGetAutonomyDomain(toolName, args, out var domain))
             {
                 try
                 {
@@ -110,6 +196,12 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
+                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName!, args);
+                if (policy.HasValue && policy.Value.RequiresApproval)
+                {
+                    return true;
+                }
+
                 var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
                 if (manifest != null && manifest.RequiresApproval)
                 {
@@ -123,14 +215,17 @@ namespace RimMind.Advisor.Advisor
             return false;
         }
 
-        public static bool IsAutonomyForbidden(Pawn? pawn, string? toolName)
+        public static bool RequiresPlayerApproval(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
+            => RequiresAutonomyApproval(pawn, toolName, args);
+
+        public static bool IsAutonomyForbidden(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
             {
                 return false;
             }
 
-            if (TryGetAutonomyDomain(toolName, out var domain))
+            if (TryGetAutonomyDomain(toolName, args, out var domain))
             {
                 try
                 {
@@ -145,7 +240,7 @@ namespace RimMind.Advisor.Advisor
             return false;
         }
 
-        public static bool ShouldSkipAction(string? toolName, Pawn? pawn = null)
+        public static bool ShouldSkipAction(string? toolName, Pawn? pawn = null, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
             {
@@ -157,7 +252,7 @@ namespace RimMind.Advisor.Advisor
                 return true;
             }
 
-            if (IsAutonomyForbidden(pawn, toolName))
+            if (IsAutonomyForbidden(pawn, toolName, args))
             {
                 return true;
             }

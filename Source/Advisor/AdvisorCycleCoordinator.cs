@@ -48,7 +48,10 @@ namespace RimMind.Advisor.Advisor
         public int LastRequestTick { get => _lastRequestTick; set => _lastRequestTick = value; }
         public AdvisorTaskDriver? TaskDriver => _taskDriver;
         public int CooldownTicksLeft =>
-            Math.Max(0, AdvisorCooldownCalculator.CalculateCooldownForPawn(_pawn, Settings) - (Find.TickManager.TicksGame - _lastRequestTick));
+            AdvisorCooldownCalculator.CooldownTicksLeft(
+                AdvisorCooldownCalculator.CalculateCooldownForPawn(_pawn, Settings),
+                Find.TickManager.TicksGame,
+                _lastRequestTick);
 
         private RimMindAdvisorSettings Settings => _settings();
 
@@ -95,8 +98,8 @@ namespace RimMind.Advisor.Advisor
             }
 
             _lastRequestTick = -9999;
-            RimMindAPI.ClearModCooldown("Advisor");
-            Log.Message("[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared (Advisor), sending request...");
+            RimMindAPI.ClearModCooldown(AdvisorRequestIds.RequestModId);
+            Log.Message($"[RimMind-Advisor] ForceRequest: Core-layer cooldown cleared ({AdvisorRequestIds.RequestModId}), sending request...");
             RequestAdvice(Settings);
         }
 
@@ -174,17 +177,25 @@ namespace RimMind.Advisor.Advisor
                         continue;
                     }
 
-                    if (AdvisorToolRiskResolver.IsAutonomyForbidden(_pawn, toolCall.Name))
+                    var preflightArgs = new ToolCallArgs
+                    {
+                        ToolCallId = toolCall.Id ?? string.Empty,
+                        ToolName = toolCall.Name ?? string.Empty,
+                        ArgumentsJson = string.IsNullOrWhiteSpace(toolCall.Arguments) ? "{}" : toolCall.Arguments,
+                        PawnId = _pawn.thingIDNumber
+                    };
+
+                    if (AdvisorToolRiskResolver.IsAutonomyForbidden(_pawn, toolCall.Name, preflightArgs))
                     {
                         var blockedReason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
-                        RecordToolHistory(toolCall.Name, blockedReason, "blocked");
+                        RecordToolHistory(toolCall.Name!, blockedReason, "blocked");
                         RimMindErrors.Warn(
                             $"[RimMind-Advisor] Tool '{toolCall.Name}' blocked by autonomy policy for {_pawn.Name.ToStringShort}.");
                         continue;
                     }
 
-                    var riskLevel = AdvisorToolRiskResolver.Resolve(toolCall.Name);
-                    if (ShouldDeferForApproval(toolCall, riskLevel))
+                    var riskLevel = AdvisorToolRiskResolver.Resolve(toolCall.Name, preflightArgs);
+                    if (ShouldDeferForApproval(toolCall, riskLevel, preflightArgs))
                     {
                         deferredCalls.Add((toolCall, riskLevel));
                     }
@@ -198,11 +209,11 @@ namespace RimMind.Advisor.Advisor
 
                 if (deferredCalls.Count > 1)
                 {
-                    SubmitCabinetProposalForApproval(deferredCalls, taskDriver, requestCycle);
+                    SubmitCabinetProposalForApproval(deferredCalls, taskDriver, requestCycle, response.RequestId);
                 }
                 else if (deferredCalls.Count == 1)
                 {
-                    SubmitToolCallForApproval(deferredCalls[0].toolCall, deferredCalls[0].riskLevel, taskDriver, requestCycle);
+                    SubmitToolCallForApproval(deferredCalls[0].toolCall, deferredCalls[0].riskLevel, taskDriver, requestCycle, response.RequestId);
                 }
 
                 if (approvedCalls.Count > 0)
@@ -367,9 +378,18 @@ namespace RimMind.Advisor.Advisor
             }
         }
 
-        private bool ShouldDeferForApproval(ClientStructuredToolCall call, RiskLevel riskLevel) =>
+        private bool ShouldDeferForApproval(ClientStructuredToolCall call, RiskLevel riskLevel, ToolCallArgs? args = null) =>
             ShouldDeferForApproval(riskLevel, call.Arguments) ||
-            AdvisorToolRiskResolver.RequiresAutonomyApproval(_pawn, call.Name ?? string.Empty);
+            AdvisorToolRiskResolver.RequiresAutonomyApproval(
+                _pawn,
+                call.Name ?? string.Empty,
+                args ?? new ToolCallArgs
+                {
+                    ToolCallId = call.Id ?? string.Empty,
+                    ToolName = call.Name ?? string.Empty,
+                    ArgumentsJson = string.IsNullOrWhiteSpace(call.Arguments) ? "{}" : call.Arguments,
+                    PawnId = _pawn.thingIDNumber
+                });
 
         private bool ShouldDeferForApproval(RiskLevel riskLevel, string? arguments) =>
             AdvisorApprovalPolicy.RequiresApproval(
@@ -382,7 +402,8 @@ namespace RimMind.Advisor.Advisor
             ClientStructuredToolCall toolCall,
             RiskLevel riskLevel,
             AdvisorTaskDriver taskDriver,
-            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle,
+            string? requestId = null)
         {
             var reason = ExtractToolCallReason(toolCall) ?? toolCall.Name;
             var arguments = ParseToolCallArguments(toolCall.Arguments);
@@ -426,7 +447,7 @@ namespace RimMind.Advisor.Advisor
 
                             var approvedCall = StripPreApproval(toolCall);
                             var calls = new List<ClientStructuredToolCall> { approvedCall };
-                            var results = ExecuteToolCallsSafely(calls, toolCall.Id, playerApproved: true);
+                            var results = ExecuteToolCallsSafely(calls, requestId ?? toolCall.Id, playerApproved: true);
                             taskDriver.BroadcastDecisionExecuted(toolCall.Name, reason);
                             foreach (var result in results)
                             {
@@ -492,7 +513,8 @@ namespace RimMind.Advisor.Advisor
         private bool SubmitCabinetProposalForApproval(
             IReadOnlyList<(ClientStructuredToolCall toolCall, RiskLevel riskLevel)> deferredCalls,
             AdvisorTaskDriver taskDriver,
-            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle)
+            AdvisorRequestCycleState<ClientStructuredToolCall, ToolResult> requestCycle,
+            string? requestId = null)
         {
             if (deferredCalls == null || deferredCalls.Count == 0) return false;
 
@@ -579,7 +601,7 @@ namespace RimMind.Advisor.Advisor
                             var selectedCalls = indicesToRun.Select(i => callsToExecute[i]).ToList();
                             var selectedReasons = indicesToRun.Select(i => !string.IsNullOrWhiteSpace(reasonsToRecord[i]) ? reasonsToRecord[i] : "Cabinet Plan").ToList();
                             var preApprovedCalls = selectedCalls.Select(StripPreApproval).ToList();
-                            var results = ExecuteToolCallsSafely(preApprovedCalls, null, playerApproved: true);
+                            var results = ExecuteToolCallsSafely(preApprovedCalls, requestId, playerApproved: true);
                             for (int i = 0; i < selectedCalls.Count; i++)
                             {
                                 var call = selectedCalls[i];
@@ -702,6 +724,28 @@ namespace RimMind.Advisor.Advisor
                 return reason;
 
             var readableTool = FormatHumanReadableToolName(toolCall.Name);
+
+            try
+            {
+                var summaryKeys = RimMindAPI.Tools.FindById(toolCall.Name ?? string.Empty)?.Definition?.Manifest?.SummaryArgKeys;
+                if (summaryKeys != null)
+                {
+                    for (int i = 0; i < summaryKeys.Count; i++)
+                    {
+                        var key = summaryKeys[i];
+                        if (!string.IsNullOrWhiteSpace(key) &&
+                            arguments.TryGetValue(key, out var summaryVal) &&
+                            !summaryVal.NullOrEmpty())
+                        {
+                            return $"{readableTool}: {FormatHumanReadableToolName(summaryVal)}";
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
             string[] detailKeys =
             {
                 "building_def", "recipe_def", "zone_type", "work_type",
@@ -726,44 +770,15 @@ namespace RimMind.Advisor.Advisor
             string? traceId,
             bool playerApproved = false)
         {
-            try
-            {
-                // Approval travels via ToolCallArgs.IsPlayerApproved (trusted channel), never via LLM JSON.
-                var executionTask = _toolExecutor.ExecuteAsync(
-                    calls,
-                    $"NPC-{_pawn.thingIDNumber}",
-                    traceId,
-                    CancellationToken.None,
-                    playerApproved);
-
-                if (!executionTask.IsCompleted)
-                {
-                    RimMind.Application.Common.Threading.SynchronousTaskGate.ObserveFault(executionTask);
-                    RimMindErrors.Warn(
-                        "[RimMind-Advisor][ToolCall][MainThreadWait] " +
-                        $"Tool execution did not complete synchronously on main thread for {_pawn.Name.ToStringShort} " +
-                        $"(trace={traceId ?? "unknown"}, tools={calls.Count}); failing fast to avoid main-thread freeze.");
-                    return calls
-                        .Select(call => ToolResult.Fail(
-                            RimMind.Application.Common.Threading.SynchronousTaskGate.AsyncNotSupportedMessage,
-                            call.Id,
-                            call.Name))
-                        .ToList();
-                }
-
-                return executionTask.GetAwaiter().GetResult();
-            }
-            catch (Exception exception)
-            {
-                RimMindErrors.Warn(
-                    $"[RimMind-Advisor] Tool execution failed for {_pawn.Name.ToStringShort}: {exception.Message}");
-                return calls
-                    .Select(call => ToolResult.Fail(
-                        $"Tool execution failed: {exception.Message}",
-                        call.Id,
-                        call.Name))
-                    .ToList();
-            }
+            // Per-call isolation: one failing call must not rewrite the outcome of calls whose side
+            // effects already ran (that would send false feedback to the LLM).
+            return AdvisorToolCallBatchRunner.ExecuteOnMainThread(
+                _toolExecutor,
+                calls,
+                $"NPC-{_pawn.thingIDNumber}",
+                traceId,
+                playerApproved,
+                message => RimMindErrors.Warn($"{message} (pawn={_pawn.Name.ToStringShort})"));
         }
 
         private static ClientStructuredToolCall StripPreApproval(ClientStructuredToolCall toolCall)

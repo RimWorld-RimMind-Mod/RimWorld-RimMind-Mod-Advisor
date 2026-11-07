@@ -36,7 +36,10 @@ namespace RimMind.Advisor.Comps
         public AdvisorTaskDriver? TaskDriver => _cycle?.TaskDriver;
         public int AdvisorCooldownTicksLeft => _cycle != null
             ? _cycle.CooldownTicksLeft
-            : System.Math.Max(0, AdvisorCooldownCalculator.CalculateCooldownForPawn(Pawn, Settings) - ((Find.TickManager?.TicksGame ?? 0) - _lastRequestTick));
+            : AdvisorCooldownCalculator.CooldownTicksLeft(
+                AdvisorCooldownCalculator.CalculateCooldownForPawn(Pawn, Settings),
+                Find.TickManager?.TicksGame ?? 0,
+                _lastRequestTick);
 
         public bool CanRequestAdvice() =>
             IsEnabled && !HasPendingRequest && IsEligible() && AdvisorCooldownTicksLeft <= 0;

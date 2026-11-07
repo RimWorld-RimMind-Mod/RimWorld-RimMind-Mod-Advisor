@@ -116,6 +116,34 @@ namespace RimMind.Advisor.Tests.Contracts
                     RimMindAPI.Autonomy.Policy = RimMind.Domain.Agent.Policies.AgentAutonomyPolicy.CreateDefault();
                     try
                     {
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
+                            Id = "actions_place_blueprint",
+                            Manifest = new ToolManifest
+                            {
+                                DefaultDomain = RimMind.Domain.Agent.Policies.AutonomyDomain.BlueprintPlacement,
+                                RiskLevel = RiskLevel.Medium
+                            }
+                        });
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
+                            Id = "actions_add_worktable_bill",
+                            Manifest = new ToolManifest
+                            {
+                                DefaultDomain = RimMind.Domain.Agent.Policies.AutonomyDomain.WorktableBills,
+                                RiskLevel = RiskLevel.Medium
+                            }
+                        });
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
+                            Id = "actions_designate_resources",
+                            Manifest = new ToolManifest
+                            {
+                                DefaultDomain = RimMind.Domain.Agent.Policies.AutonomyDomain.ResourceMarking,
+                                RiskLevel = RiskLevel.Low
+                            }
+                        });
+
                         Assert.Equal(RiskLevel.Medium, AdvisorToolRiskResolver.Resolve("actions_place_blueprint"));
                         Assert.Equal(RiskLevel.Medium, AdvisorToolRiskResolver.Resolve("actions_add_worktable_bill"));
                         Assert.Equal(RiskLevel.Low, AdvisorToolRiskResolver.Resolve("actions_designate_resources"));
@@ -131,6 +159,7 @@ namespace RimMind.Advisor.Tests.Contracts
                     }
                     finally
                     {
+                        RimMindAPI.Tools.Definitions.Clear();
                         RimMindAPI.Autonomy.Policy = RimMind.Domain.Agent.Policies.AgentAutonomyPolicy.CreateDefault();
                     }
                 }),
