@@ -10,6 +10,7 @@ using Xunit;
 
 namespace RimMind.Advisor.Tests.Contracts
 {
+    [Collection("Advisor runtime")]
     public class ColonyMacroPerceiverTests
     {
         [Fact]
