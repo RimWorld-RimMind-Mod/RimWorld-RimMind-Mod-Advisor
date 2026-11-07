@@ -37,6 +37,8 @@
   <RimMind.Advisor.Settings.EnableRiskApproval.Desc>开启后，达到风险等级阈值的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
   <RimMind.Advisor.Settings.AutoBlockRiskLevel>自动拦截风险等级阈值：{0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
   <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>达到此风险等级的动作会被自动拦截，需玩家批准后才执行。</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
+  <RimMind.Advisor.Settings.Section.ColonistFilter>殖民者独立托管开关</RimMind.Advisor.Settings.Section.ColonistFilter>
+  <RimMind.Advisor.Settings.ColonistFilter.Tip>取消勾选即可忽略该殖民者，AI 顾问将不会自动为其分配行动。</RimMind.Advisor.Settings.ColonistFilter.Tip>
   <!-- CompAIAdvisor.cs -->
   <!-- Gizmo -->
   <RimMind.Advisor.UI.Gizmo.Enabled>AI顾问：开启</RimMind.Advisor.UI.Gizmo.Enabled>
