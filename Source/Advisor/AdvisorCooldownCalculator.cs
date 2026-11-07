@@ -44,17 +44,56 @@ namespace RimMind.Advisor.Advisor
             return Math.Max(safeMin, dynamicCooldown);
         }
 
+        public const float MinActivityCooldownMultiplier = 0.35f;
+        public const float MaxActivityCooldownMultiplier = 3.5f;
+
+        /// <summary>
+        /// Scales a cooldown by Core's ActivityFrequencyScale (higher scale = shorter cooldown),
+        /// clamped to [0.35x, 3.5x]. Non-positive or tiny scales leave the cooldown unchanged.
+        /// </summary>
+        public static int ApplyActivityFrequencyScale(int cooldownTicks, float activityFrequencyScale)
+            => RimMind.Application.Common.Helpers.ActivityCooldownScaler.Scale(cooldownTicks, activityFrequencyScale);
+
+        /// <summary>
+        /// The single effective Advisor cooldown: danger-adapted base cooldown, scaled by the
+        /// activity frequency, never below the crisis safety floor. Every readiness check (scan,
+        /// <c>CanRequestAdvice</c>, gizmo/debug display) must derive from this value.
+        /// </summary>
+        public static int CalculateEffectiveCooldown(
+            int baseCooldownTicks,
+            bool isMapHighDanger,
+            bool isPawnInCrisis,
+            bool isPawnInExtremeBreakRisk,
+            float activityFrequencyScale,
+            int minCooldownTicks = MinCrisisCooldownTicks)
+        {
+            int dynamicCooldown = CalculateDynamicCooldown(
+                baseCooldownTicks,
+                isMapHighDanger,
+                isPawnInCrisis,
+                isPawnInExtremeBreakRisk,
+                minCooldownTicks);
+            int scaled = ApplyActivityFrequencyScale(dynamicCooldown, activityFrequencyScale);
+            return Math.Max(Math.Max(600, minCooldownTicks), scaled);
+        }
+
+        /// <summary>Ticks left until the next request is allowed (0 when ready).</summary>
+        public static int CooldownTicksLeft(int effectiveCooldownTicks, int nowTicks, int lastRequestTick)
+            => Math.Max(0, effectiveCooldownTicks - (nowTicks - lastRequestTick));
+
 #if !RIMMIND_ADVISOR_TESTS
         /// <summary>
-        /// Evaluates pawn and map state to determine the dynamic cooldown.
+        /// Evaluates pawn and map state to determine the effective cooldown
+        /// (including Core's ActivityFrequencyScale).
         /// </summary>
         public static int CalculateCooldownForPawn(Pawn pawn, RimMindAdvisorSettings settings)
         {
             if (settings == null)
                 return 30000;
 
+            float activityScale = RimMind.Presentation.Api.RimMindAPI.Settings.ActivityFrequencyScale;
             if (pawn == null)
-                return settings.requestCooldownTicks;
+                return CalculateEffectiveCooldown(settings.requestCooldownTicks, false, false, false, activityScale);
 
             bool isMapHighDanger = false;
             try
@@ -98,11 +137,12 @@ namespace RimMind.Advisor.Advisor
                 // Defensive fallback
             }
 
-            return CalculateDynamicCooldown(
+            return CalculateEffectiveCooldown(
                 settings.requestCooldownTicks,
                 isMapHighDanger,
                 isPawnInCrisis,
-                isBreakRisk);
+                isBreakRisk,
+                activityScale);
         }
 #endif
     }

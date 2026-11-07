@@ -88,14 +88,11 @@ namespace RimMind.Advisor.Advisor
                     }
                     if (!shouldTrigger) continue;
 
-                    float scale = RimMindAPI.Settings.ActivityFrequencyScale;
-                    int ticksGame = Find.TickManager.TicksGame;
-                    int dynamicCooldown = AdvisorCooldownCalculator.CalculateCooldownForPawn(pawn, settings);
-                    float cdMult = scale > 0.01f ? (1.0f / scale) : 1.0f;
-                    dynamicCooldown = UnityEngine.Mathf.RoundToInt(dynamicCooldown * UnityEngine.Mathf.Clamp(cdMult, 0.35f, 3.5f));
-                    int advisorCooldownLeft = dynamicCooldown - (ticksGame - comp.LastRequestTick);
-                    if (advisorCooldownLeft > 0 || !comp.CanRequestAdvice()) continue;
+                    // Single cooldown source: CanRequestAdvice uses AdvisorCooldownCalculator's
+                    // effective (activity-scaled) cooldown, so no second check here.
+                    if (!comp.CanRequestAdvice()) continue;
 
+                    float scale = RimMindAPI.Settings.ActivityFrequencyScale;
                     float effectiveChance = UnityEngine.Mathf.Clamp(settings.macroCheckChance * scale, 0.05f, 0.95f);
                     if (Rand.Value > effectiveChance) continue;
 

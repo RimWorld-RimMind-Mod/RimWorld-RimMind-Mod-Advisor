@@ -63,6 +63,7 @@ namespace RimMind.Advisor.Data
             _globalLog.Add(record);
             if (_globalLog.Count > 200)
                 _globalLog.RemoveRange(0, _globalLog.Count - 200);
+            AdvisorHistoryChangedEvent.Publish(pawn.thingIDNumber);
         }
 
         public void PruneInactivePawns()
@@ -111,4 +112,26 @@ namespace RimMind.Advisor.Data
             _globalLog = globalLog ?? new List<AdvisorRequestRecord>();
         }
     }
+
+#if RIMMIND_ADVISOR_TESTS
+    internal sealed class AdvisorHistoryChangedEvent : RimMind.Domain.Events.AgentBusEvent
+    {
+        public const string EventName = "AdvisorEvent";
+
+        public AdvisorHistoryChangedEvent(int pawnId)
+        {
+            PawnId = pawnId;
+            NpcId = pawnId > 0 ? "NPC-" + pawnId : string.Empty;
+        }
+
+        public static void Register()
+        {
+            RimMind.Application.Features.AgentBus.AgentBusImpl.RegisterKnownEventType(EventName, typeof(AdvisorHistoryChangedEvent));
+        }
+
+        public static void Publish(int pawnId)
+        {
+        }
+    }
+#endif
 }

@@ -44,7 +44,7 @@ namespace RimMind.Advisor.Advisor
 
             return LlmRequestEnvelopeBuilder
                 .ForScenario(RimMindAPI.Context.ScenarioDecision)
-                .WithModId("RimMind.Advisor")
+                .WithModId(AdvisorRequestIds.RequestModId)
                 .WithNpcId(npcId)
                 .WithSchema(schema)
                 .WithSystemAugmentations(augmentations)

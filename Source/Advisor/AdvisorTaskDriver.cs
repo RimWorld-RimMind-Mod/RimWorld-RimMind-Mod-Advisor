@@ -174,7 +174,7 @@ namespace RimMind.Advisor.Advisor
 
             var envelope = LlmRequestEnvelopeBuilder
                 .ForScenario(RimMindAPI.Context.ScenarioDecision)
-                .WithModId("RimMind.Advisor")
+                .WithModId(AdvisorRequestIds.RequestModId)
                 .WithNpcId(npcId)
                 .WithSchema(_feedbackSession.Schema)
                 .WithMessages(messages)
