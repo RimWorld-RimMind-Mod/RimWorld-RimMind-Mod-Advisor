@@ -14,7 +14,8 @@ namespace RimMind.Advisor.Comps
         private int _lastRequestTick = -9999;
         private AdvisorCycleCoordinator? _cycle;
 
-        private Pawn Pawn => (Pawn)parent;
+        private Pawn? PawnOrNull => parent as Pawn;
+        private Pawn? Pawn => parent as Pawn;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
         private AdvisorCycleCoordinator Cycle
         {
@@ -34,25 +35,29 @@ namespace RimMind.Advisor.Comps
         public bool HasPendingRequest => _cycle != null && _cycle.HasPendingRequest;
         public int LastRequestTick => _cycle != null ? (_lastRequestTick = _cycle.LastRequestTick) : _lastRequestTick;
         public AdvisorTaskDriver? TaskDriver => _cycle?.TaskDriver;
-        public int AdvisorCooldownTicksLeft => _cycle != null
-            ? _cycle.CooldownTicksLeft
-            : AdvisorCooldownCalculator.CooldownTicksLeft(
-                AdvisorCooldownCalculator.CalculateCooldownForPawn(Pawn, Settings),
-                Find.TickManager?.TicksGame ?? 0,
-                _lastRequestTick);
+        public int AdvisorCooldownTicksLeft => PawnOrNull == null
+            ? 0
+            : (_cycle != null
+                ? _cycle.CooldownTicksLeft
+                : AdvisorCooldownCalculator.CooldownTicksLeft(
+                    AdvisorCooldownCalculator.CalculateCooldownForPawn(PawnOrNull, Settings),
+                    Find.TickManager?.TicksGame ?? 0,
+                    _lastRequestTick));
 
         public bool CanRequestAdvice() =>
-            IsEnabled && !HasPendingRequest && IsEligible() && AdvisorCooldownTicksLeft <= 0;
+            PawnOrNull != null && IsEnabled && !HasPendingRequest && IsEligible() && AdvisorCooldownTicksLeft <= 0;
 
         public bool IsEligible() =>
-            Pawn.IsFreeNonSlaveColonist &&
-            !Pawn.Dead &&
-            !(Pawn.drafter?.Drafted ?? false) &&
-            Pawn.needs?.mood != null;
+            PawnOrNull is Pawn pawn &&
+            pawn.IsFreeNonSlaveColonist &&
+            !pawn.Dead &&
+            !(pawn.drafter?.Drafted ?? false) &&
+            pawn.needs?.mood != null;
 
         public bool IsIdle()
         {
-            var job = Pawn.jobs?.curJob;
+            if (PawnOrNull is not Pawn pawn) return false;
+            var job = pawn.jobs?.curJob;
             if (job == null) return true;
             if (job.playerForced) return false;
 
@@ -65,7 +70,8 @@ namespace RimMind.Advisor.Comps
 
         public bool IsMoodBelowThreshold()
         {
-            var mood = Pawn.needs?.mood;
+            if (PawnOrNull is not Pawn pawn) return false;
+            var mood = pawn.needs?.mood;
             return mood != null && mood.CurLevelPercentage < Settings.moodThreshold;
         }
 
@@ -73,16 +79,23 @@ namespace RimMind.Advisor.Comps
 
         public bool ShouldMoodTrigger() => Settings.enableMoodTrigger && IsMoodBelowThreshold();
 
-        public void RequestAdvice(RimMindAdvisorSettings settings) => Cycle.RequestAdvice(settings);
+        public void RequestAdvice(RimMindAdvisorSettings settings)
+        {
+            if (PawnOrNull == null) return;
+            Cycle.RequestAdvice(settings);
+        }
 
         public void ForceRequestAdvice()
         {
+            if (PawnOrNull == null) return;
             IsEnabled = true;
             Cycle.ForceRequestAdvice();
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
+            if (PawnOrNull == null) yield break;
+
             var label = IsEnabled
                 ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate()
                 : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
@@ -125,13 +138,19 @@ namespace RimMind.Advisor.Comps
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
-            ApprovalManager.CancelPendingForPawn(Pawn);
+            if (Pawn != null)
+            {
+                ApprovalManager.CancelPendingForPawn(Pawn);
+            }
             base.PostDeSpawn(map, mode);
         }
 
         public override void PostDestroy(DestroyMode mode, Map previousMap)
         {
-            ApprovalManager.CancelPendingForPawn(Pawn);
+            if (Pawn != null)
+            {
+                ApprovalManager.CancelPendingForPawn(Pawn);
+            }
             base.PostDestroy(mode, previousMap);
         }
 
@@ -144,11 +163,11 @@ namespace RimMind.Advisor.Comps
                 _lastRequestTick = _cycle.LastRequestTick;
             }
             Scribe_Values.Look(ref _lastRequestTick, "aiAdvisorLastRequestTick", -9999);
-            if (Scribe.mode == LoadSaveMode.LoadingVars)
+            if (Scribe.mode == LoadSaveMode.LoadingVars && parent is Pawn pawn)
             {
                 if (_lastRequestTick <= 0 && Find.TickManager != null)
                 {
-                    int stagger = (Pawn.thingIDNumber & 0x7FFF) % 1500;
+                    int stagger = (pawn.thingIDNumber & 0x7FFF) % 1500;
                     _lastRequestTick = Find.TickManager.TicksGame - (Settings.requestCooldownTicks - stagger);
                 }
                 if (_cycle != null)

@@ -37,6 +37,8 @@
   <RimMind.Advisor.Settings.EnableRiskApproval.Desc>When enabled, actions at or above the risk threshold are automatically blocked and require player approval.</RimMind.Advisor.Settings.EnableRiskApproval.Desc>
   <RimMind.Advisor.Settings.AutoBlockRiskLevel>Auto-block risk level threshold: {0}</RimMind.Advisor.Settings.AutoBlockRiskLevel>
   <RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>Actions at or above this risk level are automatically blocked and require player approval.</RimMind.Advisor.Settings.AutoBlockRiskLevel.Desc>
+  <RimMind.Advisor.Settings.Section.ColonistFilter>Per-Colonist AI Advisor Control</RimMind.Advisor.Settings.Section.ColonistFilter>
+  <RimMind.Advisor.Settings.ColonistFilter.Tip>Uncheck to ignore this colonist so AI Advisor will not automatically assign actions to them.</RimMind.Advisor.Settings.ColonistFilter.Tip>
   <!-- CompAIAdvisor.cs -->
   <!-- Gizmo -->
   <RimMind.Advisor.UI.Gizmo.Enabled>AI Advisor: On</RimMind.Advisor.UI.Gizmo.Enabled>

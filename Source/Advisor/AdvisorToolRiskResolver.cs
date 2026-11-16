@@ -276,6 +276,7 @@ namespace RimMind.Advisor.Advisor
                 AutonomyDomain.ResourceMarking => RiskLevel.Low,
                 AutonomyDomain.WorktableBills => RiskLevel.Medium,
                 AutonomyDomain.BlueprintPlacement => RiskLevel.Medium,
+                AutonomyDomain.WorkPriorityModification => RiskLevel.Medium,
                 AutonomyDomain.HighRiskOperations => RiskLevel.High,
                 _ => RiskLevel.Low
             };

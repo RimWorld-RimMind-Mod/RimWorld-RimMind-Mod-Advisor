@@ -1,4 +1,6 @@
+using RimMind.Advisor.Comps;
 using RimMind.Domain.Enums;
+using RimMind.Presentation.Api;
 using RimMind.Presentation.UI;
 using UnityEngine;
 using Verse;
@@ -99,6 +101,26 @@ namespace RimMind.Advisor.Settings
                 RimMindAdvisorMod.Settings.autoBlockRiskLevel = (RiskLevel)riskVal;
             }
 
+            if (Current.ProgramState == ProgramState.Playing && Find.CurrentMap != null)
+            {
+                var colonists = RimMindPawnLookup.GetSpawnedColonistsSafe(Find.CurrentMap);
+                if (colonists.Count > 0)
+                {
+                    SettingsUIDrawer.DrawSectionHeader(listing, "RimMind.Advisor.Settings.Section.ColonistFilter".Translate());
+                    string colonistTip = "RimMind.Advisor.Settings.ColonistFilter.Tip".Translate();
+                    for (int i = 0; i < colonists.Count; i++)
+                    {
+                        Pawn p = colonists[i];
+                        if (!RimMindPawnLookup.IsActiveSpawnedColonist(p)) continue;
+                        var comp = p.TryGetComp<CompAIAdvisor>();
+                        if (comp == null) continue;
+                        bool enabled = comp.IsEnabled;
+                        listing.CheckboxLabeled("  " + p.LabelShortCap, ref enabled, colonistTip);
+                        comp.IsEnabled = enabled;
+                    }
+                }
+            }
+
             listing.End();
             Widgets.EndScrollView();
 
@@ -145,6 +167,12 @@ namespace RimMind.Advisor.Settings
                 h += 24f;
             if (RimMindAdvisorMod.Settings.enableRiskApproval)
                 h += 24f + 32f;
+            if (Current.ProgramState == ProgramState.Playing && Find.CurrentMap != null)
+            {
+                int colonistCount = RimMindPawnLookup.GetSpawnedColonistsSafe(Find.CurrentMap).Count;
+                if (colonistCount > 0)
+                    h += 32f + colonistCount * 26f;
+            }
             return h + 40f;
         }
     }

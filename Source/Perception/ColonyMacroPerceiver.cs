@@ -26,6 +26,8 @@ namespace RimMind.Advisor.Perception
         public int FreeColonistBedCount { get; set; }
         public int HostileThreatCount { get; set; }
         public int UnbuiltBlueprintsCount { get; set; }
+        public int GrowingZoneCellsCount { get; set; } = -1;
+        public List<string> ActiveColonistRoster { get; set; } = new List<string>();
     }
 
     public class ColonyMacroState
@@ -38,6 +40,7 @@ namespace RimMind.Advisor.Perception
         public int SteelCount { get; set; }
         public int MedicineCount { get; set; }
         public float OutdoorTemperature { get; set; }
+        public List<string> ActiveColonistRoster { get; set; } = new List<string>();
 
         public bool IsFoodCritical { get; set; }
         public bool IsExtremeCold { get; set; }
@@ -66,7 +69,10 @@ namespace RimMind.Advisor.Perception
                 WoodCount = snapshot.WoodCount,
                 SteelCount = snapshot.SteelCount,
                 MedicineCount = snapshot.MedicineCount,
-                OutdoorTemperature = snapshot.OutdoorTemperature
+                OutdoorTemperature = snapshot.OutdoorTemperature,
+                ActiveColonistRoster = snapshot.ActiveColonistRoster != null
+                    ? new List<string>(snapshot.ActiveColonistRoster)
+                    : new List<string>()
             };
 
             float dailyConsumption = Math.Max(1, snapshot.ColonistCount) * 1.6f;
@@ -91,6 +97,10 @@ namespace RimMind.Advisor.Perception
             if (state.IsFoodCritical)
             {
                 state.CriticalBottlenecks.Add($"[Food Crisis] Colony only has {state.FoodDaysRemaining:F1} days of food remaining! (Nutrition: {snapshot.TotalFoodNutrition:F1})");
+            }
+            if (snapshot.GrowingZoneCellsCount >= 0 && snapshot.GrowingZoneCellsCount < 15 && snapshot.ColonistCount > 0)
+            {
+                state.CriticalBottlenecks.Add("[No Agriculture] Colony has 0 Growing Zones! Crops take 6 days to mature; call actions_manage_zone (zone_type='Growing', crop_def='Plant_Rice', width=6, height=6) IMMEDIATELY so crops mature before starting rations run out!");
             }
             if (state.IsExtremeCold)
             {
@@ -127,6 +137,10 @@ namespace RimMind.Advisor.Perception
             var sb = new StringBuilder();
             sb.AppendLine("=== COLONY MACRO STATUS & SURVIVAL PRIORITIES ===");
             sb.AppendLine($"- Colonists: {state.ColonistCount} active (Downed: {state.DownedColonistCount})");
+            if (state.ActiveColonistRoster != null && state.ActiveColonistRoster.Count > 0)
+            {
+                sb.AppendLine($"- Active Colonist Roster: {string.Join(", ", state.ActiveColonistRoster)}");
+            }
             sb.AppendLine($"- Food Supply: {state.TotalFoodNutrition:F1} nutrition (~{state.FoodDaysRemaining:F1} days remaining)");
             sb.AppendLine($"- Outdoor Temperature: {state.OutdoorTemperature:F1}°C");
             sb.AppendLine($"- Resources: Wood {state.WoodCount}, Steel {state.SteelCount}, Medicine {state.MedicineCount}");
@@ -166,6 +180,9 @@ namespace RimMind.Advisor.Perception
                     .ToList();
                 snapshot.ColonistCount = colonists.Count;
                 snapshot.DownedColonistCount = colonists.Count(p => p.Downed);
+                snapshot.ActiveColonistRoster = colonists
+                    .Select(c => $"{c.Name?.ToStringShort ?? c.LabelShort} (pawn_id: {c.thingIDNumber})")
+                    .ToList();
 
                 float nutrition = 0f;
                 var foodThings = map.listerThings?.ThingsInGroup(ThingRequestGroup.FoodSourceNotPlantOrTree);
@@ -173,7 +190,12 @@ namespace RimMind.Advisor.Perception
                 {
                     foreach (var thing in foodThings)
                     {
-                        if (thing != null && thing.Spawned && !thing.Position.Fogged(map))
+                        if (thing != null && thing.Spawned && !thing.Position.Fogged(map)
+                            && !(thing is Corpse) && !(thing is Pawn)
+                            && thing.def?.ingestible != null && thing.def.IsNutritionGivingIngestible && thing.def.ingestible.HumanEdible
+                            && thing.def.ingestible.drugCategory == DrugCategory.None
+                            && thing.def.ingestible.preferability >= FoodPreferability.RawBad
+                            && !thing.IsForbidden(Faction.OfPlayer))
                         {
                             float perItem = thing.GetStatValue(StatDefOf.Nutrition);
                             nutrition += perItem * thing.stackCount;
@@ -182,13 +204,10 @@ namespace RimMind.Advisor.Perception
                 }
                 snapshot.TotalFoodNutrition = nutrition;
 
-                if (map.resourceCounter != null)
-                {
-                    snapshot.WoodCount = map.resourceCounter.GetCount(ThingDefOf.WoodLog);
-                    snapshot.SteelCount = map.resourceCounter.GetCount(ThingDefOf.Steel);
-                    snapshot.MedicineCount = map.resourceCounter.GetCount(ThingDefOf.MedicineIndustrial)
-                                           + map.resourceCounter.GetCount(ThingDefOf.MedicineHerbal);
-                }
+                snapshot.WoodCount = CountAvailableResource(map, ThingDefOf.WoodLog);
+                snapshot.SteelCount = CountAvailableResource(map, ThingDefOf.Steel);
+                snapshot.MedicineCount = CountAvailableResource(map, ThingDefOf.MedicineIndustrial)
+                                       + CountAvailableResource(map, ThingDefOf.MedicineHerbal);
 
                 snapshot.OutdoorTemperature = map.mapTemperature?.OutdoorTemp ?? 21f;
 
@@ -237,6 +256,10 @@ namespace RimMind.Advisor.Perception
                 {
                     snapshot.UnbuiltBlueprintsCount = blueprints.Count(b => b != null && b.Faction == Faction.OfPlayer);
                 }
+
+                snapshot.GrowingZoneCellsCount = map.zoneManager?.AllZones
+                    ?.OfType<Zone_Growing>()
+                    .Sum(z => z.cells?.Count ?? 0) ?? 0;
             }
             catch (Exception ex)
             {
@@ -244,6 +267,27 @@ namespace RimMind.Advisor.Perception
             }
 
             return snapshot;
+        }
+
+        private static int CountAvailableResource(Map map, ThingDef? def)
+        {
+            if (map == null || def == null) return 0;
+            int counted = map.resourceCounter?.GetCount(def) ?? 0;
+            var list = map.listerThings?.ThingsOfDef(def);
+            if (list != null && list.Count > 0)
+            {
+                int unforbidden = 0;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var t = list[i];
+                    if (t != null && t.Spawned && !t.Destroyed && !t.Position.Fogged(map) && !t.IsForbidden(Faction.OfPlayer))
+                    {
+                        unforbidden += t.stackCount;
+                    }
+                }
+                if (unforbidden > counted) counted = unforbidden;
+            }
+            return counted;
         }
 #endif
     }

@@ -153,8 +153,11 @@ namespace RimMind.Advisor.Advisor
 
             if (toolCalls == null || toolCalls.Count == 0)
             {
-                RimMindErrors.Warn(
-                    $"[RimMind-Advisor] No actionable response for {_pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+                if (!isFeedbackResponse)
+                {
+                    RimMindErrors.Warn(
+                        $"[RimMind-Advisor] No actionable response for {_pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+                }
                 CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
