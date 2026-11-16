@@ -211,13 +211,15 @@ namespace RimMind.Advisor.Tests.Contracts
                 WoodCount = 40,
                 SteelCount = 30,
                 OutdoorTemperature = -18f,
-                FreeColonistBedCount = 2
+                FreeColonistBedCount = 2,
+                ActiveColonistRoster = new List<string> { "Alice (pawn_id: 294)", "Bob (pawn_id: 301)" }
             };
 
             var state = ColonyMacroPerceiver.Evaluate(snapshot);
             var text = ColonyMacroPerceiver.FormatPromptAugmentation(state);
 
             Assert.Contains("=== COLONY MACRO STATUS & SURVIVAL PRIORITIES ===", text);
+            Assert.Contains("- Active Colonist Roster: Alice (pawn_id: 294), Bob (pawn_id: 301)", text);
             Assert.Contains("CRITICAL SURVIVAL BOTTLENECKS", text);
             Assert.Contains("[Food Crisis]", text);
             Assert.Contains("[Extreme Cold]", text);

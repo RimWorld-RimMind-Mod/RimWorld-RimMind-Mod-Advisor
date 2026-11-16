@@ -61,6 +61,24 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Equal("known.tool", call.Name);
                     Assert.Contains("\"target\":\"pawn\"", call.Arguments, StringComparison.Ordinal);
                 }),
+                ("fallback accepts single tool JSON objects, arrays, and to= commentary", () =>
+                {
+                    var singleObj = parser.ParseLegacy(
+                        "{\"name\":\"known.tool\",\"parameters\":{\"target\":\"pawn\",\"reason\":\"help\"}}");
+                    var singleCall = Assert.Single(singleObj!);
+                    Assert.Equal("known.tool", singleCall.Name);
+                    Assert.Contains("\"target\":\"pawn\"", singleCall.Arguments, StringComparison.Ordinal);
+
+                    var arrayObj = parser.ParseLegacy(
+                        "[{\"tool\":\"known.tool\",\"arguments\":{\"reason\":\"batch\"}}]");
+                    var arrayCall = Assert.Single(arrayObj!);
+                    Assert.Equal("known.tool", arrayCall.Name);
+
+                    var commentary = parser.ParseLegacy(
+                        "Executing tool to=known.tool {\"target\":\"pawn\"}");
+                    var commentaryCall = Assert.Single(commentary!);
+                    Assert.Equal("known.tool", commentaryCall.Name);
+                }),
                 ("empty recommendations produce no executable calls", () =>
                 {
                     Assert.Null(parser.ParseLegacy("{\"advices\":[]}"));

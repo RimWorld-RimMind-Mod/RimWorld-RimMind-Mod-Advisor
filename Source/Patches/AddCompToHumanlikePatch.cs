@@ -8,12 +8,8 @@ using Verse;
 namespace RimMind.Advisor.Patches
 {
     /// <summary>
-    /// 在所�?ThingDef 解析完继承关系之后，
-    /// 动态为所有人形智能小人（�?AlienRaces 外星种族）注�?CompProperties_AIAdvisor�?
-    ///
-    /// 使用 C# Harmony Postfix 而非 XML PatchOperation�?
-    /// 原因�?RimMind-Personality：XML Patch 在继承解析前运行�?
-    /// race/intelligence 字段尚未继承，XPath 过滤匹配 0 个节点�?
+    /// Dynamically injects CompProperties_AIAdvisor into all humanlike Pawn ThingDefs
+    /// after ThingDef.ResolveReferences completes (excluding Corpse ThingDefs).
     /// </summary>
     [HarmonyPatch(typeof(ThingDef), nameof(ThingDef.ResolveReferences))]
     public static class AddAdvisorCompPatch
@@ -21,6 +17,8 @@ namespace RimMind.Advisor.Patches
         [HarmonyPostfix]
         public static void Postfix(ThingDef __instance)
         {
+            if (__instance == null || __instance.IsCorpse) return;
+            if (__instance.thingClass == null || !typeof(Pawn).IsAssignableFrom(__instance.thingClass)) return;
             if (__instance.race?.intelligence != Intelligence.Humanlike) return;
 
             __instance.comps ??= new List<CompProperties>();

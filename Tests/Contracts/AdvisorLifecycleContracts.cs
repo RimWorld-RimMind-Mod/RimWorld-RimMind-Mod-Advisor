@@ -88,6 +88,7 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Contains("OnAdviceReceived", coordinator, StringComparison.Ordinal);
                     Assert.Contains("SubmitToolCallForApproval", coordinator, StringComparison.Ordinal);
                     Assert.Contains("TryAdvanceRequestCycle", coordinator, StringComparison.Ordinal);
+                    Assert.Contains("if (!isFeedbackResponse)", coordinator, StringComparison.Ordinal);
                 }));
         }
 

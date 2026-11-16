@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using RimMind.Application.Common.Interfaces.Tools;
 using RimMind.Application.Common.Models.Tools;
 using RimMind.Application.Common.Threading;
+using RimMind.Application.Features.Tools;
 using RimMind.Domain.Llm;
 using RimMind.Presentation.Api;
 
@@ -36,6 +37,7 @@ namespace RimMind.Advisor.Advisor
             bool playerApproved = false)
         {
             var results = new List<ToolResult>(calls.Count);
+            PawnIdParser.TryParse(npcId, out var callerPawnId);
 
             foreach (var call in calls)
             {
@@ -51,6 +53,7 @@ namespace RimMind.Advisor.Advisor
                     ToolCallId = call.Id,
                     ToolName = call.Name,
                     ArgumentsJson = string.IsNullOrEmpty(call.Arguments) ? "{}" : call.Arguments,
+                    PawnId = callerPawnId > 0 ? callerPawnId : (int?)null,
                     NpcId = npcId,
                     TraceId = traceId,
                     Ct = ct,
