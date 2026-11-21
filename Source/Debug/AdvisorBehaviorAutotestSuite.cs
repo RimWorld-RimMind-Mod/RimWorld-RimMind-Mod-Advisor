@@ -78,7 +78,7 @@ namespace RimMind.Advisor.Debug
                         onApproved: () => approved = true,
                         onRejected: () => { });
 
-                    var pendingList = RimMindAPI.GetPendingRequests();
+                    var pendingList = RimMindAPI.Bus.GetPendingRequests();
                     context.Assert(pendingList.Contains(entry), "Submitted advisor request entry is present in pending requests");
 
                     // Select approve option
@@ -91,9 +91,9 @@ namespace RimMind.Advisor.Debug
                     // Verify removed from pending queue
                     if (entry != null)
                     {
-                        RimMindAPI.DismissPendingRequest(entry);
+                        RimMindAPI.Bus.DismissPendingRequest(entry);
                     }
-                    var pendingAfter = RimMindAPI.GetPendingRequests();
+                    var pendingAfter = RimMindAPI.Bus.GetPendingRequests();
                     context.Assert(!pendingAfter.Contains(entry!), "Approved advisor request entry is cleanly removed from pending requests");
                 }
                 catch (Exception ex)
@@ -104,7 +104,7 @@ namespace RimMind.Advisor.Debug
                 {
                     if (entry != null)
                     {
-                        RimMindAPI.DismissPendingRequest(entry);
+                        RimMindAPI.Bus.DismissPendingRequest(entry);
                     }
                 }
             }
@@ -141,8 +141,8 @@ namespace RimMind.Advisor.Debug
             context.Assert(AdvisorConcurrencyTracker.ActiveCount == startCount, "AdvisorConcurrencyTracker decremented correctly");
 
             // 6. Advisor Mod Cooldown
-            RimMindAPI.ClearModCooldown(AdvisorRequestIds.RequestModId);
-            int cdLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
+            RimMindAPI.Request.ClearModCooldown(AdvisorRequestIds.RequestModId);
+            int cdLeft = RimMindAPI.Request.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
             context.Assert(cdLeft == 0, "Advisor Core-level cooldown cleared successfully");
         }
     }

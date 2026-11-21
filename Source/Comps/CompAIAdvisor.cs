@@ -23,7 +23,7 @@ namespace RimMind.Advisor.Comps
             {
                 if (_cycle == null)
                 {
-                    _cycle = new AdvisorCycleCoordinator(Pawn, () => Settings)
+                    _cycle = new AdvisorCycleCoordinator(Pawn!, () => Settings)
                     {
                         LastRequestTick = _lastRequestTick
                     };

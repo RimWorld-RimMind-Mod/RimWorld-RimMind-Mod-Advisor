@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Text;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Models.UI;
-using RimMind.Domain.Common;
 using RimMind.Presentation.Api;
 using Verse;
 
@@ -50,7 +49,7 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
-                var globalPending = RimMindAPI.GetPendingRequests();
+                var globalPending = RimMindAPI.Bus.GetPendingRequests();
                 if (globalPending != null)
                 {
                     foreach (var entry in globalPending)
@@ -70,21 +69,7 @@ namespace RimMind.Advisor.Advisor
             foreach (var entry in toCancel)
             {
                 _pendingRequests.TryRemove(entry, out _);
-                try
-                {
-                    if (!RimMindAPI.DismissPendingRequest(entry))
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                }
-                catch
-                {
-                    try
-                    {
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                    }
-                    catch
-                    {
-                    }
-                }
+                DismissOrCompleteSafely(entry);
             }
         }
 
@@ -96,16 +81,13 @@ namespace RimMind.Advisor.Advisor
             Action? onDismissed = null,
             Action<RequestEntry>? beforeRegister = null)
         {
-            string approveLabel = "RimMind.Advisor.Request.Approve".CanTranslate()
-                ? "RimMind.Advisor.Request.Approve".Translate().ToString()
-                : "Approve";
-            string rejectLabel = "RimMind.Advisor.Request.Reject".CanTranslate()
-                ? "RimMind.Advisor.Request.Reject".Translate().ToString()
-                : "Reject";
+            string approveLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Request.Approve", "Approve");
+            string rejectLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Request.Reject", "Reject");
             string readableAction = FormatHumanReadableToolName(item.Action);
-            string titleText = "RimMind.Advisor.Request.RiskAction".CanTranslate()
-                ? "RimMind.Advisor.Request.RiskAction".Translate(readableAction).ToString()
-                : $"Advisor Action: {readableAction}";
+            string titleText = RimMindAPI.Text.TrOr(
+                "RimMind.Advisor.Request.RiskAction",
+                "Advisor Action: {0}",
+                readableAction);
             string descriptionText = !string.IsNullOrWhiteSpace(item.Reason) &&
                                      !string.Equals(item.Reason, item.Action, StringComparison.OrdinalIgnoreCase)
                 ? item.Reason!
@@ -113,73 +95,17 @@ namespace RimMind.Advisor.Advisor
                     ? $"{readableAction}: {item.Target}"
                     : readableAction);
 
-            RequestEntry? entryRef = null;
-            var entry = new RequestEntry
-            {
-                source = "advisor",
-                pawn = pawn,
-                title = titleText,
-                description = descriptionText,
-                systemBlocked = true,
-                expireTicks = _settings.requestExpireTicks,
-                options = new[] { approveLabel, rejectLabel },
-                callback = choice =>
-                {
-                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
-                    if (choice == approveLabel)
-                    {
-                        onApproved();
-                    }
-                    else
-                    {
-                        onRejected();
-                    }
-                },
-                completionCallback = completionReason =>
-                {
-                    if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
-                    if (completionReason == RequestCompletionReason.Selected)
-                        return;
-
-                    if (completionReason == RequestCompletionReason.Dismissed)
-                    {
-                        onDismissed?.Invoke();
-                        return;
-                    }
-
-                    onRejected();
-                },
-            };
-            entryRef = entry;
-            _pendingRequests[entry] = pawn;
-            beforeRegister?.Invoke(entry);
-            try
-            {
-                RimMindAPI.RegisterPendingRequest(entry);
-                return entry;
-            }
-            catch
-            {
-                _pendingRequests.TryRemove(entry, out _);
-                try
-                {
-                    if (!RimMindAPI.DismissPendingRequest(entry))
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                }
-                catch
-                {
-                    try
-                    {
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                    }
-                    catch
-                    {
-                        // Preserve the registration exception; RequestEntry remains idempotently terminal.
-                    }
-                }
-
-                throw;
-            }
+            return RegisterTrackedEntry(
+                source: "advisor",
+                pawn: pawn,
+                title: titleText,
+                description: descriptionText,
+                approveLabel: approveLabel,
+                rejectLabel: rejectLabel,
+                onApproved: onApproved,
+                onRejected: onRejected,
+                onDismissed: onDismissed,
+                beforeRegister: beforeRegister);
         }
 
         public RequestEntry SubmitCabinetProposal(
@@ -192,15 +118,9 @@ namespace RimMind.Advisor.Advisor
         {
             if (proposal == null) throw new ArgumentNullException(nameof(proposal));
 
-            string approveAllLabel = "RimMind.Advisor.Cabinet.ApproveAll".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.ApproveAll".Translate().ToString()
-                : "Approve All";
-            string dismissLabel = "RimMind.Advisor.Cabinet.Dismiss".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.Dismiss".Translate().ToString()
-                : "Dismiss";
-            string measuresHeader = "RimMind.Advisor.Cabinet.ProposedMeasures".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.ProposedMeasures".Translate().ToString()
-                : "Proposed Strategic Measures";
+            string approveAllLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.ApproveAll", "Approve All");
+            string dismissLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.Dismiss", "Dismiss");
+            string measuresHeader = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.ProposedMeasures", "Proposed Strategic Measures");
 
             var sb = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(proposal.Summary))
@@ -222,38 +142,65 @@ namespace RimMind.Advisor.Advisor
                     : $"{i + 1}. [{readableItemAction}] {itemSummary}");
             }
 
+            return RegisterTrackedEntry(
+                source: "advisor_cabinet",
+                pawn: advisorPawn,
+                title: proposal.Title,
+                description: sb.ToString().TrimEnd(),
+                approveLabel: approveAllLabel,
+                rejectLabel: dismissLabel,
+                onApproved: () =>
+                {
+                    foreach (var cb in proposal.ExecutionCallbacks)
+                    {
+                        try
+                        {
+                            cb();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning($"[ApprovalManager] Cabinet sub-action failed: {ex.Message}");
+                        }
+                    }
+                    onAllApproved();
+                },
+                onRejected: onRejected,
+                onDismissed: onDismissed,
+                beforeRegister: beforeRegister);
+        }
+
+        internal static string FormatHumanReadableToolName(string? rawName)
+            => ToolCallSummaryFormatter.FormatHumanReadableToolName(rawName);
+
+        private RequestEntry RegisterTrackedEntry(
+            string source,
+            Pawn pawn,
+            string title,
+            string description,
+            string approveLabel,
+            string rejectLabel,
+            Action onApproved,
+            Action onRejected,
+            Action? onDismissed,
+            Action<RequestEntry>? beforeRegister)
+        {
             RequestEntry? entryRef = null;
             var entry = new RequestEntry
             {
-                source = "advisor_cabinet",
-                pawn = advisorPawn,
-                title = proposal.Title,
-                description = sb.ToString().TrimEnd(),
+                source = source,
+                pawn = pawn,
+                title = title,
+                description = description,
                 systemBlocked = true,
                 expireTicks = _settings.requestExpireTicks,
-                options = new[] { approveAllLabel, dismissLabel },
+                options = new[] { approveLabel, rejectLabel },
                 callback = choice =>
                 {
                     if (entryRef != null) _pendingRequests.TryRemove(entryRef, out _);
-                    if (choice == approveAllLabel)
-                    {
-                        foreach (var cb in proposal.ExecutionCallbacks)
-                        {
-                            try
-                            {
-                                cb();
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.Warning($"[ApprovalManager] Cabinet sub-action failed: {ex.Message}");
-                            }
-                        }
-                        onAllApproved();
-                    }
+                    if (choice == approveLabel)
+                        onApproved();
                     else
-                    {
                         onRejected();
-                    }
                 },
                 completionCallback = completionReason =>
                 {
@@ -270,79 +217,41 @@ namespace RimMind.Advisor.Advisor
                     onRejected();
                 },
             };
+
             entryRef = entry;
-            _pendingRequests[entry] = advisorPawn;
+            _pendingRequests[entry] = pawn;
             beforeRegister?.Invoke(entry);
             try
             {
-                RimMindAPI.RegisterPendingRequest(entry);
+                RimMindAPI.Bus.RegisterPendingRequest(entry);
                 return entry;
             }
             catch
             {
                 _pendingRequests.TryRemove(entry, out _);
-                try
-                {
-                    if (!RimMindAPI.DismissPendingRequest(entry))
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                }
-                catch
-                {
-                    try
-                    {
-                        entry.TryComplete(null, RequestCompletionReason.Dismissed);
-                    }
-                    catch
-                    {
-                        // Preserve the registration exception; RequestEntry remains idempotently terminal.
-                    }
-                }
-
+                DismissOrCompleteSafely(entry);
                 throw;
             }
         }
 
-        internal static string FormatHumanReadableToolName(string? rawName)
+        private static void DismissOrCompleteSafely(RequestEntry entry)
         {
-            if (string.IsNullOrWhiteSpace(rawName))
-                return "Action";
-
-            var trimmed = rawName!.Trim();
             try
             {
-                var displayName = RimMindAPI.Tools.FindById(trimmed)?.Definition?.Manifest?.DisplayName;
-                if (!string.IsNullOrWhiteSpace(displayName))
-                    return displayName!;
+                if (!RimMindAPI.Bus.DismissPendingRequest(entry))
+                    entry.TryComplete(null, RequestCompletionReason.Dismissed);
             }
             catch
             {
-            }
-
-            string[] prefixes = { "pawn_", "rimmind_" };
-            foreach (var prefix in prefixes)
-            {
-                if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
-                    trimmed.Length > prefix.Length)
+                try
                 {
-                    trimmed = trimmed.Substring(prefix.Length);
-                    break;
+                    entry.TryComplete(null, RequestCompletionReason.Dismissed);
+                }
+                catch
+                {
+                    // Preserve original error; RequestEntry remains idempotently terminal.
                 }
             }
-
-            var tokens = trimmed.Split(new[] { '_', '.', '-', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length == 0)
-                return trimmed;
-
-            var formatted = new string[tokens.Length];
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                var token = tokens[i];
-                formatted[i] = token.Length == 1
-                    ? token.ToUpperInvariant()
-                    : char.ToUpperInvariant(token[0]) + token.Substring(1);
-            }
-
-            return string.Join(" ", formatted);
         }
     }
 }

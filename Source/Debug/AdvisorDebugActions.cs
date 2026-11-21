@@ -51,7 +51,7 @@ namespace RimMind.Advisor.Debug
                 ? $"Cooling down ({advisorLeft} ticks ~ {advisorLeft / 2500f:F2} game hours)"
                 : "Ready";
 
-            int coreLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
+            int coreLeft = RimMindAPI.Request.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
             string coreCooldown = coreLeft > 0
                 ? $"Cooling down ({coreLeft} ticks ~ {coreLeft / 2500f:F2} game hours)"
                 : "Ready";
@@ -59,7 +59,7 @@ namespace RimMind.Advisor.Debug
             var sb = new StringBuilder();
             sb.AppendLine($"[RimMind-Advisor] === {pawn.Name.ToStringShort} Advisor State ===");
             sb.AppendLine($"  Advisor toggle: {(comp.IsEnabled ? "On" : "Off")}");
-            sb.AppendLine($"  API configured: {RimMindAPI.IsConfigured()}");
+            sb.AppendLine($"  API configured: {RimMindAPI.Settings.IsConfigured()}");
             sb.AppendLine($"  Has pending request: {comp.HasPendingRequest}");
             sb.AppendLine($"  [Advisor Cooldown] {advisorCooldown}  (requestCooldownTicks={s.requestCooldownTicks})");
             sb.AppendLine($"  [Core Cooldown]    {coreCooldown}  (mod cooldown for Advisor)");
@@ -86,7 +86,7 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            if (!RimMindAPI.IsConfigured())
+            if (!RimMindAPI.Settings.IsConfigured())
             {
                 RimMindErrors.Warn("[RimMind-Advisor] API not configured. Please enter API Key in Mod settings.");
                 return;
@@ -137,7 +137,7 @@ namespace RimMind.Advisor.Debug
             try
             {
                 var snapshot = await engine.BuildSnapshotFromEnvelopeAsync(
-                    npcId, null, 400, 0.7f, RimMindAPI.Context.ScenarioDecision);
+                    npcId, null, 400, 0.7f, ScenarioIds.AdvisorDecision);
                 RimMindAPI.MainThread.Post(() =>
                 {
                     if (!ReferenceEquals(Current.Game, game)) return;
@@ -180,14 +180,14 @@ namespace RimMind.Advisor.Debug
                 if (comp == null) continue;
 
                 int advisorLeft = comp.AdvisorCooldownTicksLeft;
-                int coreLeft = RimMindAPI.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
+                int coreLeft = RimMindAPI.Request.GetModCooldownTicksLeft(AdvisorRequestIds.RequestModId);
                 string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
                 string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
                 sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }
             sb.AppendLine($"Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{advS.maxConcurrentRequests}  " +
-                          $"API={RimMindAPI.IsConfigured()}  debugLogging={RimMindAPI.Settings.DebugLogging}");
+                          $"API={RimMindAPI.Settings.IsConfigured()}  debugLogging={RimMindAPI.Settings.DebugLogging}");
             Log.Message(sb.ToString());
         }
 
@@ -195,7 +195,7 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ClearAllCooldowns()
         {
-            RimMindAPI.ClearModCooldown(AdvisorRequestIds.RequestModId);
+            RimMindAPI.Request.ClearModCooldown(AdvisorRequestIds.RequestModId);
             Log.Message("[RimMind-Advisor] Advisor Core-layer cooldown cleared. To clear Advisor-layer cooldowns, use Force Request Advice on each colonist.");
         }
 
@@ -248,7 +248,7 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ShowApprovalQueue()
         {
-            var pending = RimMindAPI.GetPendingRequests();
+            var pending = RimMindAPI.Bus.GetPendingRequests();
             if (pending.Count == 0)
             {
                 Log.Message("[RimMind-Advisor] Approval queue is empty.");

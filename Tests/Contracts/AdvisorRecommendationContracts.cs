@@ -11,6 +11,7 @@ using Xunit;
 
 namespace RimMind.Advisor.Tests.Contracts
 {
+    [Collection("Advisor runtime")]
     public sealed class AdvisorRecommendationContracts
     {
         [Fact]
@@ -85,7 +86,59 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Null(parser.ParseLegacy("{\"advices\":[null]}"));
                     Assert.Null(parser.ParseLegacy("{\"other\":[]}"));
                     Assert.Null(parser.ParseLegacy("{broken"));
+                }),
+                ("fallback strips thinking tags and repairs trailing-comma JSON via Core LlmPayloadParser", () =>
+                {
+                    var calls = parser.ParseLegacy(
+                        "<thinking>Need to rest</thinking>\n```json\n{\"advices\":[{\"action\":\"known.tool\",\"reason\":\"exhausted\",},]}\n```");
+                    var call = Assert.Single(calls!);
+                    Assert.Equal("known.tool", call.Name);
+                    Assert.Contains("exhausted", call.Arguments, StringComparison.Ordinal);
                 }));
+        }
+
+        [Fact]
+        public void Summary_formatter_and_mote_presenter_use_manifest_keys_and_Core_mote_wrapping()
+        {
+            RimMind.Presentation.Api.RimMindAPI.Tools.Definitions.Clear();
+            try
+            {
+                RimMind.Presentation.Api.RimMindAPI.Tools.Definitions.Add(new RimMind.Application.Common.Models.Tools.ToolDefinition
+                {
+                    Id = "custom.build",
+                    Manifest = new RimMind.Application.Common.Models.Tools.ToolManifest
+                    {
+                        DisplayName = "Custom Build",
+                        SummaryArgKeys = new[] { "blueprint_key" }
+                    }
+                });
+
+                var byManifestKey = ToolCallSummaryFormatter.ExtractToolCallReason(new StructuredToolCall
+                {
+                    Name = "custom.build",
+                    Arguments = "{\"blueprint_key\":\"solar_panel\"}"
+                });
+                Assert.Equal("Custom Build: Solar Panel", byManifestKey);
+
+                var byNestedReason = ToolCallSummaryFormatter.ExtractToolCallReason(new StructuredToolCall
+                {
+                    Name = "custom.build",
+                    Arguments = "{\"params\":{\"reason\":\"Need emergency power\"}}"
+                });
+                Assert.Equal("Need emergency power", byNestedReason);
+
+                var stripped = ToolCallSummaryFormatter.StripPreApprovalArgument("{\"pre_approved\":true,\"x\":1}");
+                Assert.DoesNotContain("pre_approved", stripped);
+                Assert.Contains("\"x\":1", stripped);
+
+                var wrapped = AdvisorMotePresenter.FormatAdvisorMoteText("This is a very long English advisor decision bubble message for colonist", maxLineLength: 20, maxTotalLength: 50);
+                Assert.Contains("\n", wrapped);
+                Assert.EndsWith("…", wrapped);
+            }
+            finally
+            {
+                RimMind.Presentation.Api.RimMindAPI.Tools.Definitions.Clear();
+            }
         }
 
         [Fact]

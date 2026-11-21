@@ -51,9 +51,12 @@
   <!-- Prompt -->
   <!-- JobCandidateBuilder.cs -->
   <!-- Prompt - Section Headers -->
-  <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（action 固定填 assign_work，param 填括号内的 WorkType defName；可加 @x,z 指定坐标）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
+  <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（括号内为 WorkType defName）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
   <RimMind.Advisor.Prompt.NoWorkTargets>  （暂无可执行工作目标）</RimMind.Advisor.Prompt.NoWorkTargets>
-  <RimMind.Advisor.Prompt.InstantSectionHeader>[即时动作]（action 直接填括号内的 intentId；括号外是说明）</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <RimMind.Advisor.Prompt.InstantSectionHeader>[可用动作]</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <RimMind.Advisor.Prompt.ActionsGuidanceHeader>[工具调用说明]</RimMind.Advisor.Prompt.ActionsGuidanceHeader>
+  <RimMind.Advisor.Prompt.ActionsGuidanceBody>本次请求已通过原生 Tool Calling 挂载 {0} 个作用域内的动作工具。请直接调用匹配的工具，且仅使用该工具 JSON Schema 中声明的参数。</RimMind.Advisor.Prompt.ActionsGuidanceBody>
+  <RimMind.Advisor.Prompt.ActionsElevatedRisk>高风险/需审批工具（仅在确有必要时调用）：{0}</RimMind.Advisor.Prompt.ActionsElevatedRisk>
   <!-- Prompt - Instant Action Hints -->
   <RimMind.Advisor.Prompt.RestLow>体力 {0}%</RimMind.Advisor.Prompt.RestLow>
   <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>
@@ -89,35 +92,28 @@
 2. 检查基地需求与优先级
 3. 对照性格评估候选动作
 4. 选择最符合角色的行动</RimMind.Advisor.Prompt.TaskInstruction.Process>
-  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>只推荐候选列表中可用的动作；考虑殖民者的当前状态和需求；优先处理紧急情况（低心情、健康问题等）</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>使用 Tool Calling（函数调用）来输出动作。每个动作对应一个可用的 tool/function，直接调用对应的函数即可。</RimMind.Advisor.Prompt.TaskInstruction.Output>
-  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling 规则：
-- 每个可用动作对应一个 tool/function，直接调用 function name 匹配动作 ID
-- param 参数：assign_work 填 WorkType defName（如 Mining）；move_to 填 "x,z" 坐标；其余动作留空
-- 返回的 reason 字段将显示在殖民者头顶气泡中</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
-  <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>输出数量规则：
-- 工作任务（assign_work）：可以排队多条（advices 数组有多个元素，按顺序执行）
-- 即时动作（force_rest / social_relax 等）：通常只需 1 条
-- 混合建议（工作 + 即时）：先写即时动作，再排工作任务</RimMind.Advisor.Prompt.TaskInstruction.OutputRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>仅调用本次请求挂载的可用工具；充分考虑殖民者的当前状态、技能与营地瓶颈；优先处理紧急生存问题（饥饿、极端温度、伤病、低心情）。</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>请使用原生 Tool Calling（函数调用）执行动作。如果当前无需采取行动，直接用简短纯文本回复即可，不要强行调用工具。</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling 参数规范：
+- 仅传递对应工具 JSON Schema 中明确声明的参数名和类型。
+- 严禁向工具臆造其 Schema 中不存在的额外字段（如 param、request_type 或未声明的 reason）。
+- 若工具 Schema 包含 reason 字段，请填写简明理由（将显示在殖民者头顶气泡中）。</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>动作批处理规范：
+- 日常个人需求（休息、进食、放松、救治）优先发起 1 个精准工具调用。
+- 当营地同时存在多个紧急瓶颈时，可在同回合发起多个互补的原生工具调用（高风险或需审批动作会自动合并为一张内阁审批卡）。</RimMind.Advisor.Prompt.TaskInstruction.OutputRules>
   <RimMind.Advisor.Prompt.TaskInstruction.RiskControl>风险控制：
-- 候选列表中标有 [高] 或 [危险] 的动作风险较高
-- 非必要情况下应优先选择低风险或中等风险动作
-- 尽量不要在普通情况下触发高风险动作（如 inspire 系列、drop_weapon 等）</RimMind.Advisor.Prompt.TaskInstruction.RiskControl>
+- 高风险或需审批工具在执行前需要玩家确认。
+- 日常运营优先选择低/中风险动作，仅在确有必要或危机情况下使用高风险动作。</RimMind.Advisor.Prompt.TaskInstruction.RiskControl>
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>多样化提示：
-- 尽量保证多样化的请求，避免重复提交相同类型的请求
-- 如果近期已有类似请求被批准或拒绝，请换一种不同类型的行动</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
-  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>请求规则：
-- 如果殖民者有强烈需求（长期心情低落、社交孤立、技能闲置），可以设置 request_type="request"
-- request 类型的建议是殖民者自己无法完成的事（如建造建筑、安排社交、改变工作分配）
-- 正常风险动作使用 request_type="normal"（自动执行）</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+- 避免连续重复提交近期已成功、失败或被玩家拒绝的同类动作。
+- 根据玩家的历史拒绝反馈调整策略，尝试其他有效方案。</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>审批与自主权限规范：
+- 系统会根据自主权限与风险策略自动决定动作是直接执行还是提交给玩家审批。
+- 切勿在工具参数中伪造审批标志或额外的包装字段。</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.LanguageRule>语言规则：请始终使用简体中文撰写所有文本回复与字符串参数（例如 reason），与本提示词语言保持一致。</RimMind.Advisor.Prompt.TaskInstruction.LanguageRule>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>示例————
-状态：Jenni心情53%，健康良好，正在闲逛，食物储备为0，手工(5)
-可用动作（来自L3层）：
-- eat_food: 获取食物
-- assign_work Crafting: 分配手工工作
-- social_relax: 社交放松
-
-Tool Calling输出：调用 assign_work function，param="Crafting"，reason="食物储备严重不足，手工制作物品可以换取食物"</RimMind.Advisor.Prompt.TaskInstruction.Example>
+状态：Jenni (pawn_id=14) 体力18%，心情42%，健康，正在闲逛。
+原生 Tool Calling：直接调用已挂载的休息/恢复工具，并仅传入其 Schema 定义的参数（例如 pawn_id=14, reason="体力透支且心情偏低，需要立即休息"）。</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 
   <!-- Cabinet Strategic Proposal & Approval Keys -->

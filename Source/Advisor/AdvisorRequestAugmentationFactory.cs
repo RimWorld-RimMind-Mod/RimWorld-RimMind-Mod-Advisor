@@ -3,12 +3,12 @@ using RimMind.Application.Common.Models.Context;
 using RimMind.Application.Common.Models.Pipeline;
 using RimMind.Application.Features.Llm;
 using RimMind.Domain.Llm;
-using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Advisor
 {
     /// <summary>
-    /// Builds Advisor's initial envelope without synchronously constructing Core context.
+    /// Builds Advisor's initial envelope using <see cref="ScenarioIds.AdvisorDecision"/>
+    /// without synchronously constructing Core context.
     /// </summary>
     public static class AdvisorRequestAugmentationFactory
     {
@@ -18,7 +18,7 @@ namespace RimMind.Advisor.Advisor
         public const string ColonyMacroStatusId = "advisor.colony-macro-status";
 
         private const string LegacyJsonFallbackContent =
-            "[Legacy compatibility] Native ToolCall is preferred. If your model cannot emit tool_calls, respond with JSON object {\"advices\":[{\"action\":\"tool.id\",\"param\":\"{}\",\"reason\":\"short reason\"}]}.";
+            "[Legacy compatibility] Prefer native Tool Calling using each tool's declared JSON schema. Only if your model cannot emit native tool_calls, respond with a JSON object {\"advices\":[{\"name\":\"<tool_id>\",\"parameters\":{...}}]}.";
 
         public static LlmRequestEnvelope Create(
             string npcId,
@@ -43,7 +43,7 @@ namespace RimMind.Advisor.Advisor
                 augmentations.Add(new PromptAugmentation(RejectedDecisionsId, rejectedDecisions!, 30));
 
             return LlmRequestEnvelopeBuilder
-                .ForScenario(RimMindAPI.Context.ScenarioDecision)
+                .ForScenario(ScenarioIds.AdvisorDecision)
                 .WithModId(AdvisorRequestIds.RequestModId)
                 .WithNpcId(npcId)
                 .WithSchema(schema)

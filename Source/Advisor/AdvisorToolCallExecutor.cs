@@ -19,7 +19,7 @@ namespace RimMind.Advisor.Advisor
 #if RIMMIND_ADVISOR_TESTS
             : this(_ => null)
 #else
-            : this(RimMindAPI.Tools.FindById)
+            : this(RimMindAPI.ToolSet.Registry.FindById)
 #endif
         {
         }
@@ -148,7 +148,7 @@ namespace RimMind.Advisor.Advisor
                         $"Tool '{call.Name}' did not complete synchronously on main thread " +
                         $"(trace={traceId ?? "unknown"}, npc={npcId ?? "none"}); failing fast to avoid main-thread freeze.");
                     var asyncFail = ToolResult.Fail(SynchronousTaskGate.AsyncNotSupportedMessage, call.Id, call.Name);
-                    RimMindAPI.Tools.RecordToolCallTrace(
+                    RimMindAPI.ToolSet.RecordToolCallTrace(
                         traceId,
                         call.Name ?? string.Empty,
                         call.Arguments,
@@ -164,7 +164,7 @@ namespace RimMind.Advisor.Advisor
                         $"Tool executor returned {single?.Count ?? 0} results for one call.",
                         call.Id,
                         call.Name);
-                    RimMindAPI.Tools.RecordToolCallTrace(
+                    RimMindAPI.ToolSet.RecordToolCallTrace(
                         traceId,
                         call.Name ?? string.Empty,
                         call.Arguments,
@@ -174,7 +174,7 @@ namespace RimMind.Advisor.Advisor
                 }
 
                 var toolResult = single[0];
-                RimMindAPI.Tools.RecordToolCallTrace(
+                RimMindAPI.ToolSet.RecordToolCallTrace(
                     traceId,
                     toolResult.ToolName ?? call.Name ?? string.Empty,
                     call.Arguments,
@@ -187,7 +187,7 @@ namespace RimMind.Advisor.Advisor
                 warn?.Invoke(
                     $"[RimMind-Advisor] Tool '{call.Name}' execution failed (npc={npcId ?? "none"}): {exception.Message}");
                 var exFail = ToolResult.Fail($"Tool execution failed: {exception.Message}", call.Id, call.Name);
-                RimMindAPI.Tools.RecordToolCallTrace(
+                RimMindAPI.ToolSet.RecordToolCallTrace(
                     traceId,
                     call.Name ?? string.Empty,
                     call.Arguments,

@@ -38,7 +38,7 @@ namespace RimMind.Advisor.Tests.Contracts
 
                 Assert.False(builder.Completion.Task.IsCompleted);
                 Assert.Equal("NPC-42", builder.NpcId);
-                Assert.Equal(ScenarioIds.Decision, builder.Scenario);
+                Assert.Equal(ScenarioIds.AdvisorDecision, builder.Scenario);
                 Assert.Empty(Log.Messages);
                 if (changeGame) Current.Game = new Game();
 

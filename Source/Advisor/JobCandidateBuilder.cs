@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using RimMind.Advisor;
 using RimMind.Application.Common.Models.Tools;
+using RimMind.Application.Features.Tools;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
 using RimWorld;
@@ -79,11 +80,11 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<ToolDefinition> allTools;
             try
             {
-                allTools = RimMindAPI.Tools.GetAllDefinitions();
+                allTools = RimMindAPI.ToolSet.GetDefinitionsForScope(ToolScopeProjection.AdvisorDefaultScope);
             }
             catch (Exception ex)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] GetAllDefinitions failed: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] GetDefinitionsForScope failed: {ex.Message}");
                 return result;
             }
 
@@ -91,7 +92,7 @@ namespace RimMind.Advisor.Advisor
             {
                 var intentId = tool.Id;
                 if (string.IsNullOrWhiteSpace(intentId)) continue;
-                if (RimMindAPI.ShouldSkipAction(intentId)) continue;
+                if (RimMindAPI.Ext.ShouldSkipAction(intentId)) continue;
 
                 string? hint = BuildInstantHint(pawn, intentId);
                 if (hint == null && InstantHintRegistry.IsKnownAction(intentId)) continue;
@@ -139,9 +140,7 @@ namespace RimMind.Advisor.Advisor
                         if (injured.Count > 0)
                         {
                             string colName = injured[0].Name?.ToStringShort ?? injured[0].LabelShort;
-                            return "RimMind.Advisor.Prompt.TendPawnHint".CanTranslate()
-                                ? "RimMind.Advisor.Prompt.TendPawnHint".Translate(colName).ToString()
-                                : $"param target: {colName}";
+                            return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.TendPawnHint", "param target: {0}", colName);
                         }
 
                         if (pawn.Map != null)
@@ -151,9 +150,7 @@ namespace RimMind.Advisor.Advisor
                             if (injuredAnimal != null)
                             {
                                 string name = injuredAnimal.Name?.ToStringShort ?? injuredAnimal.LabelShort;
-                                return "RimMind.Advisor.Prompt.TendPawnHint".CanTranslate()
-                                    ? "RimMind.Advisor.Prompt.TendPawnHint".Translate(name).ToString()
-                                    : $"param target: {name}";
+                                return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.TendPawnHint", "param target: {0}", name);
                             }
                         }
 
@@ -168,9 +165,7 @@ namespace RimMind.Advisor.Advisor
                         if (downed.Count > 0)
                         {
                             string colName = downed[0].Name?.ToStringShort ?? downed[0].LabelShort;
-                            return "RimMind.Advisor.Prompt.RescuePawnHint".CanTranslate()
-                                ? "RimMind.Advisor.Prompt.RescuePawnHint".Translate(colName).ToString()
-                                : $"param target: {colName}";
+                            return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.RescuePawnHint", "param target: {0}", colName);
                         }
 
                         if (pawn.Map != null)
@@ -180,9 +175,7 @@ namespace RimMind.Advisor.Advisor
                             if (downedAnimal != null)
                             {
                                 string name = downedAnimal.Name?.ToStringShort ?? downedAnimal.LabelShort;
-                                return "RimMind.Advisor.Prompt.RescuePawnHint".CanTranslate()
-                                    ? "RimMind.Advisor.Prompt.RescuePawnHint".Translate(name).ToString()
-                                    : $"param target: {name}";
+                                return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.RescuePawnHint", "param target: {0}", name);
                             }
                         }
 

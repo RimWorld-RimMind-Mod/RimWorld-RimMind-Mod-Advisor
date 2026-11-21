@@ -51,9 +51,12 @@
   <!-- Prompt -->
   <!-- JobCandidateBuilder.cs -->
   <!-- Prompt - Section Headers -->
-  <RimMind.Advisor.Prompt.WorkSectionHeader>[Work Tasks] (action must be assign_work, param fills WorkType defName in parentheses; can add @x,z for coordinates) [Low Risk]</RimMind.Advisor.Prompt.WorkSectionHeader>
+  <RimMind.Advisor.Prompt.WorkSectionHeader>[Work Tasks] (WorkType defName in parentheses) [Low Risk]</RimMind.Advisor.Prompt.WorkSectionHeader>
   <RimMind.Advisor.Prompt.NoWorkTargets>  (No executable work targets currently)</RimMind.Advisor.Prompt.NoWorkTargets>
-  <RimMind.Advisor.Prompt.InstantSectionHeader>[Instant Actions] (action fills the intentId in parentheses; outside parentheses is description)</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <RimMind.Advisor.Prompt.InstantSectionHeader>[Available Actions]</RimMind.Advisor.Prompt.InstantSectionHeader>
+  <RimMind.Advisor.Prompt.ActionsGuidanceHeader>[Tool Execution Guidance]</RimMind.Advisor.Prompt.ActionsGuidanceHeader>
+  <RimMind.Advisor.Prompt.ActionsGuidanceBody>{0} scoped action tools are attached via native Tool Calling. Call matching tools directly using ONLY parameters declared in each tool's JSON schema.</RimMind.Advisor.Prompt.ActionsGuidanceBody>
+  <RimMind.Advisor.Prompt.ActionsElevatedRisk>Elevated-risk / approval-gated tools (use only when warranted): {0}</RimMind.Advisor.Prompt.ActionsElevatedRisk>
   <!-- Prompt - Instant Action Hints -->
   <RimMind.Advisor.Prompt.RestLow>Stamina {0}%</RimMind.Advisor.Prompt.RestLow>
   <RimMind.Advisor.Prompt.RestSufficient>Stamina {0}% (sufficient)</RimMind.Advisor.Prompt.RestSufficient>
@@ -89,35 +92,28 @@
 2. Check colony needs and priorities
 3. Evaluate candidate actions against personality
 4. Choose the most fitting action</RimMind.Advisor.Prompt.TaskInstruction.Process>
-  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only recommend actions available in the candidate list; consider the colonist's current state and needs; prioritize urgent situations (low mood, health issues, etc.)</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
-  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use Tool Calling (function calls) to output actions. Each available action corresponds to a tool/function — call the matching function directly.</RimMind.Advisor.Prompt.TaskInstruction.Output>
-  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling rules:
-- Each available action is a tool/function; call by matching function name to action ID
-- param: assign_work fills WorkType defName (e.g. Mining); move_to fills "x,z" coordinates; leave empty for others
-- The returned reason field will be displayed in the colonist's thought bubble</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
-  <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>Output count rules:
-- Work tasks (assign_work): can queue multiple (advices array has multiple elements, executed in order)
-- Instant actions (force_rest / social_relax etc.): usually only 1 needed
-- Mixed advice (work + instant): write instant actions first, then work tasks</RimMind.Advisor.Prompt.TaskInstruction.OutputRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.Constraint>Only invoke tools attached in this request; respect the colonist's current state, skills, and colony bottlenecks; prioritize urgent survival issues (starvation, extreme temperature, injury, low mood).</RimMind.Advisor.Prompt.TaskInstruction.Constraint>
+  <RimMind.Advisor.Prompt.TaskInstruction.Output>Use native Tool Calling (function calls) to execute actions. If no action is warranted right now, respond briefly in plain text without calling a tool.</RimMind.Advisor.Prompt.TaskInstruction.Output>
+  <RimMind.Advisor.Prompt.TaskInstruction.FieldRules>Tool Calling parameter rules:
+- Use ONLY parameter names and value types explicitly defined in each tool's JSON schema.
+- NEVER invent extra parameters (such as param, request_type, or reason) on a tool whose schema does not declare them.
+- When a tool's schema includes a reason field, provide a brief explanation (displayed in the colonist's thought bubble).</RimMind.Advisor.Prompt.TaskInstruction.FieldRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.OutputRules>Action batching rules:
+- Prefer 1 focused tool call for routine colonist needs (rest, food, mood, triage).
+- When resolving multiple simultaneous colony bottlenecks, you may emit multiple complementary native tool calls in one turn (high-risk or approval-gated calls are grouped into a single approval card).</RimMind.Advisor.Prompt.TaskInstruction.OutputRules>
   <RimMind.Advisor.Prompt.TaskInstruction.RiskControl>Risk control:
-- Actions marked [High] or [Danger] in the candidate list are higher risk
-- Prefer low or medium risk actions when not necessary
-- Avoid triggering high-risk actions (e.g. inspire series, drop_weapon) in normal situations</RimMind.Advisor.Prompt.TaskInstruction.RiskControl>
+- High-risk or approval-gated tools require player confirmation before execution.
+- Prefer low or medium risk actions for routine management; reserve high-risk actions for genuine emergencies.</RimMind.Advisor.Prompt.TaskInstruction.RiskControl>
   <RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>Diversity hints:
-- Try to ensure diverse requests, avoid submitting the same type of request repeatedly
-- If similar requests have been approved or rejected recently, try a different type of action</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
-  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>Request rules:
-- If the colonist has strong needs (chronic low mood, social isolation, idle skills), set request_type="request"
-- request_type actions are things the colonist cannot do alone (build rooms, arrange social events, change work assignments)
-- Normal risk actions use request_type="normal" (auto-execute)</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+- Avoid repeating the exact same action back-to-back if recent history already shows it succeeded, failed, or was rejected by the player.
+- Adapt to player rejections and try a different valid approach.</RimMind.Advisor.Prompt.TaskInstruction.DiversityHint>
+  <RimMind.Advisor.Prompt.TaskInstruction.RequestRules>Approval &amp; autonomy rules:
+- Autonomy and risk policies automatically decide whether an action executes immediately or is sent to the player for approval.
+- Do not fabricate approval flags or extra wrapper fields in tool arguments.</RimMind.Advisor.Prompt.TaskInstruction.RequestRules>
+  <RimMind.Advisor.Prompt.TaskInstruction.LanguageRule>Language rule: Always write any text response and string arguments (such as reason) in English, matching this prompt's language.</RimMind.Advisor.Prompt.TaskInstruction.LanguageRule>
   <RimMind.Advisor.Prompt.TaskInstruction.Example>Example ----
-State: Jenni mood 53%, healthy, wandering idle, food reserves 0, Crafting(5)
-Available actions (from L3 layer):
-- eat_food: Get food
-- assign_work Crafting: Assign crafting work
-- social_relax: Social relax
-
-Tool Calling output: call assign_work function, param="Crafting", reason="Zero food — her Crafting(5) can produce goods to trade for food"</RimMind.Advisor.Prompt.TaskInstruction.Example>
+State: Jenni (pawn_id=14) rest 18%, mood 42%, healthy, wandering idle.
+Native Tool Call: call the attached rest/recovery tool with its declared schema parameters (e.g. pawn_id=14, reason="Exhausted and low mood — needs immediate rest").</RimMind.Advisor.Prompt.TaskInstruction.Example>
   <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 
   <!-- Cabinet Strategic Proposal & Approval Keys -->

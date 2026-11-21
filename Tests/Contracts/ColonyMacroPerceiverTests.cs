@@ -228,6 +228,28 @@ namespace RimMind.Advisor.Tests.Contracts
         }
 
         [Fact]
+        public void Evaluate_LowGrowingZones_EmitsPureDomainBottleneck_WithoutHardcodedActionsToolIds()
+        {
+            var snapshot = new ColonyMacroSnapshot
+            {
+                ColonistCount = 3,
+                TotalFoodNutrition = 50f,
+                WoodCount = 100,
+                SteelCount = 100,
+                OutdoorTemperature = 20f,
+                FreeColonistBedCount = 3,
+                GrowingZoneCellsCount = 0
+            };
+
+            var state = ColonyMacroPerceiver.Evaluate(snapshot);
+            var text = ColonyMacroPerceiver.FormatPromptAugmentation(state);
+
+            Assert.Contains("[No Agriculture]", text);
+            Assert.DoesNotContain("actions_manage_zone", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("actions_", text, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
         public void ApprovalManager_SubmitCabinetProposal_ExecutesAllCallbacksOnApproveAll()
         {
             var settings = new RimMindAdvisorSettings();

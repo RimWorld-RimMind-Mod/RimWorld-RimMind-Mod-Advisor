@@ -1,7 +1,7 @@
 using RimMind.Advisor.Settings;
+using RimMind.Presentation.Api;
 using RimMind.Presentation.Settings;
 using UnityEngine;
-using Verse;
 
 namespace RimMind.Advisor
 {
@@ -9,7 +9,7 @@ namespace RimMind.Advisor
     {
         public string Id => "advisor";
         public string OwnerModId => "RimMindAdvisor";
-        public string Label => "RimMind.Advisor.Settings.Tab".CanTranslate() ? (string)"RimMind.Advisor.Settings.Tab".Translate() : "Advisor";
+        public string Label => RimMindAPI.Text.TrOr("RimMind.Advisor.Settings.Tab", "Advisor");
         public void Draw(Rect rect) => AdvisorSettingsDrawer.Draw(rect);
     }
 }

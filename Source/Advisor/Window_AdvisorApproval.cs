@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RimMind.Presentation.Api;
 using UnityEngine;
 using Verse;
 
@@ -78,15 +79,9 @@ namespace RimMind.Advisor.Advisor
             float btnY = inRect.height - 38f;
             float btnWidth = 140f;
 
-            string approveSelectedLabel = "RimMind.Advisor.Cabinet.ApproveSelected".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.ApproveSelected".Translate().ToString()
-                : "Approve Selected";
-            string approveAllLabel = "RimMind.Advisor.Cabinet.ApproveAll".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.ApproveAll".Translate().ToString()
-                : "Approve All";
-            string dismissLabel = "RimMind.Advisor.Cabinet.Dismiss".CanTranslate()
-                ? "RimMind.Advisor.Cabinet.Dismiss".Translate().ToString()
-                : "Dismiss";
+            string approveSelectedLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.ApproveSelected", "Approve Selected");
+            string approveAllLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.ApproveAll", "Approve All");
+            string dismissLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Cabinet.Dismiss", "Dismiss");
 
             if (Widgets.ButtonText(new Rect(0, btnY, btnWidth, 34f), approveSelectedLabel))
             {
