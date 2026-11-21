@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RimMind.Presentation.Api;
 using Verse;
 
 using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
@@ -9,8 +10,9 @@ using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
 namespace RimMind.Advisor.Advisor
 {
     /// <summary>
-    /// Pure recommendation payload boundary. Native tool calls and the optional
-    /// legacy JSON fallback share one parser and one tool-existence rule.
+    /// Pure recommendation payload boundary. Delegates LLM output cleaning, JSON extraction/repair,
+    /// and pseudo-function-call parsing to Core <see cref="RimMindAPI.Json"/>, keeping only
+    /// Advisor's recommendation schema mapping and tool-existence filtering.
     /// </summary>
     internal sealed class AdvisorRecommendationParser
     {
@@ -29,10 +31,9 @@ namespace RimMind.Advisor.Advisor
             if (string.IsNullOrWhiteSpace(toolCallsJson))
                 return false;
 
-            string nonBlankJson = toolCallsJson!;
             try
             {
-                var parsed = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(nonBlankJson);
+                var parsed = JsonConvert.DeserializeObject<List<ClientStructuredToolCall>>(toolCallsJson!);
                 if (parsed == null
                     || parsed.Exists(call => call == null || string.IsNullOrWhiteSpace(call.Name)))
                 {
@@ -58,37 +59,24 @@ namespace RimMind.Advisor.Advisor
             if (string.IsNullOrWhiteSpace(content))
                 return null;
 
-            string nonBlankContent = content!;
-            try
+            string raw = content!;
+            string? extracted = RimMindAPI.Json.ExtractJsonPayload(raw);
+            if (!string.IsNullOrWhiteSpace(extracted))
             {
-                string trimmed = ExtractJsonObject(nonBlankContent.Trim());
-                var token = JToken.Parse(trimmed);
-                if (token is JArray arrayToken)
+                var parsedToken = TryParseTokenWithRepair(extracted!);
+                if (parsedToken is JArray arrayToken)
                 {
-                    var arrayCalls = new List<ClientStructuredToolCall>();
-                    foreach (var item in arrayToken)
-                    {
-                        var call = ParseSingleAdvice(item as JObject, arrayCalls.Count);
-                        if (call != null)
-                            arrayCalls.Add(call);
-                    }
+                    var arrayCalls = ParseAdviceArray(arrayToken);
                     if (arrayCalls.Count > 0)
                         return arrayCalls;
                 }
-                else if (token is JObject root)
+                else if (parsedToken is JObject root)
                 {
                     if (root["advices"] is JArray advicesArray)
                     {
-                        var toolCalls = new List<ClientStructuredToolCall>();
-                        foreach (var adviceToken in advicesArray)
-                        {
-                            var call = ParseSingleAdvice(adviceToken as JObject, toolCalls.Count);
-                            if (call != null)
-                                toolCalls.Add(call);
-                        }
-
-                        if (toolCalls.Count > 0)
-                            return toolCalls;
+                        var adviceCalls = ParseAdviceArray(advicesArray);
+                        if (adviceCalls.Count > 0)
+                            return adviceCalls;
                     }
                     else
                     {
@@ -98,12 +86,65 @@ namespace RimMind.Advisor.Advisor
                     }
                 }
             }
-            catch (Exception)
+
+            // Delegate pseudo-function-call & commentary (`tool(k=v)` / `to=tool {...}`) parsing to Core
+            var pseudoCalls = RimMindAPI.Json.ParsePseudoFunctionCalls(raw);
+            if (pseudoCalls != null && pseudoCalls.Count > 0)
             {
-                // Fall through to pseudo-function-call extraction
+                var filtered = new List<ClientStructuredToolCall>();
+                for (int i = 0; i < pseudoCalls.Count; i++)
+                {
+                    var candidate = pseudoCalls[i];
+                    if (candidate == null || string.IsNullOrWhiteSpace(candidate.Name) || !_toolExists(candidate.Name))
+                        continue;
+
+                    filtered.Add(new ClientStructuredToolCall
+                    {
+                        Id = string.IsNullOrWhiteSpace(candidate.Id) ? $"fallback_pseudo_{filtered.Count}" : candidate.Id!,
+                        Name = candidate.Name,
+                        Arguments = string.IsNullOrWhiteSpace(candidate.ArgumentsJson) ? "{}" : candidate.ArgumentsJson
+                    });
+                }
+
+                if (filtered.Count > 0)
+                    return filtered;
             }
 
-            return TryParsePseudoFunctionCall(nonBlankContent);
+            return null;
+        }
+
+        private static JToken? TryParseTokenWithRepair(string json)
+        {
+            try
+            {
+                return JToken.Parse(json);
+            }
+            catch
+            {
+                string? repaired = RimMindAPI.Json.TryRepairJson(json);
+                if (string.IsNullOrWhiteSpace(repaired))
+                    return null;
+                try
+                {
+                    return JToken.Parse(repaired!);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
+        private List<ClientStructuredToolCall> ParseAdviceArray(JArray arrayToken)
+        {
+            var calls = new List<ClientStructuredToolCall>();
+            foreach (var item in arrayToken)
+            {
+                var call = ParseSingleAdvice(item as JObject, calls.Count);
+                if (call != null)
+                    calls.Add(call);
+            }
+            return calls;
         }
 
         private ClientStructuredToolCall? ParseSingleAdvice(JObject? advice, int index)
@@ -187,112 +228,6 @@ namespace RimMind.Advisor.Advisor
                 Name = actionName!,
                 Arguments = JsonConvert.SerializeObject(args),
             };
-        }
-
-        private List<ClientStructuredToolCall>? TryParsePseudoFunctionCall(string content)
-        {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                content.Trim(),
-                @"\b(?<tool>[a-z][a-z0-9_.]{2,})\s*\((?<args>[\s\S]+?)\)?\s*$",
-                System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            if (!match.Success)
-            {
-                match = System.Text.RegularExpressions.Regex.Match(
-                    content,
-                    @"(?<tool>[a-z][a-z0-9_.]{2,})\s*\((?<args>[^)]*)\)",
-                    System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            }
-            if (match.Success)
-            {
-                string toolName = match.Groups["tool"].Value.Trim();
-                if (_toolExists(toolName))
-                {
-                    string argsBody = match.Groups["args"].Value;
-                    var argsDict = new Dictionary<string, object>();
-                    var kvMatches = System.Text.RegularExpressions.Regex.Matches(
-                        argsBody,
-                        @"(?<key>[a-zA-Z_][a-zA-Z0-9_]*)\)?\s*[:=]\s*(?:""(?<dq>(?:\\.|[^""])*)""|'(?<sq>(?:\\.|[^'])*)'|\((?<pq>[^)]*)\)|(?<raw>[^,)]+))");
-                    foreach (System.Text.RegularExpressions.Match kv in kvMatches)
-                    {
-                        string key = kv.Groups["key"].Value.Trim();
-                        string val = kv.Groups["dq"].Success
-                            ? kv.Groups["dq"].Value
-                            : kv.Groups["sq"].Success
-                                ? kv.Groups["sq"].Value
-                                : kv.Groups["pq"].Success
-                                    ? kv.Groups["pq"].Value.Trim()
-                                    : kv.Groups["raw"].Value.Trim();
-                        argsDict[key] = val;
-                    }
-
-                    return new List<ClientStructuredToolCall>
-                    {
-                        new ClientStructuredToolCall
-                        {
-                            Id = "fallback_pseudo_0",
-                            Name = toolName,
-                            Arguments = JsonConvert.SerializeObject(argsDict),
-                        }
-                    };
-                }
-            }
-
-            var toMatch = System.Text.RegularExpressions.Regex.Match(
-                content,
-                @"\bto=(?:functions\.|tools\.)?(?<tool>[a-z][a-z0-9_.]{2,})",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            if (toMatch.Success)
-            {
-                string toolName = toMatch.Groups["tool"].Value.Trim();
-                if (_toolExists(toolName))
-                {
-                    string afterMatch = content.Substring(toMatch.Index + toMatch.Length).Trim();
-                    string argsJson = "{}";
-                    int braceStart = afterMatch.IndexOf('{');
-                    int braceEnd = afterMatch.LastIndexOf('}');
-                    if (braceStart >= 0 && braceEnd > braceStart)
-                    {
-                        argsJson = afterMatch.Substring(braceStart, braceEnd - braceStart + 1);
-                    }
-                    return new List<ClientStructuredToolCall>
-                    {
-                        new ClientStructuredToolCall
-                        {
-                            Id = "fallback_pseudo_0",
-                            Name = toolName,
-                            Arguments = argsJson,
-                        }
-                    };
-                }
-            }
-
-            return null;
-        }
-
-        private static string ExtractJsonObject(string content)
-        {
-            if (content.StartsWith("```", StringComparison.Ordinal))
-            {
-                int firstNewline = content.IndexOf('\n');
-                string stripped = firstNewline >= 0 ? content.Substring(firstNewline + 1) : content.TrimStart('`');
-                if (stripped.EndsWith("```", StringComparison.Ordinal))
-                    stripped = stripped.Substring(0, stripped.Length - 3);
-                content = stripped.Trim();
-            }
-
-            int firstBrace = content.IndexOf('{');
-            int lastBrace = content.LastIndexOf('}');
-            int firstBracket = content.IndexOf('[');
-            int lastBracket = content.LastIndexOf(']');
-
-            if (firstBracket >= 0 && (firstBrace < 0 || firstBracket < firstBrace) && lastBracket > firstBracket)
-            {
-                return content.Substring(firstBracket, lastBracket - firstBracket + 1);
-            }
-
-            return firstBrace >= 0 && lastBrace > firstBrace
-                ? content.Substring(firstBrace, lastBrace - firstBrace + 1)
-                : content;
         }
 
         private static void CopyNonBlank(

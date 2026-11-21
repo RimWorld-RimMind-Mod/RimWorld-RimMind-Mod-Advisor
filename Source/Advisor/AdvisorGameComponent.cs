@@ -1,5 +1,6 @@
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
+using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
 using RimMind.Presentation.Api;
 using RimWorld;
@@ -25,6 +26,7 @@ namespace RimMind.Advisor.Advisor
             Instance = this;
             AdvisorConcurrencyTracker.Reset();
             ApprovalManager.ClearPendingRequests();
+            AdvisorHistoryStore.ResetCache();
         }
 
         public override void StartedNewGame()
@@ -33,6 +35,7 @@ namespace RimMind.Advisor.Advisor
             Instance = this;
             AdvisorConcurrencyTracker.Reset();
             ApprovalManager.ClearPendingRequests();
+            AdvisorHistoryStore.ResetCache();
         }
 
         public override void LoadedGame()
@@ -41,6 +44,7 @@ namespace RimMind.Advisor.Advisor
             Instance = this;
             AdvisorConcurrencyTracker.Reset();
             ApprovalManager.ClearPendingRequests();
+            AdvisorHistoryStore.ResetCache();
         }
 
         public override void GameComponentTick()
@@ -48,7 +52,7 @@ namespace RimMind.Advisor.Advisor
             base.GameComponentTick();
             var settings = RimMindAdvisorMod.Settings;
             if (!settings.enableAdvisor) return;
-            if (!RimMindAPI.IsConfigured()) return;
+            if (!RimMindAPI.Settings.IsConfigured()) return;
 
             int now = Find.TickManager.TicksGame;
             int interval = settings.pawnScanIntervalTicks;

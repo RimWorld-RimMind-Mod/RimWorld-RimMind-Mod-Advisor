@@ -96,7 +96,7 @@ namespace Verse
     }
 
     public sealed class Selector { public object? SingleSelectedThing { get; set; } }
-    public sealed class Game { }
+    public sealed class Game { public RimWorld.Planet.World? World { get; set; } }
     public static class Current { public static Game? Game { get; set; } }
     public sealed class StaticConstructorOnStartupAttribute : Attribute { }
 
@@ -146,13 +146,30 @@ namespace Verse
 
 namespace RimWorld.Planet
 {
-    // World 桩，供 WorldComponent 构造函数使用
-    public class World { }
+    // World 桩，供 WorldComponent 构造函数与 WorldScopedComponentCache 使用
+    public class World
+    {
+        private readonly System.Collections.Generic.List<WorldComponent> _components = new();
+        internal void AddComponent(WorldComponent component) => _components.Add(component);
+        public T? GetComponent<T>() where T : WorldComponent
+        {
+            for (int i = 0; i < _components.Count; i++)
+            {
+                if (_components[i] is T typed) return typed;
+            }
+            return null;
+        }
+    }
 
     // WorldComponent 桩，供 AdvisorHistoryStore 继承
     public class WorldComponent
     {
-        public WorldComponent(World world) { }
+        public World world;
+        public WorldComponent(World world)
+        {
+            this.world = world;
+            world?.AddComponent(this);
+        }
         public virtual void ExposeData() { }
     }
 }
@@ -229,22 +246,175 @@ namespace RimMind.Presentation.Api
             }
         }
 
+        public static class MainThreadSnapshot
+        {
+            public static int CallCount { get; set; }
+            public static bool IsMainThread => true;
+
+            public static Task<T> GetAsync<T>(
+                Func<T> readOnMainThread,
+                T fallback = default!,
+                TimeSpan? timeout = null,
+                System.Threading.CancellationToken ct = default)
+            {
+                ct.ThrowIfCancellationRequested();
+                CallCount++;
+                return Task.FromResult(readOnMainThread());
+            }
+        }
+
         public static class Settings
         {
             public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? ContextEngine { get; set; }
             public static RimMind.Application.Common.Interfaces.Context.IContextBuilder? GetContextEngine() => ContextEngine;
+            public static bool IsConfigured() => true;
             public static bool DebugLogging => false;
             public static float ActivityFrequencyScale { get; set; } = 1f;
         }
 
-        public static bool IsConfigured() => true;
-        public static int GetModCooldownTicksLeft(string modId) => 0;
-        public static void ClearModCooldown(string modId) { }
-        public static IReadOnlyList<RimMind.Application.Common.Models.UI.RequestEntry> GetPendingRequests() => PendingRequests;
+        public static bool IsConfigured() => Settings.IsConfigured();
+        public static int GetModCooldownTicksLeft(string modId) => Request.GetModCooldownTicksLeft(modId);
+        public static void ClearModCooldown(string modId) => Request.ClearModCooldown(modId);
+        public static IReadOnlyList<RimMind.Application.Common.Models.UI.RequestEntry> GetPendingRequests() => Bus.GetPendingRequests();
+
         public static class Context
         {
             public static string ScenarioDecision => RimMind.Application.Common.Models.Context.ScenarioIds.Decision;
+            public static string ScenarioAdvisorDecision => RimMind.Application.Common.Models.Context.ScenarioIds.AdvisorDecision;
             public static TestContextRegistry ContextKeys { get; } = new TestContextRegistry();
+            public static List<RimMind.Application.Features.Context.ScenarioDescriptor> RegisteredScenarios { get; } = new();
+
+            public static void RegisterScenario(RimMind.Application.Features.Context.ScenarioDescriptor descriptor)
+            {
+                if (descriptor != null)
+                {
+                    RegisteredScenarios.RemoveAll(s => s.Id == descriptor.Id);
+                    RegisteredScenarios.Add(descriptor);
+                }
+            }
+        }
+
+        public static class Prompt
+        {
+            public static string BuildTaskInstruction(
+                string keyPrefix,
+                RimMind.Application.Common.Interfaces.Abstractions.ITranslationService? translationService,
+                params string[] subKeys)
+            {
+                var parts = new List<string>();
+                if (subKeys != null)
+                {
+                    foreach (var subKey in subKeys)
+                    {
+                        var fullKey = $"{keyPrefix}.{subKey}";
+                        if (Verse.Extensions.CanTranslate(fullKey))
+                        {
+                            parts.Add(Verse.Extensions.Translate(fullKey));
+                        }
+                    }
+                }
+                return string.Join("\n\n", parts);
+            }
+        }
+
+        public static class Json
+        {
+            public static string StripThinkingAndCodeFences(string? raw)
+                => RimMind.Application.Features.Json.LlmPayloadParser.StripThinkingAndCodeFences(raw);
+            public static string? ExtractJsonPayload(string? raw)
+                => RimMind.Application.Features.Json.LlmPayloadParser.ExtractJsonPayload(raw);
+            public static string? TryRepairJson(string input)
+                => RimMind.Application.Features.Json.JsonRepairer.TryRepair(input);
+            public static bool TryParseJObjectWithRepair(string? raw, out Newtonsoft.Json.Linq.JObject? obj)
+                => RimMind.Application.Features.Json.LlmPayloadParser.TryParseJObjectWithRepair(raw, out obj);
+            public static IReadOnlyList<RimMind.Application.Features.Json.ParsedPseudoFunctionCall> ParsePseudoFunctionCalls(string? raw)
+                => RimMind.Application.Features.Json.LlmPayloadParser.ParsePseudoFunctionCalls(raw);
+            public static string? ExtractReasonFromArgumentsJson(string? argumentsJson)
+                => RimMind.Application.Features.Json.LlmPayloadParser.ExtractReasonFromArgumentsJson(argumentsJson);
+        }
+
+        public static class Text
+        {
+            public static string TrOr(string key, string fallback, params object[] args)
+            {
+                if (!string.IsNullOrEmpty(key) && Verse.Extensions.CanTranslate(key))
+                    return args != null && args.Length > 0 ? Verse.Extensions.Translate(key, args) : Verse.Extensions.Translate(key);
+                return args != null && args.Length > 0 ? string.Format(fallback, args) : fallback;
+            }
+
+            public static string WrapForMote(string? text, int maxCharsPerLine = 26)
+                => RimMind.Application.Features.Prompt.MoteTextFormatter.WrapForMote(text, maxCharsPerLine);
+        }
+
+        public static class Ext
+        {
+            public static bool ShouldSkipAction(string id) => false;
+        }
+
+        public static class Bus
+        {
+            public static void PublishPerception(int pawnId, string kind, string summary, float intensity) { }
+            public static void RegisterPendingRequest(RimMind.Application.Common.Models.UI.RequestEntry entry)
+                => RimMindAPI.RegisterPendingRequest(entry);
+            public static IReadOnlyList<RimMind.Application.Common.Models.UI.RequestEntry> GetPendingRequests()
+                => RimMindAPI.PendingRequests;
+            public static bool DismissPendingRequest(RimMind.Application.Common.Models.UI.RequestEntry entry)
+                => RimMindAPI.DismissPendingRequest(entry);
+        }
+
+        public static class ToolSet
+        {
+            private static readonly StubToolRegistryAdapter Adapter = new StubToolRegistryAdapter();
+            public static RimMind.Application.Common.Interfaces.Tools.IToolRegistry Registry => Adapter;
+            public static IGameMechanismRegistry? Mechanisms => RimMindAPI.Mechanisms;
+
+            public static IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetDefinitionsForScope(
+                RimMind.Application.Common.Models.Tools.ToolScope scope,
+                bool compactSchema = false)
+            {
+                var all = Tools.GetAllDefinitions();
+                var result = new List<RimMind.Application.Common.Models.Tools.ToolDefinition>();
+                for (int i = 0; i < all.Count; i++)
+                {
+                    var def = all[i];
+                    if (RimMind.Application.Features.Tools.ToolScopeProjection.MatchesScope(def, scope))
+                    {
+                        result.Add(compactSchema
+                            ? RimMind.Application.Features.Tools.ToolScopeProjection.CompactDefinition(def)
+                            : def);
+                    }
+                }
+                return result;
+            }
+
+            public static RimMind.Domain.Enums.RiskLevel MapAutonomyDomainRisk(
+                RimMind.Domain.Agent.Policies.AutonomyDomain? domain,
+                RimMind.Application.Common.Models.Tools.ToolKind kind = RimMind.Application.Common.Models.Tools.ToolKind.Mutation)
+                => RimMind.Application.Features.Tools.AutonomyDomainRiskMapper.MapToRisk(domain, kind);
+
+            public static RimMind.Application.Common.Interfaces.Tools.ToolPolicyDecision? ClassifyPolicy(
+                string? toolId,
+                RimMind.Application.Common.Models.Tools.ToolCallArgs? args = null)
+                => Tools.ClassifyPolicy(toolId, args);
+
+            public static void RecordToolCallTrace(
+                string? requestId,
+                string toolName,
+                string? argumentsJson,
+                bool succeeded,
+                string? resultSummary)
+                => Tools.RecordToolCallTrace(requestId, toolName, argumentsJson, succeeded, resultSummary);
+
+            private sealed class StubToolRegistryAdapter : RimMind.Application.Common.Interfaces.Tools.IToolRegistry
+            {
+                public IReadOnlyList<RimMind.Application.Common.Interfaces.Tools.IToolHandler> All => Tools.Handlers;
+                public void Register(RimMind.Application.Common.Interfaces.Tools.IToolHandler handler) => Tools.Handlers.Add(handler);
+                public bool Unregister(string toolId) => Tools.Handlers.RemoveAll(h => h.Id == toolId) > 0;
+                public RimMind.Application.Common.Interfaces.Tools.IToolHandler? FindById(string toolId) => Tools.FindById(toolId);
+                public IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetAllDefinitions() => Tools.GetAllDefinitions();
+                public IReadOnlyList<RimMind.Application.Common.Interfaces.Tools.IToolHandler> GetHandlersForScope(RimMind.Application.Common.Models.Agent.AgentScopeKind scopeKind) => Tools.Handlers;
+                public IReadOnlyList<RimMind.Application.Common.Models.Tools.ToolDefinition> GetDefinitionsForScope(RimMind.Application.Common.Models.Agent.AgentScopeKind scopeKind) => Tools.GetAllDefinitions();
+            }
         }
 
         public sealed class TestContextRegistry
@@ -375,6 +545,8 @@ namespace RimMind.Presentation.Api
         public static class Request
         {
             public static List<RimMind.Domain.Llm.LlmRequestEnvelope> Sent { get; } = new();
+            public static int GetModCooldownTicksLeft(string modId) => 0;
+            public static void ClearModCooldown(string modId) { }
             public static void Send(RimMind.Domain.Llm.LlmRequestEnvelope envelope,
                 Action<RimMind.Domain.ValueObjects.Result<RimMind.Domain.Llm.LlmResponse, RimMind.Domain.ValueObjects.RimMindError>> callback)
                 => Sent.Add(envelope);
@@ -490,6 +662,31 @@ namespace RimMind.Presentation.Api
                     if (IsActiveColonyAnimal(p)) yield return p;
             }
         }
+    }
+
+    public sealed class WorldScopedComponentCache<T> where T : RimWorld.Planet.WorldComponent
+    {
+        private T? _cached;
+
+        public T? Get()
+        {
+            var world = Verse.Current.Game?.World;
+            if (world == null)
+            {
+                _cached = null;
+                return null;
+            }
+
+            var current = _cached;
+            if (current != null && ReferenceEquals(current.world, world))
+                return current;
+
+            current = world.GetComponent<T>();
+            _cached = current;
+            return current;
+        }
+
+        public void Reset() => _cached = null;
     }
 }
 

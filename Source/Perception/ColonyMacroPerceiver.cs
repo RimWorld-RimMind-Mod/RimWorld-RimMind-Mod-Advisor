@@ -100,7 +100,7 @@ namespace RimMind.Advisor.Perception
             }
             if (snapshot.GrowingZoneCellsCount >= 0 && snapshot.GrowingZoneCellsCount < 15 && snapshot.ColonistCount > 0)
             {
-                state.CriticalBottlenecks.Add("[No Agriculture] Colony has 0 Growing Zones! Crops take 6 days to mature; call actions_manage_zone (zone_type='Growing', crop_def='Plant_Rice', width=6, height=6) IMMEDIATELY so crops mature before starting rations run out!");
+                state.CriticalBottlenecks.Add("[No Agriculture] Colony has insufficient Growing Zones (<15 cells)! Crops take several days to mature; establish a fertile growing zone promptly before starting rations run out.");
             }
             if (state.IsExtremeCold)
             {
@@ -184,30 +184,12 @@ namespace RimMind.Advisor.Perception
                     .Select(c => $"{c.Name?.ToStringShort ?? c.LabelShort} (pawn_id: {c.thingIDNumber})")
                     .ToList();
 
-                float nutrition = 0f;
-                var foodThings = map.listerThings?.ThingsInGroup(ThingRequestGroup.FoodSourceNotPlantOrTree);
-                if (foodThings != null)
-                {
-                    foreach (var thing in foodThings)
-                    {
-                        if (thing != null && thing.Spawned && !thing.Position.Fogged(map)
-                            && !(thing is Corpse) && !(thing is Pawn)
-                            && thing.def?.ingestible != null && thing.def.IsNutritionGivingIngestible && thing.def.ingestible.HumanEdible
-                            && thing.def.ingestible.drugCategory == DrugCategory.None
-                            && thing.def.ingestible.preferability >= FoodPreferability.RawBad
-                            && !thing.IsForbidden(Faction.OfPlayer))
-                        {
-                            float perItem = thing.GetStatValue(StatDefOf.Nutrition);
-                            nutrition += perItem * thing.stackCount;
-                        }
-                    }
-                }
-                snapshot.TotalFoodNutrition = nutrition;
+                snapshot.TotalFoodNutrition = MapResourceCounter.GetAvailableFoodNutrition(map);
 
-                snapshot.WoodCount = CountAvailableResource(map, ThingDefOf.WoodLog);
-                snapshot.SteelCount = CountAvailableResource(map, ThingDefOf.Steel);
-                snapshot.MedicineCount = CountAvailableResource(map, ThingDefOf.MedicineIndustrial)
-                                       + CountAvailableResource(map, ThingDefOf.MedicineHerbal);
+                snapshot.WoodCount = MapResourceCounter.GetAvailableCount(map, ThingDefOf.WoodLog);
+                snapshot.SteelCount = MapResourceCounter.GetAvailableCount(map, ThingDefOf.Steel);
+                snapshot.MedicineCount = MapResourceCounter.GetAvailableCount(map, ThingDefOf.MedicineIndustrial)
+                                       + MapResourceCounter.GetAvailableCount(map, ThingDefOf.MedicineHerbal);
 
                 snapshot.OutdoorTemperature = map.mapTemperature?.OutdoorTemp ?? 21f;
 
@@ -267,27 +249,6 @@ namespace RimMind.Advisor.Perception
             }
 
             return snapshot;
-        }
-
-        private static int CountAvailableResource(Map map, ThingDef? def)
-        {
-            if (map == null || def == null) return 0;
-            int counted = map.resourceCounter?.GetCount(def) ?? 0;
-            var list = map.listerThings?.ThingsOfDef(def);
-            if (list != null && list.Count > 0)
-            {
-                int unforbidden = 0;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var t = list[i];
-                    if (t != null && t.Spawned && !t.Destroyed && !t.Position.Fogged(map) && !t.IsForbidden(Faction.OfPlayer))
-                    {
-                        unforbidden += t.stackCount;
-                    }
-                }
-                if (unforbidden > counted) counted = unforbidden;
-            }
-            return counted;
         }
 #endif
     }

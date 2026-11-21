@@ -4,14 +4,14 @@ using System.Linq;
 using System.Text;
 using RimMind.Advisor.Data;
 using RimMind.Advisor.Settings;
+using RimMind.Application.Common.Models.Context;
+using RimMind.Application.Common.Models.Tools;
 using RimMind.Application.Features.Llm;
+using RimMind.Application.Features.Tools;
 using RimMind.Domain.Common;
 using RimMind.Domain.Llm;
 using RimMind.Domain.ValueObjects;
-using RimMind.Application.Common.Models.Context;
-using RimMind.Application.Common.Models.Tools;
 using RimMind.Presentation.Api;
-using RimWorld;
 using Verse;
 
 using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
@@ -33,7 +33,7 @@ namespace RimMind.Advisor.Advisor
             _pawn = pawn;
             _settings = settings;
             _recommendationParser = new AdvisorRecommendationParser(
-                toolId => RimMindAPI.Tools.FindById(toolId) != null);
+                toolId => RimMindAPI.ToolSet.Registry.FindById(toolId) != null);
         }
 
         public bool HasPendingState => _feedbackSession.HasPendingState;
@@ -84,8 +84,10 @@ namespace RimMind.Advisor.Advisor
         {
             try
             {
-                var defs = RimMindAPI.Tools.GetAllDefinitions();
-                if (defs.Count == 0) return null;
+                var defs = RimMindAPI.ToolSet.GetDefinitionsForScope(
+                    ToolScopeProjection.AdvisorDefaultScope,
+                    compactSchema: true);
+                if (defs == null || defs.Count == 0) return null;
                 var tools = defs
                     .Where(d => !AdvisorToolRiskResolver.ShouldSkipAction(d.Id, _pawn))
                     .Select(d => new StructuredTool
@@ -172,13 +174,14 @@ namespace RimMind.Advisor.Advisor
             var npcId = $"NPC-{_pawn.thingIDNumber}";
             var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
 
+            // Round-2 feedback omits tool definitions to avoid re-sending compact schemas (~65% token savings).
             var envelope = LlmRequestEnvelopeBuilder
-                .ForScenario(RimMindAPI.Context.ScenarioDecision)
+                .ForScenario(ScenarioIds.AdvisorDecision)
                 .WithModId(AdvisorRequestIds.RequestModId)
                 .WithNpcId(npcId)
                 .WithSchema(_feedbackSession.Schema)
                 .WithMessages(messages)
-                .WithTools(_feedbackSession.Tools)
+                .WithTools(null)
                 .WithToolDispatchMode(ToolCallDispatchMode.Manual)
                 .WithMaxTokens(400)
                 .WithTemperature(0.7f)
@@ -194,7 +197,7 @@ namespace RimMind.Advisor.Advisor
             {
                 var summary = $"action={actionName}";
                 if (!string.IsNullOrEmpty(reason)) summary += $",reason={reason}";
-                RimMindAPI.PublishPerception(_pawn.thingIDNumber, "advisor_decision", summary, 0.5f);
+                RimMindAPI.Bus.PublishPerception(_pawn.thingIDNumber, "advisor_decision", summary, 0.5f);
             }
             catch (Exception ex)
             {

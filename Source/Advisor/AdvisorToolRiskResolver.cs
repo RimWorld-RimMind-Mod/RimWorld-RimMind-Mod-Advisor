@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RimMind.Application.Common.Interfaces.Tools;
 using RimMind.Application.Common.Models.Tools;
+using RimMind.Application.Features.Tools;
 using RimMind.Domain.Agent.Policies;
 using RimMind.Domain.Enums;
 using RimMind.Presentation.Api;
@@ -22,7 +23,7 @@ namespace RimMind.Advisor.Advisor
             {
                 try
                 {
-                    var mechanism = RimMindAPI.Mechanisms?.FindById(mechanismId);
+                    var mechanism = RimMindAPI.ToolSet.Mechanisms?.FindById(mechanismId);
                     if (mechanism != null)
                     {
                         return MapMechanismRisk(mechanism.GetRiskForOperation(operation));
@@ -35,7 +36,7 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
-                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName, args);
+                var policy = RimMindAPI.ToolSet.ClassifyPolicy(toolName, args);
                 if (policy.HasValue)
                 {
                     if (policy.Value.RequiresApproval)
@@ -44,7 +45,7 @@ namespace RimMind.Advisor.Advisor
                     }
                     if (policy.Value.Domain.HasValue)
                     {
-                        return MapAutonomyDomainRisk(policy.Value.Domain.Value);
+                        return AutonomyDomainRiskMapper.MapToRisk(policy.Value.Domain.Value);
                     }
                     if (policy.Value.Risk != RiskLevel.Medium)
                     {
@@ -58,12 +59,12 @@ namespace RimMind.Advisor.Advisor
 
             if (TryGetAutonomyDomain(toolName, args, out var domain))
             {
-                return MapAutonomyDomainRisk(domain);
+                return AutonomyDomainRiskMapper.MapToRisk(domain);
             }
 
             try
             {
-                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
+                var manifest = RimMindAPI.ToolSet.Registry.FindById(toolName!)?.Definition?.Manifest;
                 if (manifest != null && (manifest.RequiresApproval || manifest.RiskLevel != RiskLevel.Medium))
                 {
                     if (manifest.RequiresApproval)
@@ -92,7 +93,7 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
-                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName!, args);
+                var policy = RimMindAPI.ToolSet.ClassifyPolicy(toolName!, args);
                 if (policy.HasValue)
                 {
                     if (policy.Value.Domain.HasValue)
@@ -112,7 +113,7 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
-                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
+                var manifest = RimMindAPI.ToolSet.Registry.FindById(toolName!)?.Definition?.Manifest;
                 if (manifest != null)
                 {
                     if (manifest.DefaultDomain.HasValue)
@@ -196,13 +197,13 @@ namespace RimMind.Advisor.Advisor
 
             try
             {
-                var policy = RimMindAPI.Tools.ClassifyPolicy(toolName!, args);
+                var policy = RimMindAPI.ToolSet.ClassifyPolicy(toolName!, args);
                 if (policy.HasValue && policy.Value.RequiresApproval)
                 {
                     return true;
                 }
 
-                var manifest = RimMindAPI.Tools.FindById(toolName!)?.Definition?.Manifest;
+                var manifest = RimMindAPI.ToolSet.Registry.FindById(toolName!)?.Definition?.Manifest;
                 if (manifest != null && manifest.RequiresApproval)
                 {
                     return true;
@@ -247,7 +248,7 @@ namespace RimMind.Advisor.Advisor
                 return true;
             }
 
-            if (RimMindAPI.ShouldSkipAction(toolName!))
+            if (RimMindAPI.Ext.ShouldSkipAction(toolName!))
             {
                 return true;
             }
@@ -266,18 +267,6 @@ namespace RimMind.Advisor.Advisor
                 MechanismRisk.Safe => RiskLevel.Low,
                 MechanismRisk.Moderate => RiskLevel.Medium,
                 MechanismRisk.Dangerous => RiskLevel.High,
-                _ => RiskLevel.Low
-            };
-
-        private static RiskLevel MapAutonomyDomainRisk(AutonomyDomain domain) =>
-            domain switch
-            {
-                AutonomyDomain.EmergencySurvival => RiskLevel.Low,
-                AutonomyDomain.ResourceMarking => RiskLevel.Low,
-                AutonomyDomain.WorktableBills => RiskLevel.Medium,
-                AutonomyDomain.BlueprintPlacement => RiskLevel.Medium,
-                AutonomyDomain.WorkPriorityModification => RiskLevel.Medium,
-                AutonomyDomain.HighRiskOperations => RiskLevel.High,
                 _ => RiskLevel.Low
             };
 

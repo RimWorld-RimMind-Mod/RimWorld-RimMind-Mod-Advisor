@@ -15,7 +15,7 @@
     <PackageReference Include="xunit" Version="2.9.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,6 +39,9 @@
     <Compile Include="../Source/Advisor/AdvisorFeedbackSession.cs" />
     <Compile Include="../Source/Advisor/IAdvisorToolCallExecutor.cs" />
     <Compile Include="../Source/Advisor/AdviceItem.cs" />
+    <Compile Include="../Source/Advisor/ToolCallSummaryFormatter.cs" />
+    <Compile Include="../Source/Advisor/AdvisorMotePresenter.cs" />
+    <Compile Include="../Source/Advisor/ApprovalSubmissionPipeline.cs" />
     <Compile Include="../Source/Advisor/ApprovalManager.cs" />
     <Compile Include="../Source/Data/AdvisorHistoryStore.cs" />
     <Compile Include="../Source/Data/AdvisorRequestRecord.cs" />

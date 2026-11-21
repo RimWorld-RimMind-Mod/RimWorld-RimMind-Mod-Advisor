@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using RimWorld.Planet;
 using Verse;
-using RimMind.Domain.ValueObjects;
 using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Data
@@ -10,19 +9,44 @@ namespace RimMind.Advisor.Data
     public class AdvisorHistoryStore : WorldComponent
     {
         private static readonly List<AdvisorRequestRecord> EmptyRecords = new List<AdvisorRequestRecord>();
+        private static readonly WorldScopedComponentCache<AdvisorHistoryStore> Cache =
+            new WorldScopedComponentCache<AdvisorHistoryStore>();
+#if RIMMIND_ADVISOR_TESTS
+        private static AdvisorHistoryStore? _testFallbackInstance;
+#endif
+
         private Dictionary<int, List<AdvisorRequestRecord>> _records = new Dictionary<int, List<AdvisorRequestRecord>>();
         private List<AdvisorRequestRecord> _globalLog = new List<AdvisorRequestRecord>();
 
-        private static AdvisorHistoryStore? _instance;
-        public static AdvisorHistoryStore? Instance => _instance;
+        public static AdvisorHistoryStore? Instance
+        {
+            get
+            {
+                var cached = Cache.Get();
+#if RIMMIND_ADVISOR_TESTS
+                return cached ?? _testFallbackInstance;
+#else
+                return cached;
+#endif
+            }
+        }
+
+        public static void ResetCache()
+        {
+            Cache.Reset();
+#if RIMMIND_ADVISOR_TESTS
+            _testFallbackInstance = null;
+#endif
+        }
 
         public int TrackedPawnCount => _records.Count;
 
         public AdvisorHistoryStore(World world) : base(world)
         {
-            if (_instance != null && _instance != this)
-                RimMindErrors.Warn($"[RimMind-Advisor] AdvisorHistoryStore: replacing stale instance");
-            _instance = this;
+            Cache.Reset();
+#if RIMMIND_ADVISOR_TESTS
+            _testFallbackInstance = this;
+#endif
         }
 
         public List<AdvisorRequestRecord> GetRecords(Pawn? pawn)
