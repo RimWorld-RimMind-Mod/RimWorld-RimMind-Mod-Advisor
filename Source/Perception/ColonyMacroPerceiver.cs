@@ -25,7 +25,6 @@ namespace RimMind.Advisor.Perception
         public int UnburiedCorpsesCount { get; set; }
         public int FreeColonistBedCount { get; set; }
         public int HostileThreatCount { get; set; }
-        public int UnbuiltBlueprintsCount { get; set; }
         public int GrowingZoneCellsCount { get; set; } = -1;
         public List<string> ActiveColonistRoster { get; set; } = new List<string>();
     }
@@ -55,8 +54,6 @@ namespace RimMind.Advisor.Perception
 
     public static class ColonyMacroPerceiver
     {
-        public const string PromptAugmentationKey = "advisor.colony-macro-status";
-
         public static ColonyMacroState Evaluate(ColonyMacroSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
@@ -83,10 +80,16 @@ namespace RimMind.Advisor.Perception
             state.IsFoodCritical = snapshot.ColonistCount > 0 &&
                 (state.FoodDaysRemaining < 3.0f || snapshot.TotalFoodNutrition < 5.0f);
 
-            state.IsExtremeCold = snapshot.OutdoorTemperature < -15f ||
+            float coldThreshold = snapshot.ColonistMinComfyTemp > -900f
+                ? snapshot.ColonistMinComfyTemp - 20f
+                : -15f;
+            state.IsExtremeCold = snapshot.OutdoorTemperature < coldThreshold ||
                 snapshot.HasHypothermiaColonist;
 
-            state.IsExtremeHeat = snapshot.OutdoorTemperature > 45f ||
+            float heatThreshold = snapshot.ColonistMaxComfyTemp < 900f
+                ? snapshot.ColonistMaxComfyTemp + 15f
+                : 45f;
+            state.IsExtremeHeat = snapshot.OutdoorTemperature > heatThreshold ||
                 snapshot.HasHeatstrokeColonist;
 
             state.HasUnburiedCorpses = snapshot.UnburiedCorpsesCount > 0;
@@ -227,16 +230,10 @@ namespace RimMind.Advisor.Perception
                     for (int i = 0; i < allSpawned.Count; i++)
                     {
                         var p = allSpawned[i];
-                        if (p != null && !p.Dead && !p.Downed && p.HostileTo(Faction.OfPlayer))
+                        if (p != null && !p.Dead && !p.Downed && !p.Position.Fogged(map) && p.HostileTo(Faction.OfPlayer))
                             hostileCount++;
                     }
                     snapshot.HostileThreatCount = hostileCount;
-                }
-
-                var blueprints = map.listerThings?.ThingsInGroup(ThingRequestGroup.Blueprint);
-                if (blueprints != null)
-                {
-                    snapshot.UnbuiltBlueprintsCount = blueprints.Count(b => b != null && b.Faction == Faction.OfPlayer);
                 }
 
                 snapshot.GrowingZoneCellsCount = map.zoneManager?.AllZones

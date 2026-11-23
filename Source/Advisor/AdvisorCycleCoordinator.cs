@@ -54,15 +54,18 @@ namespace RimMind.Advisor.Advisor
         public int CooldownTicksLeft =>
             AdvisorCooldownCalculator.CooldownTicksLeft(
                 AdvisorCooldownCalculator.CalculateCooldownForPawn(_pawn, Settings),
-                Find.TickManager.TicksGame,
+                Find.TickManager?.TicksGame ?? 0,
                 _lastRequestTick);
 
         private RimMindAdvisorSettings Settings => _settings();
+        private string PawnDisplayName => _pawn.Name?.ToStringShort ?? _pawn.LabelShort;
+
+        public void CancelActiveCycle() => CompleteRequestCycle();
 
         public void RequestAdvice(RimMindAdvisorSettings settings)
         {
             _hasPendingRequest = true;
-            _pendingRequestTick = Find.TickManager.TicksGame;
+            _pendingRequestTick = Find.TickManager?.TicksGame ?? 0;
             AdvisorConcurrencyTracker.Increment();
 
             var taskDriver = new AdvisorTaskDriver(_pawn, settings);
@@ -77,7 +80,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit request for {_pawn.Name.ToStringShort}: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit request for {PawnDisplayName}: {ex.Message}");
                 CompleteRequestCycle(taskDriver, requestCycle);
             }
         }
@@ -86,14 +89,14 @@ namespace RimMind.Advisor.Advisor
         {
             if (_hasPendingRequest)
             {
-                if (Find.TickManager.TicksGame - _pendingRequestTick > RimMindTime.TicksPerDay)
+                if ((Find.TickManager?.TicksGame ?? 0) - _pendingRequestTick > RimMindTime.TicksPerDay)
                 {
-                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {_pawn.Name.ToStringShort} pending request timed out, resetting.");
+                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {PawnDisplayName} pending request timed out, resetting.");
                     CompleteRequestCycle();
                 }
                 else
                 {
-                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {_pawn.Name.ToStringShort} already has a pending request, skipping.");
+                    RimMindErrors.Warn($"[RimMind-Advisor] ForceRequest: {PawnDisplayName} already has a pending request, skipping.");
                     return;
                 }
             }
@@ -126,7 +129,7 @@ namespace RimMind.Advisor.Advisor
             if (result.IsErr)
             {
                 if (result.Error.Code != RimMindErrorCode.Cancelled)
-                    RimMindErrors.Warn($"[RimMind-Advisor] Request failed for {_pawn.Name.ToStringShort}: {result.Error}");
+                    RimMindErrors.Warn($"[RimMind-Advisor] Request failed for {PawnDisplayName}: {result.Error}");
                 CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
@@ -142,7 +145,7 @@ namespace RimMind.Advisor.Advisor
             if (toolCalls == null || toolCalls.Count == 0)
             {
                 if (!isFeedbackResponse)
-                    RimMindErrors.Warn($"[RimMind-Advisor] No actionable response for {_pawn.Name.ToStringShort} (no tool_calls, content unparseable)");
+                    RimMindErrors.Warn($"[RimMind-Advisor] No actionable response for {PawnDisplayName} (no tool_calls, content unparseable)");
                 CompleteRequestCycle(taskDriver, requestCycle);
                 return;
             }
@@ -194,7 +197,7 @@ namespace RimMind.Advisor.Advisor
                     string toolName = toolCall.Name!;
                     if (RimMindAPI.ToolSet.Registry.FindById(toolName) == null)
                     {
-                        RimMindErrors.Warn($"[RimMind-Advisor] Unknown tool call '{toolName}' for {_pawn.Name.ToStringShort}, skipping.");
+                        RimMindErrors.Warn($"[RimMind-Advisor] Unknown tool call '{toolName}' for {PawnDisplayName}, skipping.");
                         continue;
                     }
 
@@ -208,8 +211,8 @@ namespace RimMind.Advisor.Advisor
 
                     if (AdvisorToolRiskResolver.IsAutonomyForbidden(_pawn, toolName, preflightArgs))
                     {
-                        _directExecution.RecordHistory(toolName, ExtractToolCallReason(toolCall) ?? toolName, "blocked");
-                        RimMindErrors.Warn($"[RimMind-Advisor] Tool '{toolName}' blocked by autonomy policy for {_pawn.Name.ToStringShort}.");
+                        _directExecution.RecordHistory(toolName, ToolCallSummaryFormatter.ExtractToolCallReason(toolCall) ?? toolName, "blocked");
+                        RimMindErrors.Warn($"[RimMind-Advisor] Tool '{toolName}' blocked by autonomy policy for {PawnDisplayName}.");
                         continue;
                     }
 
@@ -221,7 +224,7 @@ namespace RimMind.Advisor.Advisor
                     else
                     {
                         approvedCalls.Add(toolCall);
-                        approvedReasons[toolCall.Id ?? toolName] = ExtractToolCallReason(toolCall) ?? toolName;
+                        approvedReasons[toolCall.Id ?? toolName] = ToolCallSummaryFormatter.ExtractToolCallReason(toolCall) ?? toolName;
                     }
                 }
 
@@ -238,7 +241,7 @@ namespace RimMind.Advisor.Advisor
             }
             catch (Exception ex)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] Failed to process response for {_pawn.Name.ToStringShort}: {ex.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to process response for {PawnDisplayName}: {ex.Message}");
             }
             finally
             {
@@ -281,7 +284,7 @@ namespace RimMind.Advisor.Advisor
                 catch (Exception ex)
                 {
                     requestCycle.FinishFeedback();
-                    RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit feedback request for {_pawn.Name.ToStringShort}: {ex.Message}");
+                    RimMindErrors.Warn($"[RimMind-Advisor] Failed to submit feedback request for {PawnDisplayName}: {ex.Message}");
                     CompleteRequestCycle(taskDriver, requestCycle);
                 }
                 return;
@@ -307,7 +310,7 @@ namespace RimMind.Advisor.Advisor
             if (_hasPendingRequest)
             {
                 _hasPendingRequest = false;
-                _lastRequestTick = Find.TickManager.TicksGame;
+                _lastRequestTick = Find.TickManager?.TicksGame ?? 0;
                 AdvisorConcurrencyTracker.Decrement();
             }
 
@@ -320,7 +323,7 @@ namespace RimMind.Advisor.Advisor
             if (cancellationErrors == null) return;
 
             foreach (var error in cancellationErrors)
-                RimMindErrors.Warn($"[RimMind-Advisor] Failed to cancel a pending approval for {_pawn.Name.ToStringShort}: {error.Message}");
+                RimMindErrors.Warn($"[RimMind-Advisor] Failed to cancel a pending approval for {PawnDisplayName}: {error.Message}");
         }
 
         private bool ShouldDeferForApproval(ClientStructuredToolCall call, RiskLevel riskLevel, ToolCallArgs preflightArgs) =>
@@ -344,22 +347,10 @@ namespace RimMind.Advisor.Advisor
         {
             if (calls.Count != results.Count)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] Skipping malformed feedback batch for {_pawn.Name.ToStringShort}: {calls.Count} calls but {results.Count} results.");
+                RimMindErrors.Warn($"[RimMind-Advisor] Skipping malformed feedback batch for {PawnDisplayName}: {calls.Count} calls but {results.Count} results.");
                 return;
             }
             requestCycle.QueueFeedback(calls.Select(ToolCallSummaryFormatter.StripPreApproval).ToList(), results);
         }
-
-        internal static string? ExtractToolCallReason(ClientStructuredToolCall toolCall)
-            => ToolCallSummaryFormatter.ExtractToolCallReason(toolCall);
-
-        internal static string FormatHumanReadableToolName(string? rawName)
-            => ToolCallSummaryFormatter.FormatHumanReadableToolName(rawName);
-
-        internal static string StripPreApprovalArgument(string? argumentsJson)
-            => ToolCallSummaryFormatter.StripPreApprovalArgument(argumentsJson);
-
-        internal static string FormatAdvisorMoteText(string text, int maxLineLength = 24, int maxTotalLength = 66)
-            => AdvisorMotePresenter.FormatAdvisorMoteText(text, maxLineLength, maxTotalLength);
     }
 }

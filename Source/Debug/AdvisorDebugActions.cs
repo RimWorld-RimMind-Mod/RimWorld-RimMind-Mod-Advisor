@@ -5,17 +5,15 @@ using System.Text;
 using System.Threading.Tasks;
 using LudeonTK;
 using Newtonsoft.Json;
+using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Comps;
 using RimMind.Advisor.Concurrency;
-using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Data;
-using RimMind.Application.Common.Interfaces.Client;
-using RimMind.Application.Common.Models.Context;
-using RimMind.Presentation.Api;
 using RimMind.Application.Common.Interfaces.Context;
-using Verse;
+using RimMind.Application.Common.Models.Context;
 using RimMind.Domain.ValueObjects;
-using RimMind.Domain.Llm;
+using RimMind.Presentation.Api;
+using Verse;
 
 using ClientStructuredToolCall = RimMind.Domain.Llm.StructuredToolCall;
 
@@ -38,13 +36,11 @@ namespace RimMind.Advisor.Debug
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name?.ToStringShort ?? pawn.LabelShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
             var s = RimMindAdvisorMod.Settings;
-            int now = Find.TickManager.TicksGame;
-            string requestId = $"Advisor_{pawn.ThingID}";
 
             int advisorLeft = comp.AdvisorCooldownTicksLeft;
             string advisorCooldown = advisorLeft > 0
@@ -57,7 +53,7 @@ namespace RimMind.Advisor.Debug
                 : "Ready";
 
             var sb = new StringBuilder();
-            sb.AppendLine($"[RimMind-Advisor] === {pawn.Name.ToStringShort} Advisor State ===");
+            sb.AppendLine($"[RimMind-Advisor] === {pawn.Name?.ToStringShort ?? pawn.LabelShort} Advisor State ===");
             sb.AppendLine($"  Advisor toggle: {(comp.IsEnabled ? "On" : "Off")}");
             sb.AppendLine($"  API configured: {RimMindAPI.Settings.IsConfigured()}");
             sb.AppendLine($"  Has pending request: {comp.HasPendingRequest}");
@@ -82,7 +78,7 @@ namespace RimMind.Advisor.Debug
             var comp = pawn.GetComp<CompAIAdvisor>();
             if (comp == null)
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name.ToStringShort} has no CompAIAdvisor (non-humanlike?).");
+                RimMindErrors.Warn($"[RimMind-Advisor] {pawn.Name?.ToStringShort ?? pawn.LabelShort} has no CompAIAdvisor (non-humanlike?).");
                 return;
             }
 
@@ -92,13 +88,13 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            Log.Message($"[RimMind-Advisor] Sending advisor request for {pawn.Name.ToStringShort}...");
+            Log.Message($"[RimMind-Advisor] Sending advisor request for {pawn.Name?.ToStringShort ?? pawn.LabelShort}...");
             comp.ForceRequestAdvice();
         }
 
-        [DebugAction("RimMind Advisor", "Show Job Candidates (selected)",
+        [DebugAction("RimMind Advisor", "Show Scoped Tool Guidance (selected)",
             actionType = DebugActionType.Action)]
-        private static void ShowJobCandidates()
+        private static void ShowScopedToolGuidance()
         {
             var pawn = Find.Selector.SingleSelectedThing as Pawn;
             if (pawn == null)
@@ -107,8 +103,8 @@ namespace RimMind.Advisor.Debug
                 return;
             }
 
-            string candidates = JobCandidateBuilder.Build(pawn);
-            Log.Message($"[RimMind-Advisor] Job candidates for {pawn.Name.ToStringShort}:\n{candidates}");
+            string guidance = AdvisorProviderRegistrar.BuildScopedToolGuidanceText(pawn.thingIDNumber) ?? "(none)";
+            Log.Message($"[RimMind-Advisor] Scoped tool guidance for {pawn.Name?.ToStringShort ?? pawn.LabelShort}:\n{guidance}");
         }
 
         [DebugAction("RimMind Advisor", "Show Full Prompt (selected)",
@@ -174,7 +170,7 @@ namespace RimMind.Advisor.Debug
 
             var advS = RimMindAdvisorMod.Settings;
             var sb = new StringBuilder("=== All Advisor States ===\n");
-            foreach (var pawn in map.mapPawns.FreeColonists)
+            foreach (var pawn in RimMindPawnLookup.GetSpawnedColonistsSafe(map))
             {
                 var comp = pawn.GetComp<CompAIAdvisor>();
                 if (comp == null) continue;
@@ -184,7 +180,7 @@ namespace RimMind.Advisor.Debug
                 string aState = advisorLeft > 0 ? $"AdvisorCD{advisorLeft}t" : "AdvisorReady";
                 string cState = coreLeft > 0 ? $"CoreCD{coreLeft}t" : "CoreReady";
 
-                sb.AppendLine($"  {pawn.Name.ToStringShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
+                sb.AppendLine($"  {pawn.Name?.ToStringShort ?? pawn.LabelShort}: toggle={comp.IsEnabled}  pending={comp.HasPendingRequest}  [{aState}]  [{cState}]");
             }
             sb.AppendLine($"Concurrency: {AdvisorConcurrencyTracker.ActiveCount}/{advS.maxConcurrentRequests}  " +
                           $"API={RimMindAPI.Settings.IsConfigured()}  debugLogging={RimMindAPI.Settings.DebugLogging}");
@@ -203,8 +199,7 @@ namespace RimMind.Advisor.Debug
             actionType = DebugActionType.Action)]
         private static void ResetConcurrency()
         {
-            while (AdvisorConcurrencyTracker.ActiveCount > 0)
-                AdvisorConcurrencyTracker.Decrement();
+            AdvisorConcurrencyTracker.Reset();
             Log.Message("[RimMind-Advisor] Concurrency count reset to 0.");
         }
 

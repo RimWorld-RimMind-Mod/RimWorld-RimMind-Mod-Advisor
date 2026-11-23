@@ -47,10 +47,7 @@ namespace RimMind.Advisor.Advisor
                     {
                         return AutonomyDomainRiskMapper.MapToRisk(policy.Value.Domain.Value);
                     }
-                    if (policy.Value.Risk != RiskLevel.Medium)
-                    {
-                        return policy.Value.Risk;
-                    }
+                    return policy.Value.Risk;
                 }
             }
             catch
@@ -65,7 +62,7 @@ namespace RimMind.Advisor.Advisor
             try
             {
                 var manifest = RimMindAPI.ToolSet.Registry.FindById(toolName!)?.Definition?.Manifest;
-                if (manifest != null && (manifest.RequiresApproval || manifest.RiskLevel != RiskLevel.Medium))
+                if (manifest != null)
                 {
                     if (manifest.RequiresApproval)
                     {
@@ -80,9 +77,6 @@ namespace RimMind.Advisor.Advisor
 
             return RiskLevel.Low;
         }
-
-        public static RiskLevel ResolveRiskLevel(string? toolName, ToolCallArgs? args = null)
-            => Resolve(toolName, args);
 
         public static AutonomyDomain? ResolveAutonomyDomain(string? toolName, ToolCallArgs? args = null)
         {
@@ -172,8 +166,6 @@ namespace RimMind.Advisor.Advisor
             return false;
         }
 
-        internal static string NormalizeToolId(string toolName) => toolName.Trim().Replace('.', '_');
-
         public static bool RequiresAutonomyApproval(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
         {
             if (string.IsNullOrWhiteSpace(toolName))
@@ -215,9 +207,6 @@ namespace RimMind.Advisor.Advisor
 
             return false;
         }
-
-        public static bool RequiresPlayerApproval(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
-            => RequiresAutonomyApproval(pawn, toolName, args);
 
         public static bool IsAutonomyForbidden(Pawn? pawn, string? toolName, ToolCallArgs? args = null)
         {

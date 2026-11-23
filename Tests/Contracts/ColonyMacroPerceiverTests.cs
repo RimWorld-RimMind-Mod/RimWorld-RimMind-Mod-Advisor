@@ -124,6 +124,26 @@ namespace RimMind.Advisor.Tests.Contracts
         }
 
         [Fact]
+        public void Evaluate_ExtremeCold_RespectsColonistMinComfyTemp_ForParkaWearingColonists()
+        {
+            var parkaSnapshot = new ColonyMacroSnapshot
+            {
+                ColonistCount = 2,
+                TotalFoodNutrition = 50f,
+                WoodCount = 100,
+                SteelCount = 100,
+                OutdoorTemperature = -18f,
+                ColonistMinComfyTemp = -25f, // Wearing parkas
+                FreeColonistBedCount = 2
+            };
+
+            Assert.False(ColonyMacroPerceiver.Evaluate(parkaSnapshot).IsExtremeCold);
+
+            parkaSnapshot.OutdoorTemperature = -48f; // Well below -25 - 20 = -45
+            Assert.True(ColonyMacroPerceiver.Evaluate(parkaSnapshot).IsExtremeCold);
+        }
+
+        [Fact]
         public void Evaluate_UnburiedCorpses_FlagsBottleneck()
         {
             var snapshot = new ColonyMacroSnapshot
@@ -285,21 +305,29 @@ namespace RimMind.Advisor.Tests.Contracts
                 onAllApproved: () => allApprovedInvoked = true,
                 onRejected: () => { });
 
-            Assert.NotNull(entry);
-            Assert.Equal("advisor_cabinet", entry.source);
-            Assert.Equal("Emergency Survival Cabinet Plan", entry.title);
-            Assert.Contains("Designate Resources", entry.description);
-            Assert.Contains("Add Worktable Bill", entry.description);
-            Assert.Contains("Manage Equipment", entry.description);
+            try
+            {
+                Assert.NotNull(entry);
+                Assert.Equal("advisor_cabinet", entry.source);
+                Assert.Equal("Emergency Survival Cabinet Plan", entry.title);
+                Assert.Contains("Designate Resources", entry.description);
+                Assert.Contains("Add Worktable Bill", entry.description);
+                Assert.Contains("Manage Equipment", entry.description);
 
-            // Simulate selecting "Approve All" (options[0])
-            string approveOption = entry.options[0];
-            entry.callback?.Invoke(approveOption);
+                // Simulate selecting "Approve All" (options[0])
+                string approveOption = entry.options[0];
+                entry.callback?.Invoke(approveOption);
 
-            Assert.Equal(1, execCount1);
-            Assert.Equal(1, execCount2);
-            Assert.Equal(1, execCount3);
-            Assert.True(allApprovedInvoked);
+                Assert.Equal(1, execCount1);
+                Assert.Equal(1, execCount2);
+                Assert.Equal(1, execCount3);
+                Assert.True(allApprovedInvoked);
+            }
+            finally
+            {
+                ApprovalManager.ClearPendingRequests();
+                RimMindAPI.ClearPendingRequests();
+            }
         }
 
         [Fact]
@@ -332,12 +360,20 @@ namespace RimMind.Advisor.Tests.Contracts
                 onAllApproved: () => { },
                 onRejected: () => rejectedInvoked = true);
 
-            // Simulate selecting "Dismiss" (options[1])
-            string dismissOption = entry.options[1];
-            entry.callback?.Invoke(dismissOption);
+            try
+            {
+                // Simulate selecting "Dismiss" (options[1])
+                string dismissOption = entry.options[1];
+                entry.callback?.Invoke(dismissOption);
 
-            Assert.Equal(0, execCount);
-            Assert.True(rejectedInvoked);
+                Assert.Equal(0, execCount);
+                Assert.True(rejectedInvoked);
+            }
+            finally
+            {
+                ApprovalManager.ClearPendingRequests();
+                RimMindAPI.ClearPendingRequests();
+            }
         }
     }
 }

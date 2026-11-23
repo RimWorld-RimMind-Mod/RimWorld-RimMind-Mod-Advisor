@@ -3,7 +3,7 @@ namespace RimMind.Advisor.Advisor
     /// <summary>
     /// Advisor-owned identity used by Core's request queue.
     /// The same id must be passed to <c>LlmRequestEnvelopeBuilder.WithModId</c>, to
-    /// <c>RimMindAPI.ClearModCooldown</c> / <c>GetModCooldownTicksLeft</c>, and exposed by
+    /// <c>RimMindAPI.Request.ClearModCooldown</c> / <c>GetModCooldownTicksLeft</c>, and exposed by
     /// <c>AdvisorModCooldown</c>: Core stores per-mod cooldowns under the envelope ModId,
     /// so any other spelling silently targets a cooldown key that never exists.
     /// </summary>

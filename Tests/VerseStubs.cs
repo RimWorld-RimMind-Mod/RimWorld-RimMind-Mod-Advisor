@@ -18,7 +18,8 @@ namespace Verse
     {
         public static bool NullOrEmpty(this string? s) => string.IsNullOrEmpty(s);
         public static string Translate(this string key) => key;
-        public static string Translate(this string key, params object[] args) => key;
+        public static string Translate(this string key, params object[] args)
+            => args != null && args.Length > 0 ? $"{key} ({string.Join(", ", args)})" : key;
         public static bool CanTranslate(this string key) => true;
     }
 
@@ -426,8 +427,14 @@ namespace RimMind.Presentation.Api
 
         public static class Providers
         {
+            public static List<(string Id, string Owner, Func<Verse.Pawn, string> Provider, int Priority, bool OverrideExisting)> RegisteredPawnProviders { get; } = new();
+
             public static void RegisterPawnProvider(string id, string owner, Func<Verse.Pawn, string> provider,
-                int priority, bool overrideExisting) { }
+                int priority, bool overrideExisting)
+            {
+                RegisteredPawnProviders.RemoveAll(p => p.Id == id);
+                RegisteredPawnProviders.Add((id, owner, provider, priority, overrideExisting));
+            }
         }
 
         private sealed class StubToolHandler : RimMind.Application.Common.Interfaces.Tools.IToolHandler
@@ -653,6 +660,18 @@ namespace RimMind.Presentation.Api
             }
         }
 
+        public static List<Verse.Pawn> GetSpawnedColonistsSafe(Verse.Map? map = null)
+        {
+            var result = new List<Verse.Pawn>();
+            var targetMap = map ?? Verse.Find.CurrentMap;
+            if (targetMap?.mapPawns?.FreeColonists != null)
+            {
+                foreach (var p in targetMap.mapPawns.FreeColonists)
+                    if (IsActiveSpawnedColonist(p)) result.Add(p);
+            }
+            return result;
+        }
+
         public static IEnumerable<Verse.Pawn> GetActiveSpawnedColonyAnimals(Verse.Map? map = null)
         {
             var targetMap = map ?? Verse.Find.CurrentMap;
@@ -730,10 +749,6 @@ namespace RimMind.Advisor
     public static class RimMindAdvisorMod
     {
         public static Settings.RimMindAdvisorSettings Settings { get; } = new();
-    }
-    public static class JobCandidateBuilder
-    {
-        public static string Build(Verse.Pawn pawn) => string.Empty;
     }
 }
 

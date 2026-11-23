@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Settings;
+using RimMind.Presentation.Api;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -15,7 +16,6 @@ namespace RimMind.Advisor.Comps
         private AdvisorCycleCoordinator? _cycle;
 
         private Pawn? PawnOrNull => parent as Pawn;
-        private Pawn? Pawn => parent as Pawn;
         private RimMindAdvisorSettings Settings => RimMindAdvisorMod.Settings;
         private AdvisorCycleCoordinator Cycle
         {
@@ -23,7 +23,7 @@ namespace RimMind.Advisor.Comps
             {
                 if (_cycle == null)
                 {
-                    _cycle = new AdvisorCycleCoordinator(Pawn!, () => Settings)
+                    _cycle = new AdvisorCycleCoordinator(PawnOrNull!, () => Settings)
                     {
                         LastRequestTick = _lastRequestTick
                     };
@@ -49,8 +49,9 @@ namespace RimMind.Advisor.Comps
 
         public bool IsEligible() =>
             PawnOrNull is Pawn pawn &&
-            pawn.IsFreeNonSlaveColonist &&
-            !pawn.Dead &&
+            RimMindPawnLookup.IsActiveSpawnedColonist(pawn) &&
+            !pawn.Downed &&
+            !pawn.InMentalState &&
             !(pawn.drafter?.Drafted ?? false) &&
             pawn.needs?.mood != null;
 
@@ -94,23 +95,25 @@ namespace RimMind.Advisor.Comps
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
-            if (PawnOrNull == null) yield break;
+            if (PawnOrNull == null || !RimMindPawnLookup.IsActiveSpawnedColonist(PawnOrNull)) yield break;
 
             var label = IsEnabled
-                ? "RimMind.Advisor.UI.Gizmo.Enabled".Translate()
-                : "RimMind.Advisor.UI.Gizmo.Disabled".Translate();
+                ? RimMindAPI.Text.TrOr("RimMind.Advisor.UI.Gizmo.Enabled", "AI Advisor: On")
+                : RimMindAPI.Text.TrOr("RimMind.Advisor.UI.Gizmo.Disabled", "AI Advisor: Off");
             var subLabel = string.Empty;
 
             if (IsEnabled)
             {
                 if (AdvisorCooldownTicksLeft > 0)
                 {
-                    subLabel = "RimMind.Advisor.UI.Gizmo.Cooldown".Translate(
+                    subLabel = RimMindAPI.Text.TrOr(
+                        "RimMind.Advisor.UI.Gizmo.Cooldown",
+                        "Cooling down ({0} game hours)",
                         $"{AdvisorCooldownTicksLeft / 2500f:F1}");
                 }
                 else if (HasPendingRequest)
                 {
-                    subLabel = "RimMind.Advisor.UI.Gizmo.Waiting".Translate();
+                    subLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.UI.Gizmo.Waiting", "Waiting for AI response...");
                 }
             }
 
@@ -118,7 +121,9 @@ namespace RimMind.Advisor.Comps
             {
                 defaultLabel = label,
                 defaultDesc = subLabel.NullOrEmpty()
-                    ? "RimMind.Advisor.UI.Gizmo.Desc".Translate()
+                    ? RimMindAPI.Text.TrOr(
+                        "RimMind.Advisor.UI.Gizmo.Desc",
+                        "When enabled, AI will choose the next action for this colonist when idle.")
                     : subLabel,
                 icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                 action = () => IsEnabled = !IsEnabled,
@@ -128,8 +133,10 @@ namespace RimMind.Advisor.Comps
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "RimMind.Advisor.UI.Gizmo.ForceRequest".Translate(),
-                    defaultDesc = "RimMind.Advisor.UI.Gizmo.ForceRequestDesc".Translate(),
+                    defaultLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.UI.Gizmo.ForceRequest", "Request AI Advice Now"),
+                    defaultDesc = RimMindAPI.Text.TrOr(
+                        "RimMind.Advisor.UI.Gizmo.ForceRequestDesc",
+                        "Bypass cooldown and request immediately (dev mode only)"),
                     icon = ContentFinder<Texture2D>.Get("UI/AdvisorIcon", reportFailure: false),
                     action = ForceRequestAdvice,
                 };
@@ -138,18 +145,20 @@ namespace RimMind.Advisor.Comps
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
-            if (Pawn != null)
+            _cycle?.CancelActiveCycle();
+            if (PawnOrNull != null)
             {
-                ApprovalManager.CancelPendingForPawn(Pawn);
+                ApprovalManager.CancelPendingForPawn(PawnOrNull);
             }
             base.PostDeSpawn(map, mode);
         }
 
         public override void PostDestroy(DestroyMode mode, Map previousMap)
         {
-            if (Pawn != null)
+            _cycle?.CancelActiveCycle();
+            if (PawnOrNull != null)
             {
-                ApprovalManager.CancelPendingForPawn(Pawn);
+                ApprovalManager.CancelPendingForPawn(PawnOrNull);
             }
             base.PostDestroy(mode, previousMap);
         }

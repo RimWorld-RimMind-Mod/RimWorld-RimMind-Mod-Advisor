@@ -26,7 +26,7 @@ RimMind is an enterprise-grade, AI-powered RimWorld mod suite. Integrated with L
 [tr][th]Mod[/th][th]Responsibility[/th][th]Dependencies[/th][th]GitHub[/th][/tr]
 [tr][td]RimMind-Core[/td][td]LLM runtime, 4-Zone context engine, async queue, ToolCall registry &amp; F8 Hub[/td][td]Harmony[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core]Link[/url][/td][/tr]
 [tr][td]RimMind-Actions[/td][td]Composite ToolCall mechanisms, battlefield triage &amp; autonomous construction[/td][td]Core[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions]Link[/url][/td][/tr]
-[tr][td][b]RimMind-Advisor[/b][/td][td]Colonist self-reflective advice cards, 5-domain autonomy &amp; player approval[/td][td]Core, Actions[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor]Link[/url][/td][/tr]
+[tr][td][b]RimMind-Advisor[/b][/td][td]Colonist self-reflective advice cards, 5-domain autonomy &amp; player approval[/td][td]Core (optional: Actions)[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Advisor]Link[/url][/td][/tr]
 [tr][td]RimMind-Dialogue[/td][td]Contextual spoken dialogue via express_dialogue ToolCall &amp; speech bubbles[/td][td]Core[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Dialogue]Link[/url][/td][/tr]
 [tr][td]RimMind-Memory[/td][td]3-Tier cognitive memory hierarchy, work aggregation &amp; temporal decay[/td][td]Core[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Memory]Link[/url][/td][/tr]
 [tr][td]RimMind-Personality[/td][td]Big-Five psychological profiles, dawn monologues &amp; dynamic mood thoughts[/td][td]Core[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Personality]Link[/url][/td][/tr]
@@ -35,7 +35,8 @@ RimMind is an enterprise-grade, AI-powered RimWorld mod suite. Integrated with L
 [tr][td]RimMind-Bridge-RimChat[/td][td]RimChat compatibility bridge: dialogue/action mutual exclusion &amp; context sync[/td][td]Core, RimChat[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimChat]Link[/url][/td][/tr]
 [tr][td]RimMind-Bridge-RimTalk[/td][td]RimTalk compatibility bridge: bubble harmonization &amp; bidirectional context[/td][td]Core, RimTalk[/td][td][url=https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Bridge-RimTalk]Link[/url][/td][/tr]
 [/table]
-[code]Core ──┬── Actions ── Advisor
+[code]Core ──┬── Actions (optional with Advisor)
+       ├── Advisor
        ├── Dialogue
        ├── Memory ── Storyteller
        ├── Personality
@@ -47,16 +48,16 @@ RimMind is an enterprise-grade, AI-powered RimWorld mod suite. Integrated with L
 [list]
 [*][b]5-Domain Autonomy Governance[/b] - Configure [i]Disabled[/i], [i]RequireApproval[/i], or [i]FullAutonomous[/i] across 5 operational domains: [i]EmergencySurvival, ResourceMarking, WorktableBills, BlueprintPlacement, HighRiskOperations[/i].
 [*][b]Interactive Approval Cards &amp; Mini-Pill Collapse[/b] - Proposals appear in a clean, zoomable floating HUD card with colonist reasoning, urgency badges, and [b][Approve][/b] / [b][Reject][/b] controls, collapsing into an unobtrusive mini-pill when idle.
-[*][b]ColonyMacroPerceiver &amp; Cabinet Meetings[/b] - Detects colony-wide food shortages, medical emergencies, defense gaps, and mood crises, convening multi-colonist Cabinet Proposals with executable action plans.
+[*][b]ColonyMacroPerceiver &amp; Cabinet Proposals[/b] - Detects colony-wide food shortages, extreme temperatures, unburied corpses, shelter gaps, and hostile threats, grouping multi-tool approval-gated plans into a single [code]CabinetProposal[/code] card.
 [*][b]Thought-Driven Decision Pipeline[/b] - Receives psychological Thought events from [code]RimMind-Personality[/code] and [code]RimMind-Dialogue[/code] via Core's loose-coupled event bus, turning inner monologues into concrete actions.
-[*][b]Pawn Lifecycle Safety[/b] - Automatically cancels pending proposals and cleans up state if a colonist is downed, kidnapped, or killed.
+[*][b]Pawn Lifecycle Safety[/b] - Automatically cancels active cycles and pending proposals if a colonist is downed, despawned, or killed.
 [/list]
 
 [h2]Advisor Decision Workflow[/h2]
 [list]
-[*][b]1. State &amp; Thought Perception[/b] - Synthesizes pawn mood, skills, health, nearby work candidates, and macro colony alerts.
-[*][b]2. LLM ToolCall Reasoning[/b] - Selects character-appropriate mechanisms from [code]RimMind-Core[/code] and [code]RimMind-Actions[/code].
-[*][b]3. Risk &amp; Policy Resolution[/b] - [code]AdvisorToolRiskResolver[/code] checks domain autonomy rules to either execute immediately or queue for player approval.
+[*][b]1. State &amp; Macro Perception[/b] - Synthesizes pawn mood, skills, health, scoped tool guidance, and macro colony bottlenecks.
+[*][b]2. LLM ToolCall Reasoning[/b] - Selects character-appropriate mechanisms from [code]RimMind-Core[/code] and (when installed) [code]RimMind-Actions[/code].
+[*][b]3. Risk &amp; Policy Resolution[/b] - [code]AdvisorToolRiskResolver[/code] queries tool manifests and [code]IToolPolicyClassifier[/code] to either execute immediately or queue for player approval.
 [*][b]4. Execution &amp; 3-Round Feedback[/b] - Monitors completion and injects outcome feedback into subsequent advisor cycles.
 [/list]
 
@@ -76,11 +77,6 @@ A: Yes! [code]RimMind-Personality[/code] supplies Big-Five psychological traits 
       <packageId>mcocdaa.RimMindCore</packageId>
       <displayName>RimMind - Core</displayName>
       <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Core</downloadUrl>
-    </li>
-    <li>
-      <packageId>mcocdaa.RimMindActions</packageId>
-      <displayName>RimMind - Actions</displayName>
-      <downloadUrl>https://github.com/RimWorld-RimMind-Mod/RimWorld-RimMind-Mod-Actions</downloadUrl>
     </li>
   </modDependencies>
   <loadAfter>

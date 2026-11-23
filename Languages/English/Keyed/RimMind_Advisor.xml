@@ -29,7 +29,7 @@
   <RimMind.Advisor.Settings.RequestExpire>Approval request expiry: {0} game days</RimMind.Advisor.Settings.RequestExpire>
   <RimMind.Advisor.Settings.RequestExpire.Desc>Approval floating window expiry time. Requests not responded to within this time are automatically dismissed.</RimMind.Advisor.Settings.RequestExpire.Desc>
   <RimMind.Advisor.Settings.NoTriggerWarning>Warning: No trigger source enabled. AI Advisor will not activate automatically.</RimMind.Advisor.Settings.NoTriggerWarning>
-  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>Warning: Approval system is off. Risk blocking will not take effect; all actions execute directly.</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
+  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>Warning: Approval system is off. Actions requiring approval will be blocked automatically without showing an approval card.</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
   <RimMind.Advisor.Settings.Section.Approval>Approval &amp; Blocking</RimMind.Advisor.Settings.Section.Approval>
   <RimMind.Advisor.Settings.EnableRequestSystem>Enable request system (colonist requests require player approval)</RimMind.Advisor.Settings.EnableRequestSystem>
   <RimMind.Advisor.Settings.EnableRequestSystem.Desc>When enabled, colonists can proactively submit action requests that require player approval before execution.</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
@@ -49,26 +49,9 @@
   <RimMind.Advisor.UI.Gizmo.ForceRequest>Request AI Advice Now</RimMind.Advisor.UI.Gizmo.ForceRequest>
   <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>Bypass cooldown and request immediately (dev mode only)</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
   <!-- Prompt -->
-  <!-- JobCandidateBuilder.cs -->
-  <!-- Prompt - Section Headers -->
-  <RimMind.Advisor.Prompt.WorkSectionHeader>[Work Tasks] (WorkType defName in parentheses) [Low Risk]</RimMind.Advisor.Prompt.WorkSectionHeader>
-  <RimMind.Advisor.Prompt.NoWorkTargets>  (No executable work targets currently)</RimMind.Advisor.Prompt.NoWorkTargets>
-  <RimMind.Advisor.Prompt.InstantSectionHeader>[Available Actions]</RimMind.Advisor.Prompt.InstantSectionHeader>
   <RimMind.Advisor.Prompt.ActionsGuidanceHeader>[Tool Execution Guidance]</RimMind.Advisor.Prompt.ActionsGuidanceHeader>
   <RimMind.Advisor.Prompt.ActionsGuidanceBody>{0} scoped action tools are attached via native Tool Calling. Call matching tools directly using ONLY parameters declared in each tool's JSON schema.</RimMind.Advisor.Prompt.ActionsGuidanceBody>
   <RimMind.Advisor.Prompt.ActionsElevatedRisk>Elevated-risk / approval-gated tools (use only when warranted): {0}</RimMind.Advisor.Prompt.ActionsElevatedRisk>
-  <!-- Prompt - Instant Action Hints -->
-  <RimMind.Advisor.Prompt.RestLow>Stamina {0}%</RimMind.Advisor.Prompt.RestLow>
-  <RimMind.Advisor.Prompt.RestSufficient>Stamina {0}% (sufficient)</RimMind.Advisor.Prompt.RestSufficient>
-  <RimMind.Advisor.Prompt.MoodLow>Mood {0}%, suggest relaxing</RimMind.Advisor.Prompt.MoodLow>
-  <RimMind.Advisor.Prompt.MoodNormal>Mood {0}%</RimMind.Advisor.Prompt.MoodNormal>
-  <RimMind.Advisor.Prompt.EatFoodHint>Available food: {0}; param fill food defName (e.g. Chocolate)</RimMind.Advisor.Prompt.EatFoodHint>
-  <RimMind.Advisor.Prompt.TendPawnHint>target={0} (injured, needs treatment)</RimMind.Advisor.Prompt.TendPawnHint>
-  <RimMind.Advisor.Prompt.RescuePawnHint>target={0} (downed)</RimMind.Advisor.Prompt.RescuePawnHint>
-  <RimMind.Advisor.Prompt.InspireWork>Trigger work frenzy inspiration</RimMind.Advisor.Prompt.InspireWork>
-  <RimMind.Advisor.Prompt.InspireShoot>Trigger shooting frenzy inspiration</RimMind.Advisor.Prompt.InspireShoot>
-  <RimMind.Advisor.Prompt.InspireTrade>Trigger trade inspiration</RimMind.Advisor.Prompt.InspireTrade>
-  <RimMind.Advisor.Prompt.MoveToHint>param fill target coordinates x,z</RimMind.Advisor.Prompt.MoveToHint>
   <!-- Prompt - Risk Tags -->
   <RimMind.Advisor.Prompt.Risk.Low>[Low]</RimMind.Advisor.Prompt.Risk.Low>
   <RimMind.Advisor.Prompt.Risk.Medium>[Medium]</RimMind.Advisor.Prompt.Risk.Medium>
@@ -114,15 +97,11 @@
   <RimMind.Advisor.Prompt.TaskInstruction.Example>Example ----
 State: Jenni (pawn_id=14) rest 18%, mood 42%, healthy, wandering idle.
 Native Tool Call: call the attached rest/recovery tool with its declared schema parameters (e.g. pawn_id=14, reason="Exhausted and low mood — needs immediate rest").</RimMind.Advisor.Prompt.TaskInstruction.Example>
-  <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[Player-defined rules]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 
   <!-- Cabinet Strategic Proposal & Approval Keys -->
-  <RimMind.Advisor.Cabinet.StrategicProposal>Colony Cabinet Strategic Proposal</RimMind.Advisor.Cabinet.StrategicProposal>
   <RimMind.Advisor.Cabinet.StrategicProposalTitle>[Cabinet Card] Strategic Plan by {0}</RimMind.Advisor.Cabinet.StrategicProposalTitle>
   <RimMind.Advisor.Cabinet.ProposedMeasures>Proposed Strategic Measures</RimMind.Advisor.Cabinet.ProposedMeasures>
   <RimMind.Advisor.Cabinet.ApproveAll>Approve All</RimMind.Advisor.Cabinet.ApproveAll>
-  <RimMind.Advisor.Cabinet.ApproveSelected>Approve Selected</RimMind.Advisor.Cabinet.ApproveSelected>
-  <RimMind.Advisor.Cabinet.Inspect>Inspect</RimMind.Advisor.Cabinet.Inspect>
   <RimMind.Advisor.Cabinet.Dismiss>Dismiss</RimMind.Advisor.Cabinet.Dismiss>
   <RimMind.Advisor.Cabinet.ExecutedMote>[RimMind] Cabinet plan approved &amp; executed!</RimMind.Advisor.Cabinet.ExecutedMote>
 </LanguageData>

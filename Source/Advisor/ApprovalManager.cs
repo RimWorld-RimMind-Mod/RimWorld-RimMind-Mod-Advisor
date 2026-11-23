@@ -83,7 +83,7 @@ namespace RimMind.Advisor.Advisor
         {
             string approveLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Request.Approve", "Approve");
             string rejectLabel = RimMindAPI.Text.TrOr("RimMind.Advisor.Request.Reject", "Reject");
-            string readableAction = FormatHumanReadableToolName(item.Action);
+            string readableAction = ToolCallSummaryFormatter.FormatHumanReadableToolName(item.Action);
             string titleText = RimMindAPI.Text.TrOr(
                 "RimMind.Advisor.Request.RiskAction",
                 "Advisor Action: {0}",
@@ -132,7 +132,7 @@ namespace RimMind.Advisor.Advisor
             for (int i = 0; i < proposal.Items.Count; i++)
             {
                 var it = proposal.Items[i];
-                var readableItemAction = FormatHumanReadableToolName(it.Action);
+                var readableItemAction = ToolCallSummaryFormatter.FormatHumanReadableToolName(it.Action);
                 var itemSummary = !string.IsNullOrWhiteSpace(it.Reason) &&
                                   !string.Equals(it.Reason, it.Action, StringComparison.OrdinalIgnoreCase)
                     ? it.Reason
@@ -168,9 +168,6 @@ namespace RimMind.Advisor.Advisor
                 onDismissed: onDismissed,
                 beforeRegister: beforeRegister);
         }
-
-        internal static string FormatHumanReadableToolName(string? rawName)
-            => ToolCallSummaryFormatter.FormatHumanReadableToolName(rawName);
 
         private RequestEntry RegisterTrackedEntry(
             string source,

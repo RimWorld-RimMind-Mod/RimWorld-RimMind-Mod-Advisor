@@ -29,7 +29,7 @@
   <RimMind.Advisor.Settings.RequestExpire>审批请求过期：{0} 游戏天</RimMind.Advisor.Settings.RequestExpire>
   <RimMind.Advisor.Settings.RequestExpire.Desc>审批悬浮窗的过期时间。超过此时间未响应的审批请求将自动关闭。</RimMind.Advisor.Settings.RequestExpire.Desc>
   <RimMind.Advisor.Settings.NoTriggerWarning>警告：无触发源已启用，AI 顾问不会自动激活。</RimMind.Advisor.Settings.NoTriggerWarning>
-  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>警告：审批系统已关闭，风险拦截将不生效，所有动作直接执行。</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
+  <RimMind.Advisor.Settings.RiskWithoutApprovalWarning>警告：审批系统已关闭，需要审批的高风险动作将被直接拦截阻止，不会弹出审批卡片。</RimMind.Advisor.Settings.RiskWithoutApprovalWarning>
   <RimMind.Advisor.Settings.Section.Approval>审批与拦截</RimMind.Advisor.Settings.Section.Approval>
   <RimMind.Advisor.Settings.EnableRequestSystem>启用请求系统（殖民者主动请求需玩家批准）</RimMind.Advisor.Settings.EnableRequestSystem>
   <RimMind.Advisor.Settings.EnableRequestSystem.Desc>开启后，殖民者可以主动向玩家提出行动请求，需批准后才执行。</RimMind.Advisor.Settings.EnableRequestSystem.Desc>
@@ -49,26 +49,9 @@
   <RimMind.Advisor.UI.Gizmo.ForceRequest>立即请求 AI 建议</RimMind.Advisor.UI.Gizmo.ForceRequest>
   <RimMind.Advisor.UI.Gizmo.ForceRequestDesc>绕过冷却立即请求（仅开发模式）</RimMind.Advisor.UI.Gizmo.ForceRequestDesc>
   <!-- Prompt -->
-  <!-- JobCandidateBuilder.cs -->
-  <!-- Prompt - Section Headers -->
-  <RimMind.Advisor.Prompt.WorkSectionHeader>[工作任务]（括号内为 WorkType defName）[低风险]</RimMind.Advisor.Prompt.WorkSectionHeader>
-  <RimMind.Advisor.Prompt.NoWorkTargets>  （暂无可执行工作目标）</RimMind.Advisor.Prompt.NoWorkTargets>
-  <RimMind.Advisor.Prompt.InstantSectionHeader>[可用动作]</RimMind.Advisor.Prompt.InstantSectionHeader>
   <RimMind.Advisor.Prompt.ActionsGuidanceHeader>[工具调用说明]</RimMind.Advisor.Prompt.ActionsGuidanceHeader>
   <RimMind.Advisor.Prompt.ActionsGuidanceBody>本次请求已通过原生 Tool Calling 挂载 {0} 个作用域内的动作工具。请直接调用匹配的工具，且仅使用该工具 JSON Schema 中声明的参数。</RimMind.Advisor.Prompt.ActionsGuidanceBody>
   <RimMind.Advisor.Prompt.ActionsElevatedRisk>高风险/需审批工具（仅在确有必要时调用）：{0}</RimMind.Advisor.Prompt.ActionsElevatedRisk>
-  <!-- Prompt - Instant Action Hints -->
-  <RimMind.Advisor.Prompt.RestLow>体力 {0}%</RimMind.Advisor.Prompt.RestLow>
-  <RimMind.Advisor.Prompt.RestSufficient>体力 {0}%（充足）</RimMind.Advisor.Prompt.RestSufficient>
-  <RimMind.Advisor.Prompt.MoodLow>心情 {0}%，建议放松</RimMind.Advisor.Prompt.MoodLow>
-  <RimMind.Advisor.Prompt.MoodNormal>心情 {0}%</RimMind.Advisor.Prompt.MoodNormal>
-  <RimMind.Advisor.Prompt.EatFoodHint>可选食物：{0}；param 填食物 defName（如 Chocolate）</RimMind.Advisor.Prompt.EatFoodHint>
-  <RimMind.Advisor.Prompt.TendPawnHint>target={0}（受伤，需救治）</RimMind.Advisor.Prompt.TendPawnHint>
-  <RimMind.Advisor.Prompt.RescuePawnHint>target={0}（已倒地）</RimMind.Advisor.Prompt.RescuePawnHint>
-  <RimMind.Advisor.Prompt.InspireWork>触发工作狂热灵感</RimMind.Advisor.Prompt.InspireWork>
-  <RimMind.Advisor.Prompt.InspireShoot>触发射击狂热灵感</RimMind.Advisor.Prompt.InspireShoot>
-  <RimMind.Advisor.Prompt.InspireTrade>触发交易灵感</RimMind.Advisor.Prompt.InspireTrade>
-  <RimMind.Advisor.Prompt.MoveToHint>param 填目标坐标 x,z</RimMind.Advisor.Prompt.MoveToHint>
   <!-- Prompt - Risk Tags -->
   <RimMind.Advisor.Prompt.Risk.Low>[低]</RimMind.Advisor.Prompt.Risk.Low>
   <RimMind.Advisor.Prompt.Risk.Medium>[中]</RimMind.Advisor.Prompt.Risk.Medium>
@@ -114,15 +97,11 @@
   <RimMind.Advisor.Prompt.TaskInstruction.Example>示例————
 状态：Jenni (pawn_id=14) 体力18%，心情42%，健康，正在闲逛。
 原生 Tool Calling：直接调用已挂载的休息/恢复工具，并仅传入其 Schema 定义的参数（例如 pawn_id=14, reason="体力透支且心情偏低，需要立即休息"）。</RimMind.Advisor.Prompt.TaskInstruction.Example>
-  <RimMind.Advisor.Prompt.TaskInstruction.CustomRules>[玩家自定义规则]</RimMind.Advisor.Prompt.TaskInstruction.CustomRules>
 
   <!-- Cabinet Strategic Proposal & Approval Keys -->
-  <RimMind.Advisor.Cabinet.StrategicProposal>营地内阁战略提案</RimMind.Advisor.Cabinet.StrategicProposal>
   <RimMind.Advisor.Cabinet.StrategicProposalTitle>【内阁决策卡】{0}的综合施政方案</RimMind.Advisor.Cabinet.StrategicProposalTitle>
   <RimMind.Advisor.Cabinet.ProposedMeasures>建议采取的协同对策</RimMind.Advisor.Cabinet.ProposedMeasures>
   <RimMind.Advisor.Cabinet.ApproveAll>一键全权批准</RimMind.Advisor.Cabinet.ApproveAll>
-  <RimMind.Advisor.Cabinet.ApproveSelected>批准勾选项</RimMind.Advisor.Cabinet.ApproveSelected>
-  <RimMind.Advisor.Cabinet.Inspect>详细审阅</RimMind.Advisor.Cabinet.Inspect>
   <RimMind.Advisor.Cabinet.Dismiss>搁置/驳回</RimMind.Advisor.Cabinet.Dismiss>
   <RimMind.Advisor.Cabinet.ExecutedMote>[RimMind] 内阁决议全权批准并执行！</RimMind.Advisor.Cabinet.ExecutedMote>
 </LanguageData>

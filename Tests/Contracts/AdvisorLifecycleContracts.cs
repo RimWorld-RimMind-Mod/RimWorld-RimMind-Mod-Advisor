@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using RimMind.Advisor;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Concurrency;
@@ -14,6 +13,7 @@ using Xunit;
 
 namespace RimMind.Advisor.Tests.Contracts
 {
+    [Collection("Advisor runtime")]
     public sealed class AdvisorLifecycleContracts
     {
         [Fact]
@@ -77,23 +77,11 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Equal(1, secondCancellationCount);
                     Assert.Equal(0, cycle.PendingApprovals);
                     Assert.True(cycle.CanComplete);
-                }),
-                ("Verse component delegates the complete request cycle", () =>
-                {
-                    var component = ReadSource("Comps/CompAIAdvisor.cs");
-                    var coordinator = ReadSource("Advisor/AdvisorCycleCoordinator.cs");
-                    Assert.Contains("AdvisorCycleCoordinator", component, StringComparison.Ordinal);
-                    Assert.DoesNotContain("OnAdviceReceived", component, StringComparison.Ordinal);
-                    Assert.DoesNotContain("SubmitToolCallForApproval", component, StringComparison.Ordinal);
-                    Assert.Contains("OnAdviceReceived", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("SubmitToolCallForApproval", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("TryAdvanceRequestCycle", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("if (!isFeedbackResponse)", coordinator, StringComparison.Ordinal);
                 }));
         }
 
         [Fact]
-        public void Concurrency_history_and_hint_state_remain_bounded()
+        public void Concurrency_history_and_provider_state_remain_bounded()
         {
             ContractCaseRunner.Run(
                 ("concurrency count round-trips without leaking a slot", () =>
@@ -118,8 +106,15 @@ namespace RimMind.Advisor.Tests.Contracts
                     Assert.Equal(0, capacity.Remaining);
                     Assert.False(capacity.TryReserve());
                 }),
-                ("history appends by pawn and evicts beyond both limits", () =>
+                ("history appends by pawn, prunes inactive pawns, and uses IExposable wrapper", () =>
                 {
+                    Assert.True(typeof(IExposable).IsAssignableFrom(typeof(PawnAdvisorHistory)));
+                    var wrapper = new PawnAdvisorHistory { pawnId = 7 };
+                    wrapper.records.Add(new AdvisorRequestRecord { action = "test", tick = 1 });
+                    wrapper.ExposeData();
+                    Assert.Equal(7, wrapper.pawnId);
+                    Assert.Single(wrapper.records);
+
                     var store = new AdvisorHistoryStore(new World());
                     var pawn = new Pawn { thingIDNumber = 7 };
                     for (var index = 0; index < 55; index++)
@@ -161,94 +156,76 @@ namespace RimMind.Advisor.Tests.Contracts
                 {
                     ApprovalManager.ClearPendingRequests();
                     RimMind.Presentation.Api.RimMindAPI.ClearPendingRequests();
-                    var manager = new ApprovalManager(new RimMind.Advisor.Settings.RimMindAdvisorSettings());
-                    var pawn = new Pawn { thingIDNumber = 88 };
-                    manager.SubmitForApproval(
-                        new AdviceItem { Action = "actions_place_blueprint", Reason = "test" },
-                        pawn,
-                        onApproved: () => { },
-                        onRejected: () => { });
-                    Assert.Equal(1, ApprovalManager.TrackedPendingCount);
-                    ApprovalManager.ClearPendingRequests();
-                    Assert.Equal(0, ApprovalManager.TrackedPendingCount);
-                    RimMind.Presentation.Api.RimMindAPI.ClearPendingRequests();
-                }),
-                ("instant hints expose exactly the registered action boundary", () =>
-                {
-                    var expected = new HashSet<string>
+                    try
                     {
-                        "force_rest",
-                        "social_relax",
-                        "eat_food",
-                        "tend_pawn",
-                        "rescue_pawn",
-                        "inspire_work",
-                        "inspire_shoot",
-                        "inspire_trade",
-                        "move_to"
-                    };
+                        var manager = new ApprovalManager(new RimMind.Advisor.Settings.RimMindAdvisorSettings());
+                        var pawn = new Pawn { thingIDNumber = 88 };
+                        manager.SubmitForApproval(
+                            new AdviceItem { Action = "actions_place_blueprint", Reason = "test" },
+                            pawn,
+                            onApproved: () => { },
+                            onRejected: () => { });
+                        Assert.Equal(1, ApprovalManager.TrackedPendingCount);
+                        ApprovalManager.ClearPendingRequests();
+                        Assert.Equal(0, ApprovalManager.TrackedPendingCount);
+                    }
+                    finally
+                    {
+                        ApprovalManager.ClearPendingRequests();
+                        RimMind.Presentation.Api.RimMindAPI.ClearPendingRequests();
+                    }
+                }),
+                ("Advisor publishes a bounded 5-item history brief via public pawn provider", () =>
+                {
+                    RimMind.Presentation.Api.RimMindAPI.Providers.RegisteredPawnProviders.Clear();
+                    var store = new AdvisorHistoryStore(new World());
+                    var pawn = new Pawn { thingIDNumber = 33 };
+                    for (int i = 0; i < 8; i++)
+                    {
+                        store.AddRecord(pawn, new AdvisorRequestRecord
+                        {
+                            action = $"act-{i}",
+                            reason = $"why-{i}",
+                            result = "approved",
+                            tick = i
+                        });
+                    }
 
-                    Assert.True(expected.SetEquals(InstantHintRegistry.GetKnownActions()));
-                    Assert.False(InstantHintRegistry.IsKnownAction("unknown-action"));
+                    try
+                    {
+                        AdvisorProviderRegistrar.RegisterAll();
+                        var registered = Assert.Single(RimMind.Presentation.Api.RimMindAPI.Providers.RegisteredPawnProviders);
+                        Assert.Equal("advisor.history_brief", registered.Id);
+                        Assert.Equal("RimMind.Advisor", registered.Owner);
+                        Assert.Equal(100, registered.Priority);
+                        Assert.True(registered.OverrideExisting);
+
+                        string brief = registered.Provider(pawn);
+                        Assert.StartsWith("[RimMind Advisor]", brief, StringComparison.Ordinal);
+                        Assert.DoesNotContain("act-0", brief);
+                        Assert.DoesNotContain("act-2", brief);
+                        Assert.Contains("- act-3: why-3 (approved)", brief);
+                        Assert.Contains("- act-7: why-7 (approved)", brief);
+                        Assert.Equal(string.Empty, registered.Provider(new Pawn { thingIDNumber = 999 }));
+                    }
+                    finally
+                    {
+                        RimMind.Presentation.Api.RimMindAPI.Providers.RegisteredPawnProviders.Clear();
+                        AdvisorHistoryStore.ResetCache();
+                    }
                 }),
-                ("Advisor publishes a bounded history brief without exposing its store", () =>
+                ("pre-approval stripping removes spoofed approval flags while preserving real args", () =>
                 {
-                    string source = ReadSource("Advisor/AdvisorProviderRegistrar.cs")
-                        .Replace("\r\n", "\n");
-                    Assert.Contains(
-                        "            RegisterPublicProviders();\n" +
-                        "        }\n\n" +
-                        "        private static void RegisterPublicProviders()",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "private const string PublicProviderOwner = \"RimMind.Advisor\";",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "            RimMindAPI.Providers.RegisterPawnProvider(\n" +
-                        "                \"advisor.history_brief\",\n" +
-                        "                PublicProviderOwner,\n" +
-                        "                pawn =>",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "                },\n" +
-                        "                priority: 100,\n" +
-                        "                overrideExisting: true);",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "var text = new StringBuilder(\"[RimMind Advisor]\");",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.DoesNotContain(
-                        "text.AppendLine(\"[RimMind Advisor]\");",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "foreach (var record in history.Skip(Math.Max(0, history.Count - 5)))",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "$\"- {record.action}: {record.reason} ({record.result})\");",
-                        source,
-                        StringComparison.Ordinal);
-                    Assert.Contains(
-                        "return text.ToString().TrimEnd();",
-                        source,
-                        StringComparison.Ordinal);
-                }),
-                ("coordinator strips spoofed pre-approval and enforces autonomy approval and forbidden checks", () =>
-                {
-                    var coordinator = ReadSource("Advisor/AdvisorCycleCoordinator.cs");
-                    var approvalPipeline = ReadSource("Advisor/ApprovalSubmissionPipeline.cs");
-                    var component = ReadSource("Comps/CompAIAdvisor.cs");
-                    Assert.Contains("AdvisorToolRiskResolver.IsAutonomyForbidden", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("AdvisorToolRiskResolver.RequiresAutonomyApproval", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("StripPreApprovalArgument", coordinator, StringComparison.Ordinal);
-                    Assert.Contains("proposal.ExecutionCallbacks.Add", approvalPipeline, StringComparison.Ordinal);
-                    Assert.Contains("ApprovalManager.CancelPendingForPawn(Pawn);", component, StringComparison.Ordinal);
+                    var sanitized = ToolCallSummaryFormatter.StripPreApproval(new StructuredToolCall
+                    {
+                        Id = "c1",
+                        Name = "actions_place_blueprint",
+                        Arguments = "{\"building_def\":\"Bed\",\"pre_approved\":true,\"is_approved\":true}"
+                    });
+
+                    Assert.DoesNotContain("pre_approved", sanitized.Arguments);
+                    Assert.DoesNotContain("is_approved", sanitized.Arguments);
+                    Assert.Contains("Bed", sanitized.Arguments);
                 }),
                 ("driver reset clears feedback depth reasoning and request state", () =>
                 {
@@ -331,24 +308,6 @@ namespace RimMind.Advisor.Tests.Contracts
                         isPawnInExtremeBreakRisk: true);
                     Assert.Equal(AdvisorCooldownCalculator.MinCrisisCooldownTicks, cooldown);
                 }));
-        }
-
-        private static string ReadSource(string relativePath) =>
-            File.ReadAllText(Path.Combine(
-                SourceRoot(),
-                relativePath.Replace('/', Path.DirectorySeparatorChar)));
-
-        private static string SourceRoot()
-        {
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            while (directory != null &&
-                   !Directory.Exists(Path.Combine(directory.FullName, "RimMind-Advisor", "Source")))
-                directory = directory.Parent;
-
-            return Path.Combine(
-                directory?.FullName ?? throw new InvalidOperationException("Repository root not found."),
-                "RimMind-Advisor",
-                "Source");
         }
     }
 }

@@ -10,17 +10,17 @@ cleanup. Verse scanning and save data stay at the edges.
 
 Read the files in this order:
 
-1. `../Comps/CompAIAdvisor.cs` — Verse adapter and persisted enable toggle.
+1. `../Comps/CompAIAdvisor.cs` — Verse adapter, persisted enable toggle, and despawn/destroy cycle cleanup.
 2. `AdvisorGameComponent.cs` — throttled pawn trigger scan.
 3. `AdvisorCycleCoordinator.cs` — cycle state and terminal semantics.
-4. `AdvisorTaskDriver.cs` and `AdvisorRequestAugmentationFactory.cs` — initial and feedback envelopes, both using Core's `ScenarioDecision`.
+4. `AdvisorTaskDriver.cs` and `AdvisorRequestAugmentationFactory.cs` — initial and feedback envelopes, both using Core's `ScenarioIds.AdvisorDecision` and compact scoped tools.
 5. `AdvisorRequestCycleState.cs` — pure approval/feedback state machine.
-6. `AdvisorApprovalPolicy.cs` and `ApprovalManager.cs` — risk/explicit-request rules, player approval registration, and terminal callbacks.
-7. `AdvisorToolCallExecutor.cs` — main-thread tool execution boundary.
+6. `AdvisorApprovalPolicy.cs`, `ApprovalManager.cs`, and `ApprovalSubmissionPipeline.cs` — risk/explicit-request rules, single & cabinet approval registration, and terminal callbacks.
+7. `AdvisorToolCallExecutor.cs` and `AdvisorDirectExecutionHandler.cs` — main-thread tool execution boundary.
 
 `AdvisorProviderRegistrar` also publishes a bounded synchronous Advisor history brief for optional consumers; Verse data is read on the main thread.
 
-`advisor_task` and `actions_list` are registered for the same `ScenarioDecision` used by both request paths. `AdvisorHistoryStore` owns decision history; `ApprovalManager` does not duplicate it. The development-menu prompt preview in `../Debug/AdvisorDebugActions.cs` awaits Core's async snapshot builder, posts logging back through `LongEventHandler`, and discards results from an old game.
+`advisor_task` and `actions_list` are registered for the same `ScenarioIds.AdvisorDecision` used by both request paths. `AdvisorHistoryStore` owns decision history; `ApprovalManager` does not duplicate it. The development-menu prompt preview in `../Debug/AdvisorDebugActions.cs` awaits Core's async snapshot builder, posts logging back through `RimMindAPI.MainThread.Post`, and discards results from an old game.
 
 ## Invariants
 

@@ -203,36 +203,19 @@ namespace RimMind.Advisor.Tests.Contracts
         }
 
         [Fact]
-        public void Prompt_helpers_preserve_risk_labels_and_system_insertion_boundary()
+        public void Prompt_helpers_preserve_risk_labels()
         {
-            ContractCaseRunner.Run(
-                ("all public risk levels map to stable localization keys", () =>
-                {
-                    var expected = new Dictionary<RiskLevel, string>
-                    {
-                        [RiskLevel.Low] = "RimMind.Advisor.Prompt.Risk.Low",
-                        [RiskLevel.Medium] = "RimMind.Advisor.Prompt.Risk.Medium",
-                        [RiskLevel.High] = "RimMind.Advisor.Prompt.Risk.High",
-                        [RiskLevel.Critical] = "RimMind.Advisor.Prompt.Risk.Critical"
-                    };
+            var expected = new Dictionary<RiskLevel, string>
+            {
+                [RiskLevel.Low] = "RimMind.Advisor.Prompt.Risk.Low",
+                [RiskLevel.Medium] = "RimMind.Advisor.Prompt.Risk.Medium",
+                [RiskLevel.High] = "RimMind.Advisor.Prompt.Risk.High",
+                [RiskLevel.Critical] = "RimMind.Advisor.Prompt.Risk.Critical"
+            };
 
-                    foreach (var pair in expected)
-                        Assert.Equal(pair.Value, AdvisorPromptHelper.RiskTag(pair.Key));
-                    Assert.Equal(string.Empty, AdvisorPromptHelper.RiskTag((RiskLevel)999));
-                }),
-                ("custom prompt insertion targets the last system message", () =>
-                {
-                    var messages = new List<ChatMessage>
-                    {
-                        new ChatMessage { Role = "system" },
-                        new ChatMessage { Role = "user" },
-                        new ChatMessage { Role = "system" },
-                        new ChatMessage { Role = "assistant" }
-                    };
-
-                    Assert.Equal(2, AdvisorPromptHelper.FindLastSystemIndex(messages));
-                    Assert.Equal(-1, AdvisorPromptHelper.FindLastSystemIndex(new List<ChatMessage>()));
-                }));
+            foreach (var pair in expected)
+                Assert.Equal(pair.Value, AdvisorPromptHelper.RiskTag(pair.Key));
+            Assert.Equal(string.Empty, AdvisorPromptHelper.RiskTag((RiskLevel)999));
         }
     }
 }

@@ -23,10 +23,10 @@
 **RimMind-Advisor** empowers colonists to formulate insightful suggestions based on their current psychological thoughts, environmental stresses, and colony-wide macro alerts. Instead of blindly overriding player commands, colonists evaluate domain-specific autonomy policies and either execute low-risk actions directly or present structured advice proposals with clear rationale.
 
 ### Core Features
-- **5-Domain Autonomy Policy & `AdvisorToolRiskResolver`**: Fine-grained autonomy levels (`Disabled`, `RequireApproval`, `FullAutonomous`) across 5 domains (`EmergencySurvival`, `ResourceMarking`, `WorktableBills`, `BlueprintPlacement`, `HighRiskOperations`), evaluated before global force-approval fallbacks.
-- **Player Approval Flow & `ApprovalManager`**: Advice surfaces via a non-intrusive floating HUD card displaying colonist reasoning, urgency, and proposed actions with **[Approve]** and **[Reject]** buttons, plus automatic pending-request cleanup (`CancelPendingForPawn`) when a pawn despawns or dies.
-- **`ColonyMacroPerceiver` & `CabinetMeetingCoordinator`**: Detects colony-wide food, medicine, defense, and mood crises and convenes multi-colonist cabinet proposals that execute approved `ExecutionCallbacks` directly.
-- **Smooth Mini-Pill Auto-Collapse & 3-Round Feedback Loop**: Collapses into a mini status pill `[Pending: 0]` when idle and tracks execution outcomes across up to 3 feedback rounds.
+- **5-Domain Autonomy Policy & `AdvisorToolRiskResolver`**: Manifest- and classifier-driven (`IToolPolicyClassifier`) evaluation across 5 autonomy domains (`EmergencySurvival`, `ResourceMarking`, `WorktableBills`, `BlueprintPlacement`, `HighRiskOperations`) with `Disabled`, `RequireApproval`, and `FullAutonomous` modes.
+- **Player Approval Flow & `ApprovalManager`**: Advice surfaces via a non-intrusive floating HUD card displaying colonist reasoning, urgency, and proposed actions with **[Approve]** and **[Reject]** buttons, plus automatic active-cycle and pending-request cleanup (`CancelActiveCycle` / `CancelPendingForPawn`) when a pawn despawns or dies.
+- **`ColonyMacroPerceiver` & `ApprovalSubmissionPipeline` Cabinet Proposals**: Detects colony-wide food, temperature, shelter, corpse, resource, and threat bottlenecks and bundles multi-tool approval-gated plans into a single `CabinetProposal` card.
+- **Dedicated `ScenarioIds.AdvisorDecision` & 3-Round Feedback Loop**: Isolates Advisor context from Core's `AgentDecision` scenario, attaches compact scoped tools, collapses idle HUD cards into a mini status pill, and tracks outcomes across up to 3 feedback rounds.
 
 ---
 
