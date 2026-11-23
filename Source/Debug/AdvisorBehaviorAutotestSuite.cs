@@ -30,10 +30,13 @@ namespace RimMind.Advisor.Debug
             Pawn? pawn = context.ActiveColonist;
 
             // 1. CompAIAdvisor Attachment
-            if (context.CurrentMap?.mapPawns?.FreeColonists != null && context.CurrentMap.mapPawns.FreeColonists.Count > 0)
+            var colonists = context.CurrentMap != null
+                ? RimMindPawnLookup.GetSpawnedColonistsSafe(context.CurrentMap)
+                : null;
+            if (colonists != null && colonists.Count > 0)
             {
-                bool allAttached = context.CurrentMap.mapPawns.FreeColonists.All(p => p.GetComp<CompAIAdvisor>() != null);
-                context.Assert(allAttached, "All free colonists on current map have CompAIAdvisor attached");
+                bool allAttached = colonists.All(p => p.GetComp<CompAIAdvisor>() != null);
+                context.Assert(allAttached, "All active spawned colonists on current map have CompAIAdvisor attached");
             }
             else if (pawn != null)
             {
@@ -44,17 +47,17 @@ namespace RimMind.Advisor.Debug
                 context.Warn("No colonists on map to check CompAIAdvisor attachment");
             }
 
-            // 2. JobCandidateBuilder Evaluation
+            // 2. Scoped Tool Guidance Evaluation
             if (pawn != null)
             {
                 try
                 {
-                    string candidates = JobCandidateBuilder.Build(pawn);
-                    context.Assert(!string.IsNullOrWhiteSpace(candidates), "JobCandidateBuilder generates non-empty candidates for colonist");
+                    string? guidance = AdvisorProviderRegistrar.BuildScopedToolGuidanceText(pawn.thingIDNumber);
+                    context.Assert(!string.IsNullOrWhiteSpace(guidance), "AdvisorProviderRegistrar builds non-empty scoped tool guidance for colonist");
                 }
                 catch (Exception ex)
                 {
-                    context.Assert(false, $"JobCandidateBuilder threw exception: {ex.Message}");
+                    context.Assert(false, $"AdvisorProviderRegistrar.BuildScopedToolGuidanceText threw exception: {ex.Message}");
                 }
             }
 

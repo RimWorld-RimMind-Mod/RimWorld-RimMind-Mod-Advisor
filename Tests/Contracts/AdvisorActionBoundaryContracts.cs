@@ -93,6 +93,11 @@ namespace RimMind.Advisor.Tests.Contracts
                     {
                         RimMindAPI.Tools.Definitions.Add(new ToolDefinition
                         {
+                            Id = "actions_medium_risk",
+                            Manifest = new ToolManifest { RiskLevel = RiskLevel.Medium, RequiresApproval = false }
+                        });
+                        RimMindAPI.Tools.Definitions.Add(new ToolDefinition
+                        {
                             Id = "actions_high_risk",
                             Manifest = new ToolManifest { RiskLevel = RiskLevel.High, RequiresApproval = false }
                         });
@@ -102,6 +107,7 @@ namespace RimMind.Advisor.Tests.Contracts
                             Manifest = new ToolManifest { RiskLevel = RiskLevel.Low, RequiresApproval = true }
                         });
 
+                        Assert.Equal(RiskLevel.Medium, AdvisorToolRiskResolver.Resolve("actions_medium_risk"));
                         Assert.Equal(RiskLevel.High, AdvisorToolRiskResolver.Resolve("actions_high_risk"));
                         Assert.Equal(RiskLevel.Critical, AdvisorToolRiskResolver.Resolve("actions_needs_approval"));
                     }
@@ -194,6 +200,7 @@ namespace RimMind.Advisor.Tests.Contracts
                     }
                     finally
                     {
+                        ApprovalManager.ClearPendingRequests();
                         RimMindAPI.ClearPendingRequests();
                     }
                 }));

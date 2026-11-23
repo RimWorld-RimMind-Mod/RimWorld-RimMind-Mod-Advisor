@@ -46,7 +46,7 @@ namespace RimMind.Advisor.Advisor
             var reactionsText = GetRecentRejectedAdvisorDecisions(20);
             _feedbackSession.Begin(tools, schema);
 
-            var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
+            var expireAtTicks = (Find.TickManager?.TicksGame ?? 0) + _settings.requestExpireTicks;
 
             string? macroAugmentation = null;
 #if !RIMMIND_ADVISOR_TESTS
@@ -116,7 +116,7 @@ namespace RimMind.Advisor.Advisor
         {
             if (!_recommendationParser.TryParseNative(toolCallsJson, out toolCalls))
             {
-                RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name.ToStringShort}.");
+                RimMindErrors.Warn($"[RimMind-Advisor] ToolCalls parse failed for {_pawn.Name?.ToStringShort ?? _pawn.LabelShort}.");
                 return false;
             }
 
@@ -129,9 +129,6 @@ namespace RimMind.Advisor.Advisor
                 content,
                 _settings.enableLegacyJsonFallback);
         }
-
-        public List<ClientStructuredToolCall>? TryParseContentAsToolCalls(string content)
-            => _recommendationParser.ParseLegacy(content);
 
         public bool ShouldRequestFeedback()
         {
@@ -172,16 +169,17 @@ namespace RimMind.Advisor.Advisor
             _feedbackSession.BeginFeedback(messages);
 
             var npcId = $"NPC-{_pawn.thingIDNumber}";
-            var expireAtTicks = Find.TickManager.TicksGame + _settings.requestExpireTicks;
+            var expireAtTicks = (Find.TickManager?.TicksGame ?? 0) + _settings.requestExpireTicks;
 
-            // Round-2 feedback omits tool definitions to avoid re-sending compact schemas (~65% token savings).
+            // Preserve the already-compact scoped tools on feedback turns: Anthropic and strict OpenAI-compatible
+            // gateways reject requests containing assistant tool_calls / tool_result blocks when `tools` is omitted.
             var envelope = LlmRequestEnvelopeBuilder
                 .ForScenario(ScenarioIds.AdvisorDecision)
                 .WithModId(AdvisorRequestIds.RequestModId)
                 .WithNpcId(npcId)
                 .WithSchema(_feedbackSession.Schema)
                 .WithMessages(messages)
-                .WithTools(null)
+                .WithTools(_feedbackSession.Tools)
                 .WithToolDispatchMode(ToolCallDispatchMode.Manual)
                 .WithMaxTokens(400)
                 .WithTemperature(0.7f)

@@ -72,10 +72,17 @@ namespace RimMind.Advisor.Tests.Contracts
                 if (isFeedback)
                 {
                     var driver = new AdvisorTaskDriver(new Pawn { thingIDNumber = 7 }, new RimMindAdvisorSettings());
-                    driver.RequestToolFeedback(new List<StructuredToolCall>(), new List<ToolResult>(), _ => { });
+                    driver.BuildAndSendRequest(_ => { });
+                    RimMindAPI.Request.Sent.Clear();
+                    driver.RequestToolFeedback(
+                        new List<StructuredToolCall> { new StructuredToolCall { Id = "call_1", Name = "test.action", Arguments = "{}" } },
+                        new List<ToolResult> { ToolResult.Ok("done", "call_1", "test.action") },
+                        _ => { });
                     envelope = Assert.Single(RimMindAPI.Request.Sent);
-                    // P0-2: Round-2 feedback omits tool definitions to cut token bloat
-                    Assert.Null(envelope.Tools);
+                    // Round-2 feedback preserves the compact scoped toolset for Anthropic / OpenAI tool_result compatibility
+                    Assert.NotNull(envelope.Tools);
+                    Assert.Contains(envelope.Tools!, t => t.Name == "test.action");
+                    Assert.DoesNotContain(envelope.Tools!, t => t.Name == "world.admin_only");
                 }
                 else
                 {
@@ -160,7 +167,8 @@ namespace RimMind.Advisor.Tests.Contracts
                 var text = await historyDef.Provider(context, CancellationToken.None);
 
                 Assert.NotNull(text);
-                Assert.Contains("Failed (Insufficient steel: need 50, have 10)", text);
+                Assert.Contains("RimMind.Advisor.Prompt.ResultFailed", text);
+                Assert.Contains("Insufficient steel: need 50, have 10", text);
                 Assert.DoesNotContain("Ignored", text);
                 Assert.True(RimMindAPI.MainThreadSnapshot.CallCount >= 1);
             }

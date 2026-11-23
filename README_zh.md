@@ -23,10 +23,10 @@
 **RimMind-Advisor** 赋予殖民者根据当前身心状态、环境危机和全殖民地宏观预警提出建议的能力。通过 5 大自治领域策略路由，殖民者既可在授权域内自主执行紧急动作，也可将关键决策封装为结构化卡片交由玩家定夺。
 
 ### 核心特性
-- **5 大自治域策略与 `AdvisorToolRiskResolver`**：支持在紧急生存（`EmergencySurvival`）、资源标记（`ResourceMarking`）、工作台清单（`WorktableBills`）、蓝图建造（`BlueprintPlacement`）与高风险操作（`HighRiskOperations`）5 大领域独立配置禁用、需审批或完全自主，优先于全局强制审批开关判定。
-- **玩家审批流与生命周期清理（`ApprovalManager`）**：悬浮建议卡片清晰展示建言动机与拟执行工具，提供一键【批准】/【驳回】；小人离图或阵亡时自动触发 `CancelPendingForPawn` 清理悬空请求。
-- **宏观态势感知与内阁会议（`ColonyMacroPerceiver` & `CabinetMeetingCoordinator`）**：定期扫描全殖民地粮食、医药、防务与士气危机，支持发起多工具联合内阁提案并在批准后直接执行 `ExecutionCallbacks`。
-- **迷你胶囊自动收缩与 3 轮执行反馈闭环**：无待办时自动折叠为 `[Pending: 0]` 迷你胶囊，并持续追踪动作结果完成多轮反馈评估。
+- **5 大自治域策略与 `AdvisorToolRiskResolver`**：基于工具 `ToolManifest` 与 `IToolPolicyClassifier` 动态判定 5 大自治领域（`EmergencySurvival`、`ResourceMarking`、`WorktableBills`、`BlueprintPlacement`、`HighRiskOperations`），支持禁用、需审批与完全自主三种策略。
+- **玩家审批流与生命周期清理（`ApprovalManager`）**：悬浮建议卡片清晰展示建言动机与拟执行工具，提供一键【批准】/【驳回】；小人离图或阵亡时自动触发 `CancelActiveCycle` 与 `CancelPendingForPawn` 清理活跃周期与悬空请求。
+- **宏观态势感知与内阁提案（`ColonyMacroPerceiver` & `ApprovalSubmissionPipeline`）**：感知全殖民地粮食、温控、床位、尸体、建材与敌情瓶颈，并将同回合多工具审批方案合并为一张 `CabinetProposal` 卡片。
+- **独立 `ScenarioIds.AdvisorDecision` 与 3 轮执行反馈闭环**：与 Core 的 `AgentDecision` 场景严格隔离，挂载紧凑作用域工具集，无待办时自动折叠为迷你状态胶囊，并追踪最多 3 轮执行反馈。
 
 ---
 

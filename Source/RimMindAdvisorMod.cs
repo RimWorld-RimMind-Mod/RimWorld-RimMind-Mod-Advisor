@@ -1,4 +1,3 @@
-using HarmonyLib;
 using RimMind.Advisor.Advisor;
 using RimMind.Advisor.Settings;
 using RimMind.Application.Common.Interfaces.Extension;

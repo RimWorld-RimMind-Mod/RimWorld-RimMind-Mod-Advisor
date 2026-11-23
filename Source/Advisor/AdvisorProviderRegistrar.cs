@@ -171,11 +171,11 @@ namespace RimMind.Advisor.Advisor
             if (result == "ignored")
                 return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.ResultIgnored", "Ignored");
             if (!string.IsNullOrWhiteSpace(result))
-                return $"Failed ({result})";
+                return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.ResultFailed", "Failed ({0})", result!);
             return RimMindAPI.Text.TrOr("RimMind.Advisor.Prompt.ResultIgnored", "Ignored");
         }
 
-        private static string? BuildScopedToolGuidanceText(int pawnId)
+        internal static string? BuildScopedToolGuidanceText(int pawnId)
         {
             try
             {

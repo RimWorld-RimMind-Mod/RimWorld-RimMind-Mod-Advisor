@@ -83,7 +83,6 @@ namespace RimMind.Advisor.Advisor
                         onDismissed,
                         beforeRegister);
                 },
-                resolveApprovedSelection: () => (singleCalls, singleReasons, Array.Empty<int>()),
                 approvedTraceId: requestId ?? toolCall.Id,
                 moteOnApproved: reason,
                 errorContext: $"'{toolCall.Name}'");
@@ -122,7 +121,6 @@ namespace RimMind.Advisor.Advisor
 
             var callsToExecute = new List<ClientStructuredToolCall>(deferredCalls.Count);
             var reasonsToRecord = new List<string>(deferredCalls.Count);
-            var approvedIndices = new HashSet<int>();
 
             for (int i = 0; i < deferredCalls.Count; i++)
             {
@@ -131,9 +129,6 @@ namespace RimMind.Advisor.Advisor
                 proposal.Items.Add(BuildAdviceItem(toolCall, riskLevel, reason));
                 callsToExecute.Add(toolCall);
                 reasonsToRecord.Add(string.IsNullOrWhiteSpace(reason) ? "Cabinet Plan" : reason);
-
-                int capturedIndex = i;
-                proposal.ExecutionCallbacks.Add(() => approvedIndices.Add(capturedIndex));
             }
 
             string executedMote = RimMindAPI.Text.TrOr(
@@ -156,22 +151,6 @@ namespace RimMind.Advisor.Advisor
                         onDismissed,
                         beforeRegister);
                 },
-                resolveApprovedSelection: () =>
-                {
-                    var indicesToRun = approvedIndices.Count > 0
-                        ? approvedIndices.OrderBy(idx => idx).ToList()
-                        : Enumerable.Range(0, callsToExecute.Count).ToList();
-                    var rejectedIndices = new List<int>();
-                    for (int i = 0; i < callsToExecute.Count; i++)
-                    {
-                        if (!indicesToRun.Contains(i))
-                            rejectedIndices.Add(i);
-                    }
-
-                    var selectedCalls = indicesToRun.Select(i => callsToExecute[i]).ToList();
-                    var selectedReasons = indicesToRun.Select(i => reasonsToRecord[i]).ToList();
-                    return (selectedCalls, selectedReasons, rejectedIndices);
-                },
                 approvedTraceId: requestId,
                 moteOnApproved: executedMote,
                 errorContext: $"cabinet proposal ({callsToExecute.Count} actions)");
@@ -183,7 +162,6 @@ namespace RimMind.Advisor.Advisor
             IReadOnlyList<ClientStructuredToolCall> allCalls,
             IReadOnlyList<string> allReasons,
             Func<Action, Action, Action, Action<RequestEntry>, RequestEntry> register,
-            Func<(List<ClientStructuredToolCall> SelectedCalls, List<string> SelectedReasons, IReadOnlyList<int> RejectedIndices)> resolveApprovedSelection,
             string? approvedTraceId,
             string? moteOnApproved,
             string errorContext)
@@ -202,27 +180,20 @@ namespace RimMind.Advisor.Advisor
                             if (_pawn == null || !RimMindPawnLookup.IsActiveSpawnedColonist(_pawn) || _pawn.Downed)
                                 return;
 
-                            var (selectedCalls, selectedReasons, rejectedIndices) = resolveApprovedSelection();
-                            for (int i = 0; i < rejectedIndices.Count; i++)
-                            {
-                                int idx = rejectedIndices[i];
-                                _recordHistory(allCalls[idx].Name, allReasons[idx], "rejected");
-                            }
-
-                            var sanitizedCalls = selectedCalls.Select(ToolCallSummaryFormatter.StripPreApproval).ToList();
+                            var sanitizedCalls = allCalls.Select(ToolCallSummaryFormatter.StripPreApproval).ToList();
                             var results = _executeCallsSafely(sanitizedCalls, approvedTraceId, true);
 
-                            for (int i = 0; i < selectedCalls.Count; i++)
+                            for (int i = 0; i < allCalls.Count; i++)
                             {
-                                taskDriver.BroadcastDecisionExecuted(selectedCalls[i].Name, selectedReasons[i]);
+                                taskDriver.BroadcastDecisionExecuted(allCalls[i].Name, allReasons[i]);
                             }
 
                             for (int i = 0; i < results.Count; i++)
                             {
                                 var result = results[i];
-                                string actionName = result.ToolName ?? (i < selectedCalls.Count ? selectedCalls[i].Name : "tool");
-                                string reason = i < selectedReasons.Count && !string.IsNullOrWhiteSpace(selectedReasons[i])
-                                    ? selectedReasons[i]
+                                string actionName = result.ToolName ?? (i < allCalls.Count ? allCalls[i].Name : "tool");
+                                string reason = i < allReasons.Count && !string.IsNullOrWhiteSpace(allReasons[i])
+                                    ? allReasons[i]
                                     : actionName;
                                 _recordHistory(actionName, reason, result.IsError ? result.Content : "approved");
                                 if (result.IsError)

@@ -6,6 +6,20 @@ using RimMind.Presentation.Api;
 
 namespace RimMind.Advisor.Data
 {
+    public sealed class PawnAdvisorHistory : IExposable
+    {
+        public int pawnId;
+        public List<AdvisorRequestRecord> records = new List<AdvisorRequestRecord>();
+
+        public void ExposeData()
+        {
+            Scribe_Values.Look(ref pawnId, "pawnId", 0);
+            List<AdvisorRequestRecord>? serialized = records;
+            Scribe_Collections.Look(ref serialized, "records", LookMode.Deep);
+            records = serialized ?? new List<AdvisorRequestRecord>();
+        }
+    }
+
     public class AdvisorHistoryStore : WorldComponent
     {
         private static readonly List<AdvisorRequestRecord> EmptyRecords = new List<AdvisorRequestRecord>();
@@ -16,6 +30,7 @@ namespace RimMind.Advisor.Data
 #endif
 
         private Dictionary<int, List<AdvisorRequestRecord>> _records = new Dictionary<int, List<AdvisorRequestRecord>>();
+        private List<PawnAdvisorHistory>? _scribePawnHistories;
         private List<AdvisorRequestRecord> _globalLog = new List<AdvisorRequestRecord>();
 
         public static AdvisorHistoryStore? Instance
@@ -127,9 +142,45 @@ namespace RimMind.Advisor.Data
             {
                 PruneInactivePawns();
             }
-            Dictionary<int, List<AdvisorRequestRecord>>? records = _records;
-            Scribe_Collections.Look(ref records, "advisorRecords", LookMode.Value, LookMode.Deep);
-            _records = records ?? new Dictionary<int, List<AdvisorRequestRecord>>();
+
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                _scribePawnHistories = new List<PawnAdvisorHistory>(_records.Count);
+                foreach (var kvp in _records)
+                {
+                    if (kvp.Value != null && kvp.Value.Count > 0)
+                    {
+                        _scribePawnHistories.Add(new PawnAdvisorHistory
+                        {
+                            pawnId = kvp.Key,
+                            records = kvp.Value
+                        });
+                    }
+                }
+            }
+
+            Scribe_Collections.Look(ref _scribePawnHistories, "pawnHistories", LookMode.Deep);
+
+            if (Scribe.mode == LoadSaveMode.LoadingVars || Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                _records = new Dictionary<int, List<AdvisorRequestRecord>>();
+                if (_scribePawnHistories != null)
+                {
+                    for (int i = 0; i < _scribePawnHistories.Count; i++)
+                    {
+                        var entry = _scribePawnHistories[i];
+                        if (entry != null && entry.records != null && entry.records.Count > 0)
+                        {
+                            _records[entry.pawnId] = entry.records;
+                        }
+                    }
+                }
+            }
+
+            if (Scribe.mode == LoadSaveMode.Saving || Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                _scribePawnHistories = null;
+            }
 
             List<AdvisorRequestRecord>? globalLog = _globalLog;
             Scribe_Collections.Look(ref globalLog, "globalLog", LookMode.Deep);

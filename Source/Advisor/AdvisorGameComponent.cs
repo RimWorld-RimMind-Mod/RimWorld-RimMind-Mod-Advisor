@@ -23,24 +23,23 @@ namespace RimMind.Advisor.Advisor
         public override void FinalizeInit()
         {
             base.FinalizeInit();
-            Instance = this;
-            AdvisorConcurrencyTracker.Reset();
-            ApprovalManager.ClearPendingRequests();
-            AdvisorHistoryStore.ResetCache();
+            ResetRuntimeState();
         }
 
         public override void StartedNewGame()
         {
             base.StartedNewGame();
-            Instance = this;
-            AdvisorConcurrencyTracker.Reset();
-            ApprovalManager.ClearPendingRequests();
-            AdvisorHistoryStore.ResetCache();
+            ResetRuntimeState();
         }
 
         public override void LoadedGame()
         {
             base.LoadedGame();
+            ResetRuntimeState();
+        }
+
+        private void ResetRuntimeState()
+        {
             Instance = this;
             AdvisorConcurrencyTracker.Reset();
             ApprovalManager.ClearPendingRequests();
@@ -54,7 +53,7 @@ namespace RimMind.Advisor.Advisor
             if (!settings.enableAdvisor) return;
             if (!RimMindAPI.Settings.IsConfigured()) return;
 
-            int now = Find.TickManager.TicksGame;
+            int now = Find.TickManager?.TicksGame ?? 0;
             int interval = settings.pawnScanIntervalTicks;
             if (now < _lastTick + interval) return;
             _lastTick = now;
@@ -64,13 +63,19 @@ namespace RimMind.Advisor.Advisor
 
         private void EvaluateAllPawns(RimMindAdvisorSettings settings)
         {
+            var maps = Find.Maps;
+            if (maps == null || maps.Count == 0) return;
+
             var capacity = new AdvisorRequestCapacity(
                 AdvisorConcurrencyTracker.ActiveCount,
                 settings.maxConcurrentRequests);
 
-            foreach (var map in Find.Maps)
+            bool hasCrisisAlert = HasColonyCrisisAlert();
+
+            for (int i = 0; i < maps.Count; i++)
             {
-                bool hasCrisisAlert = HasColonyCrisisAlert(map);
+                var map = maps[i];
+                if (map == null) continue;
                 bool hasDistressedAnimals = HasDistressedColonyAnimals(map);
 
                 foreach (var pawn in RimMindPawnLookup.GetEligibleColonists(map))
@@ -122,7 +127,7 @@ namespace RimMind.Advisor.Advisor
         private static readonly System.Reflection.FieldInfo? _activeAlertsField =
             HarmonyLib.AccessTools.Field(typeof(AlertsReadout), "activeAlerts");
 
-        private static bool HasColonyCrisisAlert(Map map)
+        private static bool HasColonyCrisisAlert()
         {
             try
             {

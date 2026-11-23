@@ -8,7 +8,7 @@ namespace RimMind.Advisor.Settings
         /// <summary>总开关。</summary>
         public bool enableAdvisor = true;
 
-        /// <summary>请求冷却（ticks）。3600~72000，步进 600，默认 5000 ≈ 2 游戏小时保险保护。</summary>
+        /// <summary>请求冷却（ticks）。3500~72000，步进 500，默认 5000 ≈ 2 游戏小时保险保护。</summary>
         public int requestCooldownTicks = 5000;
 
         /// <summary>宏观/转折检查触发概率（0.1~1.0）。</summary>
@@ -38,7 +38,7 @@ namespace RimMind.Advisor.Settings
         /// <summary>审批请求过期时间（ticks）。审批悬浮窗超过此时间未响应则自动关闭。3600~120000，步进 1500，默认 30000。</summary>
         public int requestExpireTicks = 30000;
 
-        /// <summary>启用审批系统。关闭后所有需审批的动作直接执行。</summary>
+        /// <summary>启用审批系统。关闭后所有需审批的动作将被直接拦截阻止（不会自动执行）。</summary>
         public bool enableRequestSystem = true;
 
         /// <summary>启用风险拦截。达到风险等级阈值的动作自动拦截需玩家批准。</summary>

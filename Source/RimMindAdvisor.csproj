@@ -42,16 +42,4 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Deploy to game mods folder after build (set RIMWORLD_DIR env var) -->
-  <Target Name="DeployToModsFolder" AfterTargets="Build"
-          Condition=" '$(RIMWORLD_DIR)' != '' ">
-    <PropertyGroup>
-      <DeployPath>$(RIMWORLD_DIR)\Mods\RimMind-Advisor\</DeployPath>
-    </PropertyGroup>
-    <MakeDir Directories="$(DeployPath)" />
-    <Exec Command='robocopy "$(ProjectDir)..\About"        "$(DeployPath)About"     /MIR' IgnoreExitCode="true"/>
-    <Exec Command='robocopy "$(ProjectDir)..\$(GameVersion)" "$(DeployPath)$(GameVersion)" /MIR' IgnoreExitCode="true"/>
-    <Message Text="--- RimMind-Advisor deployed to $(DeployPath) ---" Importance="high"/>
-  </Target>
-
 </Project>
