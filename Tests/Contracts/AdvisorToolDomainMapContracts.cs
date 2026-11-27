@@ -24,6 +24,8 @@ namespace RimMind.Advisor.Tests.Contracts
             new Regex("override string Id\\s*=>\\s*\"(?<id>[^\"]+)\"", RegexOptions.Compiled);
         private static readonly Regex DefaultDomainPattern =
             new Regex("DefaultAutonomyDomain\\s*=>\\s*AutonomyDomain\\.(?<domain>[A-Za-z0-9_]+)", RegexOptions.Compiled);
+        private static readonly Regex QueryToolKindPattern =
+            new Regex("ToolKind\\s*=>\\s*ToolKind\\.Query\\b", RegexOptions.Compiled);
 
         [Fact]
         public void AdvisorToolRiskResolver_Contains_No_Hardcoded_Actions_ToolIds_Or_DomainMap()
@@ -63,7 +65,7 @@ namespace RimMind.Advisor.Tests.Contracts
                     if (!idMatch.Success) continue;
 
                     var id = idMatch.Groups["id"].Value;
-                    if (id.IndexOf("query", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    if (QueryToolKindPattern.IsMatch(src)) continue;
 
                     var domainMatch = DefaultDomainPattern.Match(src);
                     Assert.True(domainMatch.Success, $"Composite tool '{id}' must declare DefaultAutonomyDomain in its manifest");
